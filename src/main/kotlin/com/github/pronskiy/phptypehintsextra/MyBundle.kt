@@ -1,4 +1,4 @@
-package com.github.pronskiy.agentcontrol
+package com.github.pronskiy.phptypehintsextra
 
 import com.intellij.DynamicBundle
 import org.jetbrains.annotations.NonNls

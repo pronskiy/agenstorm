@@ -1,15 +1,15 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>com.github.pronskiy.agentcontrol</id>
-    <name>Agent Control</name>
+    <id>com.github.pronskiy.phptypehintsextra</id>
+    <name>PHP Typehints Extra</name>
     <vendor url="https://github.com/pronskiy" email="roman@pronskiy.com">Roman Pronskiy</vendor>
 
     <depends>com.intellij.modules.platform</depends>
-    <depends>org.jetbrains.plugins.terminal</depends>
+    <depends>com.jetbrains.php</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.pronskiy.agentcontrol.toolWindow.MyToolWindowFactory" id="AgentControl"/>
+        <applicationService serviceImplementation="com.github.pronskiy.phptypehintsextra.services.MyApplicationService"/>
     </extensions>
 </idea-plugin>
