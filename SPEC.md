@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic B → Phase B1 → step B1.2 — settings UI for the allow-list (multi-line list of `FileType.name`s with an "Add current file's type" helper) in the Scratch files group.
+**Now on:** Epic B exit guardrails — Toggle is verified in tests; waiting for Roman to check **Popup content** (and the no-restart toggle) in `runIde`. Next: Epic C → Phase C1 → step C1.1 (`ProjectOnlyFrameTitleBuilder`).
 
 ---
 
@@ -325,7 +325,7 @@ Platform fact: `com.intellij.scratchLanguageFilter` EP (`platform/lang-impl/src/
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | B1.1 | `AllowlistScratchFilter : ScratchFileTypeFilter` reading `settings.scratchAllowedFileTypes` | ✅ | EP `com.intellij.scratchLanguageFilter` (interface `ScratchFileTypeFilter`, `@ApiStatus.Internal`, dynamic) confirmed in build 262; registered in `agenstorm-scratch.xml`, `xi:include`d from `plugin.xml`. Internal names `PLAIN_TEXT`, `Markdown`, `PHP`, `JavaScript` confirmed at runtime by the test |
-| B1.2 | Settings UI: multi-line list of `FileType.name`s with an "Add current file's type" helper; defaults `PLAIN_TEXT, Markdown, PHP, JavaScript` | 🔲 | |
+| B1.2 | Settings UI: multi-line list of `FileType.name`s with an "Add current file's type" helper; defaults `PLAIN_TEXT, Markdown, PHP, JavaScript` | ✅ | Text area (one name per line) + "Add Current File's Type" + "Add File Type…" chooser over `FileTypeManager.registeredFileTypes`; parse drops blanks/duplicates and normalizes on apply. `AgenstormSettingsTest` covers XML list shape and edit/apply/reset |
 | B1.3 | Test: `ScratchFileTypeFilter.isEnabled(PhpFileType)` true, `isEnabled(JsonFileType)` false, feature off → all true | ✅ | Shipped with B1.1: `AllowlistScratchFilterTest` (4 cases) goes through the platform's static `isEnabled`, so it also proves the registration |
 
 **Steps (detail):**
@@ -348,8 +348,8 @@ Platform fact: `com.intellij.scratchLanguageFilter` EP (`platform/lang-impl/src/
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Popup content | `runIde` → File → New → Scratch File shows exactly Text, Markdown, PHP, JavaScript (plus the "from selection" extra when applicable) | 🔲 | |
-| Toggle | Disabling the feature restores the full list without restart | 🔲 | |
+| Popup content | `runIde` → File → New → Scratch File shows exactly Text, Markdown, PHP, JavaScript (plus the "from selection" extra when applicable) | 🔄 | `ScratchFileTypeFilter.isEnabled` verified for these four (true) and JSON/XML/YAML (false) in `AllowlistScratchFilterTest`; the popup itself awaits Roman's check |
+| Toggle | Disabling the feature restores the full list without restart | ✅ | The filter reads the settings on every call (`testFeatureOffProhibitsNothing`), and the EP is dynamic; no restart involved (2026-09-05) |
 
 ---
 
