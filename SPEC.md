@@ -624,7 +624,7 @@ Platform facts (verified against build 262):
 | Live | Checking out another branch (popup or terminal) updates the text within a second; switching editors between two repositories switches the branch shown | 🔲 | |
 | Popup | Clicking the branch opens the branches popup anchored to the widget (or centered, if the fallback path is in use — recorded) | 🔲 | |
 | Recovery | Feature off → toolbar VCS widget and the bottom navigation bar are back without restart | 🔲 | |
-| Log clean + verifier | No exceptions from the plugin; `verifyPlugin` Compatible, new internal usages listed in §2 | 🔲 | |
+| Log clean + verifier | No exceptions from the plugin; `verifyPlugin` Compatible, new internal usages listed in §2 | 🔲 | Verifier 2026-09-05: Compatible on PS/IU 262.10315; internal usages 13 → 15 (`GitBranchesTreePopupOnBackend` class + `create`, both guarded; `IdeStatusBarImpl.setCentralWidget` is not flagged); 2 deprecated usages remain: `StatusBarWidget.getPresentation(PlatformType)` bridged by the Kotlin compiler for the `CustomStatusBarWidget` implementation. Log: first sandbox start on `agenstorm-demo` (22:47) clean, nothing blamed on the plugin; the by-eye part is Roman's |
 
 **Exit guardrails — Epic E → Epic F**
 
