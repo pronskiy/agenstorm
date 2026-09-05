@@ -20,7 +20,7 @@ import java.util.MissingResourceException
  * native tabs themselves keeps that choice. Off macOS there is nothing to do. A platform without the key logs
  * a warning and leaves everything alone (the §2 fail-soft rule for internal hooks).
  *
- * Runs from [NativeTabsStartupActivity] for every opened project and from the settings page on apply.
+ * Runs from [TabsStartupActivity] for every opened project and from the settings page on apply.
  */
 class NativeTabsRegistryGuard(
     private val isMac: Boolean = SystemInfo.isMac,
