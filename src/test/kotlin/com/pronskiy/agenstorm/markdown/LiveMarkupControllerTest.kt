@@ -1,6 +1,11 @@
 package com.pronskiy.agenstorm.markdown
 
 import com.intellij.codeInsight.folding.CodeFoldingManager
+import com.intellij.openapi.command.undo.UndoManager
+import com.intellij.openapi.editor.actionSystem.EditorActionManager
+import com.intellij.openapi.editor.ex.util.EditorUtil
+import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
+import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.FoldRegion
 import com.intellij.openapi.util.TextRange
@@ -14,7 +19,7 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 
 /**
- * Steps F1.2 / F1.3 / F1.5: the listener attaches a controller to Markdown editors only, the controller mirrors the
+ * Steps F1.2 / F1.3 / F1.4 / F1.5: the listener attaches a controller to Markdown editors only, the controller mirrors the
  * collector into light fold regions (collapsed except on caret lines and under selections), follows edits by keeping
  * what still fits, leaves the Markdown plugin's own regions alone and survives its folding pass.
  */
@@ -179,6 +184,78 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         assertEquals(mapOf(0 to false, 1 to true), expandedByLine(controller))
     }
 
+    fun testExpandAllAndCollapseAllAreFollowedByTheCaretPolicy() {
+        myFixture.configureByFile("collector.md")
+        caretToEnd()
+        val controller = attachedController()
+        CodeFoldingManager.getInstance(project).updateFoldRegions(myFixture.editor)
+        controller.syncNow()
+        val ours = controller.regions()
+        val foreign = foreignRegions()
+        assertTrue(foreign.isNotEmpty())
+        assertTrue(ours.none { it.isExpanded })
+
+        runEditorAction("ExpandAllRegions")
+        assertTrue("observed: Expand All expands our regions too", controller.regions().all { it.isExpanded })
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("same regions afterwards", ours, controller.regions())
+        assertTrue("hidden again once the policy ran", controller.regions().none { it.isExpanded })
+        assertTrue("the Markdown plugin's regions stay as Expand All left them", foreignRegions().all { it.isExpanded })
+
+        myFixture.editor.caretModel.moveToOffset(3)
+        UIUtil.dispatchAllInvocationEvents()
+        val heading = controller.regions().first { it.startOffset == 0 }
+        assertTrue(heading.isExpanded)
+        runEditorAction("CollapseAllRegions")
+        assertFalse("observed: Collapse All collapses the caret line's regions", heading.isExpanded)
+        UIUtil.dispatchAllInvocationEvents()
+        assertTrue(heading.isValid && heading.isExpanded)
+        assertEquals(mapOf(0 to true), expandedByLine(controller).filterValues { it })
+        assertEquals(foreign, foreignRegions())
+    }
+
+    fun testTypingAtBordersReformatAndUndoStayConsistent() {
+        myFixture.configureByText("a.md", "**bold** and *em*\n\n**far**\n")
+        val controller = attachedController()
+        val document = myFixture.editor.document
+        controller.syncNow()
+        assertConsistent(controller)
+
+        myFixture.editor.caretModel.moveToOffset(2)
+        myFixture.type("x")
+        commitAndSync(controller)
+        assertEquals("**xbold** and *em*\n\n**far**\n", document.text)
+        assertConsistent(controller)
+
+        myFixture.editor.caretModel.moveToOffset(0)
+        myFixture.type("y")
+        commitAndSync(controller)
+        assertEquals("y**xbold** and *em*\n\n**far**\n", document.text)
+        assertConsistent(controller)
+
+        // An outside edit at the border of a collapsed region on another line (an agent rewriting the file).
+        val far = controller.regions().first { document.getLineNumber(it.startOffset) == 2 }
+        assertFalse(far.isExpanded)
+        WriteCommandAction.runWriteCommandAction(project) { document.insertString(far.endOffset, "z") }
+        commitAndSync(controller)
+        assertEquals("y**xbold** and *em*\n\n**zfar**\n", document.text)
+        assertConsistent(controller)
+        assertFalse(controller.regions().first { document.getLineNumber(it.startOffset) == 2 }.isExpanded)
+
+        WriteCommandAction.runWriteCommandAction(project) { CodeStyleManager.getInstance(project).reformat(myFixture.file) }
+        commitAndSync(controller)
+        assertConsistent(controller)
+
+        val fileEditor = TextEditorProvider.getInstance().getTextEditor(myFixture.editor)
+        val undoManager = UndoManager.getInstance(project)
+        assertTrue(undoManager.isUndoAvailable(fileEditor))
+        undoManager.undo(fileEditor)
+        undoManager.undo(fileEditor)
+        commitAndSync(controller)
+        assertEquals("y**xbold** and *em*\n\n**far**\n", document.text)
+        assertConsistent(controller)
+    }
+
     fun testDetachRemovesEveryRegion() {
         myFixture.configureByText("a.md", "# h\n**b** `c`\n")
         val controller = attachedController()
@@ -191,6 +268,27 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
     }
 
     private fun caretToEnd() = myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.textLength)
+
+    private fun runEditorAction(id: String) {
+        EditorActionManager.getInstance().getActionHandler(id).execute(myFixture.editor, null, EditorUtil.getEditorDataContext(myFixture.editor))
+    }
+
+    private fun commitAndSync(controller: LiveMarkupController) {
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+        controller.syncNow()
+    }
+
+    /** Regions equal the collector's output and every region's state follows the caret policy. */
+    private fun assertConsistent(controller: LiveMarkupController) {
+        val document = myFixture.editor.document
+        val wanted = MarkupRangeCollector.collect(myFixture.file)
+        assertEquals(wanted.map { it.range to it.placeholder }, controller.regions().map { TextRange(it.startOffset, it.endOffset) to it.placeholderText })
+        val caretLines = myFixture.editor.caretModel.allCarets.map { document.getLineNumber(it.offset) }.toSet()
+        for (region in controller.regions()) {
+            val onCaretLine = document.getLineNumber(region.startOffset) in caretLines
+            assertEquals("${texts(listOf(region))}@${region.startOffset}", onCaretLine, region.isExpanded)
+        }
+    }
 
     /** Line → whether the regions on it are expanded; a line with mixed states fails the test. */
     private fun expandedByLine(controller: LiveMarkupController): Map<Int, Boolean> {

@@ -14,6 +14,7 @@ import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.event.SelectionEvent
 import com.intellij.openapi.editor.event.SelectionListener
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.editor.ex.FoldingListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Condition
 import com.intellij.openapi.util.Key
@@ -48,6 +49,10 @@ import kotlinx.coroutines.withContext
  * part of every sync and is re-applied, coalesced through `invokeLater`, when a caret changes line, carets are added
  * or removed, or the selection changes. Moving within a line does nothing, so typing costs no fold operations.
  *
+ * Coexistence (F1.4): a `FoldingListener` re-applies the policy after anyone else's batch (Expand All expands our
+ * regions, Collapse All collapses the caret line's) and asks for a re-sync when a region of ours is removed by
+ * someone else (the folding model's rebuild); our own batches are flagged so they trigger neither.
+ *
  * Light regions are created with `FoldingModelEx.createFoldRegion` rather than through a `FoldingBuilder`: builder
  * regions shorter than two characters are dropped, ours are often one character long (SPEC.md decision 10).
  */
@@ -62,6 +67,7 @@ class LiveMarkupController(
     private val resync = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val job: Job
     private var policyScheduled = false
+    private var ownBatch = false
 
     init {
         editor.document.addDocumentListener(object : DocumentListener {
@@ -80,6 +86,15 @@ class LiveMarkupController(
         }, this)
         editor.selectionModel.addSelectionListener(object : SelectionListener {
             override fun selectionChanged(e: SelectionEvent) = scheduleCaretPolicy()
+        }, this)
+        editor.foldingModel.addListener(object : FoldingListener {
+            override fun onFoldProcessingEnd() {
+                if (!ownBatch) scheduleCaretPolicy()
+            }
+
+            override fun beforeFoldRegionRemoved(region: FoldRegion) {
+                if (!ownBatch && region.getUserData(KIND) != null) requestSync()
+            }
         }, this)
         job = scope.launch(CoroutineName("Agenstorm live markup")) {
             sync()
@@ -117,9 +132,9 @@ class LiveMarkupController(
         val revealed = revealedRanges()
         val changes = regions().filter { it.isExpanded != isRevealed(it.startOffset, it.endOffset, revealed) }
         if (changes.isEmpty()) return
-        editor.foldingModel.runBatchFoldingOperation({
+        batch {
             for (region in changes) region.isExpanded = !region.isExpanded
-        }, false, true)
+        }
     }
 
     /** Removes every region of ours in one batch; the Markdown plugin's regions stay. */
@@ -128,7 +143,7 @@ class LiveMarkupController(
         val model = editor.foldingModel
         val ours = regions()
         if (ours.isEmpty()) return
-        model.runBatchFoldingOperation({ ours.forEach(model::removeFoldRegion) }, false, true)
+        batch { ours.forEach(model::removeFoldRegion) }
     }
 
     override fun dispose() {
@@ -161,7 +176,7 @@ class LiveMarkupController(
         val model = editor.foldingModel
         var removed = 0
         var created = 0
-        model.runBatchFoldingOperation({
+        batch {
             for (region in model.allFoldRegions) {
                 val kind = region.getUserData(KIND) ?: continue
                 if (!region.isValid) continue
@@ -180,7 +195,7 @@ class LiveMarkupController(
                 region.isExpanded = isRevealed(range.range.startOffset, range.range.endOffset, revealed)
                 created++
             }
-        }, false, true)
+        }
         if (LOG.isDebugEnabled) LOG.debug("live markup: $created regions created, $removed removed in ${(System.nanoTime() - started) / 1_000_000} ms")
     }
 
@@ -194,6 +209,16 @@ class LiveMarkupController(
             if (caret.hasSelection()) out += TextRange(caret.selectionStart, caret.selectionEnd)
         }
         return out
+    }
+
+    /** Our batch: carets are never moved, the caret keeps its place on screen, and our own folding listener stays quiet. */
+    private fun batch(operation: () -> Unit) {
+        ownBatch = true
+        try {
+            editor.foldingModel.runBatchFoldingOperation(operation, false, true)
+        } finally {
+            ownBatch = false
+        }
     }
 
     private fun scheduleCaretPolicy() {
