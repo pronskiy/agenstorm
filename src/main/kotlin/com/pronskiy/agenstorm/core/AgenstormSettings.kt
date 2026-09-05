@@ -41,7 +41,7 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         /** Epic D: path to the `claude` executable; empty = PATH lookup plus the usual install locations. */
         var commitClaudeCliPath: String = "",
         /** Epic D: extra `claude -p` arguments; flags that may drift between CLI versions live here, not in code. */
-        var commitClaudeCliExtraArgs: String = "--tools \"\" --no-session-persistence",
+        var commitClaudeCliExtraArgs: String = "--tools \"\" --no-session-persistence --strict-mcp-config",
         /** Epic D: budget for the unified diff sent to the model, in characters. */
         var commitMaxDiffChars: Int = 60_000,
         var commitConventionalCommits: Boolean = true,

@@ -78,6 +78,25 @@ class ClaudeCliBackendTest {
         }
     }
 
+    @Test
+    fun disablesExtendedThinkingUnlessTheEnvironmentOverridesIt() = runBlocking {
+        val env = Files.createTempFile("fake-claude-env", ".txt").toFile()
+        try {
+            ClaudeCliBackend(executable = { script }, environment = mapOf("FAKE_CLAUDE_ENV_FILE" to env.path)).stream(request).toList()
+            assertEquals("MAX_THINKING_TOKENS=0", env.readText().trim())
+
+            ClaudeCliBackend(executable = { script }, environment = mapOf("FAKE_CLAUDE_ENV_FILE" to env.path, "MAX_THINKING_TOKENS" to "4096")).stream(request).toList()
+            assertEquals("MAX_THINKING_TOKENS=4096", env.readText().trim())
+        } finally {
+            env.delete()
+        }
+    }
+
+    @Test
+    fun defaultExtraArgsSkipToolsSessionsAndMcpServers() {
+        assertEquals(listOf("--tools", "", "--no-session-persistence", "--strict-mcp-config"), com.intellij.util.execution.ParametersListUtil.parse(ClaudeCliBackend.DEFAULT_EXTRA_ARGS))
+    }
+
     private fun recordedArgs(file: File): List<String> = file.readText().removeSuffix("\n").split("\n")
 
     @Test

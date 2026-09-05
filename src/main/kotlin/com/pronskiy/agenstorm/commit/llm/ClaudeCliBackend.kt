@@ -23,6 +23,10 @@ import java.io.File
  * Text mode does not stream, so stdout is emitted as one chunk on exit 0; a non-zero exit becomes an
  * [LlmException] carrying stderr. Cancelling the collector destroys the process. Flags that may drift between
  * CLI versions live in the "extra arguments" setting ([DEFAULT_EXTRA_ARGS]).
+ *
+ * Speed: Claude Code enables extended thinking by default, which made a one-line commit message take 20–50 s
+ * even on Haiku; [DEFAULT_ENVIRONMENT] switches it off (~3 s end to end). `--strict-mcp-config` in the default
+ * extra args skips connecting the user's MCP servers and keeps their tool definitions out of the prompt.
  */
 class ClaudeCliBackend(
     private val executable: () -> String?,
@@ -43,7 +47,7 @@ class ClaudeCliBackend(
         if (request.system.isNotBlank()) command.addParameters("--system-prompt", request.system)
         command.addParameters(ParametersListUtil.parse(extraArgs))
         workingDirectory?.let { command.withWorkDirectory(it) }
-        command.withEnvironment(environment)
+        command.withEnvironment(DEFAULT_ENVIRONMENT + environment)
         command.withCharset(Charsets.UTF_8)
 
         val output = run(command, request.user)
@@ -91,8 +95,10 @@ class ClaudeCliBackend(
         const val ID = "claude-cli"
         /** Alias the CLI resolves to the current Haiku; cheap and quick for commit messages. Empty leaves the choice to the CLI. */
         const val DEFAULT_MODEL = "haiku"
-        /** No tools (the prompt already carries the diff) and no session clutter; editable in the settings. */
-        const val DEFAULT_EXTRA_ARGS = "--tools \"\" --no-session-persistence"
+        /** No tools (the prompt already carries the diff), no session clutter, no MCP servers; editable in the settings. */
+        const val DEFAULT_EXTRA_ARGS = "--tools \"\" --no-session-persistence --strict-mcp-config"
+        /** Disables extended thinking, which Claude Code turns on by default; the `environment` parameter can override it. */
+        val DEFAULT_ENVIRONMENT: Map<String, String> = mapOf("MAX_THINKING_TOKENS" to "0")
         const val DEFAULT_TIMEOUT_MS = 120_000
 
         private val FALLBACK_LOCATIONS = listOf(".local/bin/claude", ".claude/local/claude")

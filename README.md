@@ -96,8 +96,9 @@ Configure the backend under Settings → Tools → Agenstorm → Commit messages
 - **Claude CLI**: runs `claude -p --output-format text` with the prompt on stdin, so it uses your Claude
   Code login and needs no key. The default model is `haiku`; the Model field takes any alias the CLI
   accepts (`sonnet`, `opus`, `sonnet[1m]`) or a full model id. Leave the executable empty to find `claude`
-  on the PATH or in the usual install locations. Flags that may change between CLI versions live in the
-  "Extra arguments" field.
+  on the PATH or in the usual install locations. The call runs with extended thinking off and without your
+  MCP servers, which turns a 20–50 s wait into about 3 s; flags that may change between CLI versions live
+  in the "Extra arguments" field.
 
 **Test Connection** validates the values as typed. The prompt templates are editable: `{diff}`, `{stat}`,
 `{branch}`, `{hint}`, `{language}` and `{conventional}` are substituted, unknown placeholders are kept, and
