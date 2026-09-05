@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic E → Phase E2 → step **E2.1** (overflow). Phase E1 signed off 2026-09-05. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic E → Phase E2 → step **E2.2** (drag-to-reorder). Phase E1 signed off 2026-09-05. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -578,8 +578,8 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| E2.1 | Overflow: shrink to icon-only when width is insufficient; then first N + chevron popup listing the rest | 🔄 | |
-| E2.2 | Drag-to-reorder tabs within the strip; order persisted in `ProjectTabsModel` | 🔲 | |
+| E2.1 | Overflow: shrink to icon-only when width is insufficient; then first N + chevron popup listing the rest | ✅ | `ProjectTabsPanel` lays itself out (no BoxLayout): `plan(available)` picks FULL / COMPACT (32 px icon tabs, name in tooltip, no ×) / OVERFLOW (first N compact + `AllIcons.Actions.MoreHorizontal` chevron, owner tab swapped in when it would hide); `available` = toolbar width / 2 via `availableWidthProvider` (unlimited until the toolbar is sized). Chevron popup = `ProjectTabActions.overflowGroup`. `ProjectTabsOverflowTest` (4) with `FakeProjectHolder` proxies |
+| E2.2 | Drag-to-reorder tabs within the strip; order persisted in `ProjectTabsModel` | 🔄 | |
 | E2.3 | Actions `Agenstorm.NextProjectTab` / `Agenstorm.PrevProjectTab` (cyclic), unbound by default; `Agenstorm.CloseProjectTab` | 🔲 | |
 | E2.4 | Settings group "Project tabs": enable, mirror bounds, show icons, max tab width | 🔲 | |
 
