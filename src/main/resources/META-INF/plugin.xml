@@ -33,4 +33,14 @@
         <!-- links: Go to Declaration for hosts whose getReferences() does not consult the registry (PHPDoc & co). -->
         <gotoDeclarationHandler implementation="com.pronskiy.agenstorm.links.LocationGotoDeclarationHandler"/>
     </extensions>
+
+    <actions resource-bundle="messages.AgenstormBundle">
+        <!-- links: copies relpath:line[:col] for the caret / selection start / clicked gutter line. No default shortcut. -->
+        <action id="Agenstorm.CopyLocationLink"
+                class="com.pronskiy.agenstorm.links.CopyLocationLinkAction"
+                icon="AllIcons.Actions.Copy">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="Copy.Paste.Special"/>
+            <add-to-group group-id="EditorGutterPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

@@ -66,8 +66,11 @@ system prompt:
 > (1-based) so it is clickable in the IDE. In Markdown, use it as the link destination:
 > `[Foo::bar()](src/Foo.php:42:7)`.
 
-The editor context menu offers **Copy Location Link** to produce such a token for the caret or
-selection.
+The editor and gutter context menus offer **Copy Location Link**, which puts such a token for the
+caret (or the selection start) on the clipboard, plus a Markdown-link flavor
+(`[Foo.php:42](src/Foo.php:42:7)`) for apps that accept it. The action ships without a shortcut;
+`Ctrl+Alt+Shift+L` is free in the default keymaps and works well (Settings → Keymap, search for
+"Copy Location Link").
 
 ## Development
 
