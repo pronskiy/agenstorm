@@ -5,12 +5,17 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.FoldRegion
 import com.intellij.openapi.editor.event.CaretEvent
 import com.intellij.openapi.editor.event.CaretListener
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
+import com.intellij.openapi.editor.event.EditorMouseEvent
+import com.intellij.openapi.editor.event.EditorMouseEventArea
+import com.intellij.openapi.editor.event.EditorMouseListener
+import com.intellij.openapi.editor.event.EditorMouseMotionListener
 import com.intellij.openapi.editor.event.SelectionEvent
 import com.intellij.openapi.editor.event.SelectionListener
 import com.intellij.openapi.editor.ex.EditorEx
@@ -21,6 +26,9 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.ThreadingAssertions
+import com.pronskiy.agenstorm.core.AgenstormBundle
+import java.awt.Cursor
+import java.awt.event.MouseEvent
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +60,10 @@ import kotlinx.coroutines.withContext
  * Coexistence (F1.4): a `FoldingListener` re-applies the policy after anyone else's batch (Expand All expands our
  * regions, Collapse All collapses the caret line's) and asks for a re-sync when a region of ours is removed by
  * someone else (the folding model's rebuild); our own batches are flagged so they trigger neither.
+ *
+ * Checkboxes (F2.2): a left press on a ☐ / ☑ placeholder flips the box in one undoable command and swaps the
+ * placeholder at once; the event is consumed so the editor neither moves the caret nor expands the region. The
+ * pointer becomes a hand over a checkbox.
  *
  * Light regions are created with `FoldingModelEx.createFoldRegion` rather than through a `FoldingBuilder`: builder
  * regions shorter than two characters are dropped, ours are often one character long (SPEC.md decision 10).
@@ -86,6 +98,19 @@ class LiveMarkupController(
         }, this)
         editor.selectionModel.addSelectionListener(object : SelectionListener {
             override fun selectionChanged(e: SelectionEvent) = scheduleCaretPolicy()
+        }, this)
+        editor.addEditorMouseListener(object : EditorMouseListener {
+            override fun mousePressed(event: EditorMouseEvent) {
+                if (event.mouseEvent.button != MouseEvent.BUTTON1 || event.area != EditorMouseEventArea.EDITING_AREA) return
+                val region = event.collapsedFoldRegion ?: return
+                if (toggleCheckbox(region)) event.consume()
+            }
+        }, this)
+        editor.addEditorMouseMotionListener(object : EditorMouseMotionListener {
+            override fun mouseMoved(event: EditorMouseEvent) {
+                val overCheckbox = event.area == EditorMouseEventArea.EDITING_AREA && event.collapsedFoldRegion?.getUserData(KIND)?.isCheckbox == true
+                editor.setCustomCursor(this@LiveMarkupController, if (overCheckbox) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else null)
+            }
         }, this)
         editor.foldingModel.addListener(object : FoldingListener {
             override fun onFoldProcessingEnd() {
@@ -135,6 +160,33 @@ class LiveMarkupController(
         batch {
             for (region in changes) region.isExpanded = !region.isExpanded
         }
+    }
+
+    /**
+     * Flips the task box behind [region] (`[ ]` ↔ `[x]`) if it is one of our checkbox regions; the placeholder and kind
+     * follow at once so the next sync keeps the region. Returns false for any other region.
+     */
+    fun toggleCheckbox(region: FoldRegion): Boolean {
+        ThreadingAssertions.assertEventDispatchThread()
+        val kind = region.getUserData(KIND) ?: return false
+        val (next, mark) = when (kind) {
+            MarkupKind.CHECKBOX_OFF -> MarkupKind.CHECKBOX_ON to "x"
+            MarkupKind.CHECKBOX_ON -> MarkupKind.CHECKBOX_OFF to " "
+            else -> return false
+        }
+        val document = editor.document
+        if (!region.isValid || region.endOffset - region.startOffset != 3 || !document.isWritable || project.isDisposed) return false
+        val middle = region.startOffset + 1
+        WriteCommandAction.runWriteCommandAction(project, AgenstormBundle.message("markdown.toggleCheckbox.command"), null, {
+            document.replaceString(middle, middle + 1, mark)
+        })
+        if (region.isValid) {
+            batch {
+                region.putUserData(KIND, next)
+                region.setPlaceholderText(if (next == MarkupKind.CHECKBOX_ON) MarkupRangeCollector.CHECKBOX_ON_PLACEHOLDER else MarkupRangeCollector.CHECKBOX_OFF_PLACEHOLDER)
+            }
+        }
+        return true
     }
 
     /** Removes every region of ours in one batch; the Markdown plugin's regions stay. */

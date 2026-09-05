@@ -19,7 +19,7 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 
 /**
- * Steps F1.2 / F1.3 / F1.4 / F1.5: the listener attaches a controller to Markdown editors only, the controller mirrors the
+ * Steps F1.2 / F1.3 / F1.4 / F1.5 / F2.2: the listener attaches a controller to Markdown editors only, the controller mirrors the
  * collector into light fold regions (collapsed except on caret lines and under selections), follows edits by keeping
  * what still fits, leaves the Markdown plugin's own regions alone and survives its folding pass.
  */
@@ -254,6 +254,55 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         commitAndSync(controller)
         assertEquals("y**xbold** and *em*\n\n**far**\n", document.text)
         assertConsistent(controller)
+    }
+
+    fun testClickingACheckboxFlipsItWithoutMovingTheCaretOrLosingTheRegion() {
+        myFixture.configureByText("a.md", "- [ ] one\n- [x] two\n\n**b**\n")
+        val document = myFixture.editor.document
+        caretToEnd()
+        val controller = attachedController()
+        controller.syncNow()
+        val caretBefore = myFixture.editor.caretModel.offset
+        val first = controller.regions().first { it.getUserData(LiveMarkupController.KIND) == MarkupKind.CHECKBOX_OFF }
+        val second = controller.regions().first { it.getUserData(LiveMarkupController.KIND) == MarkupKind.CHECKBOX_ON }
+
+        assertTrue(controller.toggleCheckbox(first))
+        assertEquals("- [x] one\n- [x] two\n\n**b**\n", document.text)
+        assertTrue("the region is kept, not recreated", first.isValid)
+        assertEquals("☑", first.placeholderText)
+        assertEquals(MarkupKind.CHECKBOX_ON, first.getUserData(LiveMarkupController.KIND))
+        assertFalse(first.isExpanded)
+        assertEquals(caretBefore, myFixture.editor.caretModel.offset)
+
+        assertTrue(controller.toggleCheckbox(second))
+        assertEquals("- [x] one\n- [ ] two\n\n**b**\n", document.text)
+        assertEquals("☐", second.placeholderText)
+
+        // The debounced sync agrees with the swapped placeholders: same region objects survive.
+        commitAndSync(controller)
+        assertTrue(first.isValid && second.isValid)
+        assertEquals(listOf("[x]", "[ ]", "**", "**"), texts(controller.regions()))
+
+        val bold = controller.regions().first { it.getUserData(LiveMarkupController.KIND) == MarkupKind.STRONG }
+        assertFalse("only checkbox regions toggle", controller.toggleCheckbox(bold))
+        assertEquals("- [x] one\n- [ ] two\n\n**b**\n", document.text)
+    }
+
+    fun testCheckboxToggleIsOneUndoStep() {
+        myFixture.configureByText("a.md", "- [ ] one\n")
+        caretToEnd()
+        val controller = attachedController()
+        controller.syncNow()
+        val region = controller.regions().single()
+        assertTrue(controller.toggleCheckbox(region))
+        assertEquals("- [x] one\n", myFixture.editor.document.text)
+
+        val fileEditor = TextEditorProvider.getInstance().getTextEditor(myFixture.editor)
+        UndoManager.getInstance(project).undo(fileEditor)
+        assertEquals("- [ ] one\n", myFixture.editor.document.text)
+        commitAndSync(controller)
+        assertEquals(listOf("☐"), controller.regions().map { it.placeholderText })
+        assertEquals(listOf(MarkupKind.CHECKBOX_OFF), controller.regions().map { it.getUserData(LiveMarkupController.KIND) })
     }
 
     fun testDetachRemovesEveryRegion() {

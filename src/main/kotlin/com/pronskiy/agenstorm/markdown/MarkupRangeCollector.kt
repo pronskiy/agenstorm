@@ -13,7 +13,11 @@ import org.intellij.plugins.markdown.lang.MarkdownElementTypes
 import org.intellij.plugins.markdown.lang.MarkdownTokenTypes
 
 /** What a hidden range stands for; the controller keys its fold regions by kind and range. */
-enum class MarkupKind { STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON }
+enum class MarkupKind {
+    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON;
+
+    val isCheckbox: Boolean get() = this == CHECKBOX_OFF || this == CHECKBOX_ON
+}
 
 /** A stretch of Markdown syntax to fold away, and what to draw in its place (usually nothing). */
 data class MarkupRange(val kind: MarkupKind, val range: TextRange, val placeholder: String)
