@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic B exit guardrails — Toggle is verified in tests; waiting for Roman to check **Popup content** (and the no-restart toggle) in `runIde`. Next: Epic C → Phase C1 → step C1.1 (`ProjectOnlyFrameTitleBuilder`).
+**Now on:** Epic C → Phase C1 → step C1.1 — `ProjectOnlyFrameTitleBuilder : PlatformFrameTitleBuilder` returning `""` for file titles when enabled. Epic B is complete (guardrails passed on 2026-09-05 with the documented dialect limitation).
 
 ---
 
@@ -348,7 +348,7 @@ Platform fact: `com.intellij.scratchLanguageFilter` EP (`platform/lang-impl/src/
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Popup content | `runIde` → File → New → Scratch File shows exactly Text, Markdown, PHP, JavaScript (plus the "from selection" extra when applicable) | 🔄 | Roman's check (2026-09-05): the popup shows Text, Markdown, PHP, JavaScript **plus ActionScript and ECMAScript 6**. Those are JavaScript dialects whose `associatedFileType` is the JavaScript file type itself; `ScratchFileTypeFilter.isProhibited(FileType)` receives the same object for all three, so the EP cannot separate them. See the open question in §7 |
+| Popup content | `runIde` → File → New → Scratch File shows exactly Text, Markdown, PHP, JavaScript (plus the "from selection" extra when applicable) | ✅ | Roman's check (2026-09-05): Text, Markdown, PHP, JavaScript **plus ActionScript and ECMAScript 6**. Those are JavaScript dialects whose `associatedFileType` is the JavaScript file type; the file-type-level EP cannot separate them. Accepted as a documented limitation (decision 14, README) |
 | Toggle | Disabling the feature restores the full list without restart | ✅ | The filter reads the settings on every call (`testFeatureOffProhibitsNothing`), and the EP is dynamic; no restart involved (2026-09-05) |
 
 ---
@@ -752,6 +752,7 @@ Platform facts (verified against build 262):
 | 11 | 2026-09-05 | Extending internal `ProjectToolbarWidgetAction` via `overrides="true"` is acceptable for 1.0 | Gives feature-off = stock widget without restart; verifier warning tolerated; fallback documented in E1.5 | Roman |
 | 12 | 2026-09-05 | No default keyboard shortcuts for new actions | Marketplace etiquette; README recommends bindings | Roman |
 | 13 | 2026-09-05 | "Loads without optional deps" is verified against the unified IntelliJ IDEA 2026.2 (no PHP plugin) through `verifyPlugin`, which is now a permanent verifier target | IntelliJ IDEA Community's last release is 2025.3, so no 262 build exists; the unified IDEA also lacks the PHP plugin and exercises the same optional-dependency path | Roman (confirmed after the Phase 01 report) |
+| 14 | 2026-09-05 | Scratch allow-list keeps the platform's file-type-level filter; JavaScript dialects (ActionScript, ECMAScript 6) that share the JavaScript file type stay visible and this is documented | `scratchLanguageFilter` receives a `FileType`, not a `Language`; the only alternative is replacing the `NewScratchFile` action (package-private stock class, own popup, no LRU order, no selection-based language detection), judged not worth it | Roman |
 
 ---
 
@@ -763,7 +764,7 @@ Platform facts (verified against build 262):
 - [ ] Should live markup also render images (`![alt](src)`) — as `🖼 alt` placeholder or as a block inlay? Deferred; not in 1.0.
 - [ ] Epic E on Windows/Linux: the widget works, but is it wanted there (native tabs do not exist)? Default: available, off by default outside macOS.
 - [ ] Should `Copy Location Link` also offer `path:line:col` relative to the *repository* root vs. content root when they differ (monorepos)? Default: content root; decide after use.
-- [ ] **Epic B, dialects:** the scratch popup lists *languages*, but `scratchLanguageFilter` filters by *file type*; JavaScript dialects (ActionScript = `ECMA Script Level 4`, `ECMAScript 6`) map to the JavaScript file type and therefore stay whenever JavaScript is allowed. Options: (a) accept and document; (b) override the `NewScratchFile` action (`ScratchFileActions$NewFileAction`, lang-impl) with our own language-level allow-list popup built on public `ScratchRootType.createScratchFile`, delegating to the stock action when the feature is off — internal impl class, no LRU ordering, no language-from-selection detection. Roman to decide (2026-09-05).
+- [x] ~~**Epic B, dialects:** the scratch popup lists *languages*, but `scratchLanguageFilter` filters by *file type*; JavaScript dialects map to the JavaScript file type and stay whenever JavaScript is allowed.~~ Resolved 2026-09-05: accept and document (decision 14).
 
 ---
 
