@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic E → **Phase E3** → step **E3.1** (hide the toolbar VCS group). Added 2026-09-05 from Roman's review; the Epic E exit guardrails stay open until E3 is done. Next after E3: Epic F → Phase F1 → step F1.1. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic E → **Phase E3 exit guardrails** and the **Epic E exit guardrails**, waiting for Roman's review (2026-09-05). All E1/E2/E3 steps are ✅. Next: Epic F → Phase F1 → step F1.1. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -604,10 +604,10 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| E3.1 | `VcsToolbarGroup` overriding `MainToolbarVCSGroup` (in `agenstorm-git.xml`): hidden while project tabs and "branch in status bar" are on; stock children preserved (or re-resolved by id) so feature-off = stock toolbar | 🔲 | |
-| E3.2 | `BranchStatusBarWidget` + `Factory` (id `agenstorm.branch`, `agenstorm-git.xml`): current branch of the repository for the focused file (else the project's first), `AllIcons.Vcs.Branch`, tooltip = repository root; updates on `GIT_REPO_CHANGE` and editor switches; click → branches popup under the widget | 🔲 | |
-| E3.3 | Placement: hide the bottom navigation bar (`State.navBarHiddenByAgenstorm` remembers it was us, restored on feature-off like the registry key) and install the widget as the status bar's central widget; fail-soft to ordinary placement | 🔲 | |
-| E3.4 | Setting "Show the Git branch in the status bar instead of the toolbar" (default on) in the Project tabs group; README + CHANGELOG | 🔲 | |
+| E3.1 | `VcsToolbarGroup` overriding `MainToolbarVCSGroup` (in `agenstorm-git.xml`): hidden while project tabs and "branch in status bar" are on; stock children preserved (or re-resolved by id) so feature-off = stock toolbar | ✅ | `tabs/git/VcsToolbarGroup` (`DefaultActionGroup`, BGT). `VcsToolbarGroupTest` proves the override is in place and `main.toolbar.git.Branches` is still a child in the test IDE, so the platform keeps `add-to-group` children across a replacement; the by-id fallback stays as a safety net |
+| E3.2 | `BranchStatusBarWidget` + `Factory` (id `agenstorm.branch`, `agenstorm-git.xml`): current branch of the repository for the focused file (else the project's first), `AllIcons.Vcs.Branch`, tooltip = repository root; updates on `GIT_REPO_CHANGE` and editor switches; click → branches popup under the widget | ✅ | `CustomStatusBarWidget` (owns its `JBLabel`, so the same component can move into the central slot); text = branch, else 8-char revision, else "no branch"; popup via `GitBranchesTreePopupOnBackend.create(...).showUnderneathOf(label)` with `Git.Branches` as `LinkageError` fallback. `BranchStatusBarWidgetTest` (4) |
+| E3.3 | Placement: hide the bottom navigation bar (`State.navBarHiddenByAgenstorm` remembers it was us, restored on feature-off like the registry key) and install the widget as the status bar's central widget; fail-soft to ordinary placement | ✅ | `tabs/git/BranchWidgetPlacement` (`syncNavBar` + `IdeStatusBarImpl.setCentralWidget("agenstorm.branch.central", component)`; `null` removes; `StatusBarWidgetsManager.updateWidget` re-evaluates availability), driven by `BranchStartupActivity` (project open, `VCS_REPOSITORY_MAPPING_UPDATED`, `AgenstormSettingsListener.TOPIC`). `BranchWidgetPlacementTest` (4) |
+| E3.4 | Setting "Show the Git branch in the status bar instead of the toolbar" (default on) in the Project tabs group; README + CHANGELOG | ✅ | `State.branchInStatusBar`, checkbox `tabs.branchInStatusBar`; the tabs toggle and this checkbox fire `AgenstormSettingsListener` (new `core/AgenstormSettingsListener`, app bus). `TabsSettingsPanelTest` +1 |
 
 **Steps (detail):**
 
