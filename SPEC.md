@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A2 → step A2.5 — tests for comments and PHP strings (mostly shipped with A2.1/A2.3; add the other-language comment cases), then the Phase A2 exit guardrails.
+**Now on:** Epic A → Phase A2 exit guardrails — Dumb mode verified; Performance and Copy Location Link have their automated halves; waiting for Roman to check **All hosts**, the `idea.log` part of **Performance** and the popup part of **Copy Location Link** in `runIde` (demo project in the session scratchpad). Next: Epic B → Phase B1 → step B1.1 (`AllowlistScratchFilter`).
 
 ---
 
@@ -270,7 +270,7 @@ Platform facts the implementation relies on (verified against build 262):
 | A2.2 | `FileLocationPsiReference` (old API): `PsiReferenceBase` + `HighlightedReference`, resolves to a `Navigatable` fake element | ✅ | Done before A2.1 (the provider needs the type). `isHighlightedWhenSoft() = resolve() != null`, so unresolved tokens are neither errors nor links, and no resolution result is cached. Target navigates via `OpenFileDescriptor(project, file, toOffset(...))`. `FileLocationPsiReferenceTest`, 4 cases incl. caret position after `navigate()` |
 | A2.3 | `PhpStringLocationReferenceContributor` for `StringLiteralExpression` in `agenstorm-php.xml` | ✅ | Reuses `CommentLocationReferenceProvider` at `LOWER_PRIORITY`; `PhpStringLocationReferenceTest` (7 cases: quotes, heredoc, size cap, negatives, highlight + GotoDeclaration, toggle) |
 | A2.4 | `CopyLocationLinkAction` (editor popup + gutter popup): copies `relpath:line[:col]`; with selection copies `relpath:line:col` of selection start | ✅ | Column 1 is omitted (`path:line`); gutter click uses `EditorGutterComponentEx.LOGICAL_LINE_AT_CURSOR` (not marked internal). Markdown flavor `text/markdown;class=java.lang.String`. `CopyLocationLinkActionTest` (5 cases) drives the registered action through the fixture |
-| A2.5 | Tests for comments (PHP `//`, `/* */`, PHPDoc; Kotlin/JS comment in a plain-text-like fixture) and PHP strings | 🔲 | |
+| A2.5 | Tests for comments (PHP `//`, `/* */`, PHPDoc; Kotlin/JS comment in a plain-text-like fixture) and PHP strings | ✅ | Real JS (`//` + JSDoc) and YAML comments instead of a plain-text stand-in (both plugins load in the test IDE); dumb-mode resolver test; 5,000-line/200-comment timing smoke test. `CommentLocationReferenceTest` 14, `PhpStringLocationReferenceTest` 7, `FileLocationResolverTest` 10 |
 
 **Steps (detail):**
 
@@ -306,10 +306,10 @@ Platform facts the implementation relies on (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| All hosts | In `runIde`: link highlighted + navigable in a PHP `//` comment, a PHPDoc block, a PHP string, a JS comment, and a Markdown link | 🔲 | |
-| Performance | Opening a 5,000-line PHP file with 200 comments shows no `HyperlinkAnnotator` slow-annotator warning in `idea.log`; no freeze | 🔲 | |
-| Dumb mode | With indexing in progress, links resolve via the relative/base-dir paths; the basename fallback is skipped without exceptions | 🔲 | |
-| Copy Location Link | Action visible in editor popup; clipboard content is `src/Foo.php:42:7` for caret at line 42 col 7 | 🔲 | |
+| All hosts | In `runIde`: link highlighted + navigable in a PHP `//` comment, a PHPDoc block, a PHP string, a JS comment, and a Markdown link | 🔄 | All five hosts covered by tests (highlight + real GotoDeclaration for PHP `//`, PHPDoc, PHP string; references for JS/YAML; Markdown end-to-end). Awaiting Roman's check by eye |
+| Performance | Opening a 5,000-line PHP file with 200 comments shows no `HyperlinkAnnotator` slow-annotator warning in `idea.log`; no freeze | 🔄 | Automated: `testLargePhpFileWithManyCommentsHighlightsQuickly` highlights all 200 links (see the test report for the time). `idea.log` check on `big.php` in the demo project pending |
+| Dumb mode | With indexing in progress, links resolve via the relative/base-dir paths; the basename fallback is skipped without exceptions | ✅ | `FileLocationResolverTest.testDumbModeKeepsDirectLookupsAndSkipsTheBasenameFallback` via `DumbModeTestUtils.runInDumbModeSynchronously` (2026-09-05) |
+| Copy Location Link | Action visible in editor popup; clipboard content is `src/Foo.php:42:7` for caret at line 42 col 7 | 🔄 | Clipboard content verified by `CopyLocationLinkActionTest` (caret, selection start, column 1 omitted, Markdown flavor); popup placement awaits Roman's check |
 
 ---
 
