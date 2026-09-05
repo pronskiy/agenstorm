@@ -1,6 +1,8 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.models.ProductRelease
 
 plugins {
     id("java") // Java support
@@ -106,6 +108,14 @@ intellijPlatform {
     pluginVerification {
         ides {
             recommended()
+            // IntelliJ IDEA does not bundle the PHP plugin: verifying against it proves the plugin
+            // loads without its optional dependencies (IDEA Community has no 2026.x release).
+            select {
+                types = listOf(IntelliJPlatformType.IntellijIdeaUltimate)
+                channels = listOf(ProductRelease.Channel.RELEASE)
+                sinceBuild = providers.gradleProperty("pluginSinceBuild")
+                untilBuild = providers.gradleProperty("pluginUntilBuild")
+            }
         }
     }
 }
