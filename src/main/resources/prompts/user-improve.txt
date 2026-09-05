@@ -1,0 +1,12 @@
+Branch: {branch}
+
+The author already drafted this commit message. Improve it: keep its intent and any specifics it mentions, fix the format (subject of at most 72 characters, blank line, body), and correct it only where the diff contradicts it. Do not start over.
+
+Draft:
+{hint}
+
+Files:
+{stat}
+
+Diff:
+{diff}

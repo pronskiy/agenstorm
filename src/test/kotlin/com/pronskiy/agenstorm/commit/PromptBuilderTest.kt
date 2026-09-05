@@ -66,6 +66,24 @@ class PromptBuilderTest {
     }
 
     @Test
+    fun multiLineHintSwitchesToTheImproveTemplate() {
+        val draft = "feat: add config loader\n\nLoads the YAML file and validates the keys."
+        val user = PromptBuilder().buildUser(context.copy(hint = draft))
+        assertTrue(user.contains("Improve it", ignoreCase = true))
+        assertTrue(user.contains(draft))
+        assertTrue(user.contains("Files:\nM src/Foo.php (+1 -0)"))
+        assertFalse(user.contains("Hint from the author"))
+        assertTrue(PromptBuilder.DEFAULT_IMPROVE.contains("{hint}"))
+    }
+
+    @Test
+    fun singleLineHintKeepsTheGenerateTemplate() {
+        val user = PromptBuilder().buildUser(context.copy(hint = "mention the config change"))
+        assertTrue(user.contains("Hint from the author (follow it if present): mention the config change"))
+        assertFalse(user.contains("Improve it", ignoreCase = true))
+    }
+
+    @Test
     fun buildProducesARequestWithModelAndTokens() {
         val request = PromptBuilder().build(context, model = "claude-sonnet-5", maxTokens = 512)
         assertEquals("claude-sonnet-5", request.model)
