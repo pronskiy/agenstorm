@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic E → Phase E2 → step **E2.3** (keyboard actions). Phase E1 signed off 2026-09-05. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic E → Phase E2 → step **E2.4** (settings group). Phase E1 signed off 2026-09-05. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -580,8 +580,8 @@ Platform facts (verified against build 262):
 |------|-------------|--------|-------|
 | E2.1 | Overflow: shrink to icon-only when width is insufficient; then first N + chevron popup listing the rest | ✅ | `ProjectTabsPanel` lays itself out (no BoxLayout): `plan(available)` picks FULL / COMPACT (32 px icon tabs, name in tooltip, no ×) / OVERFLOW (first N compact + `AllIcons.Actions.MoreHorizontal` chevron, owner tab swapped in when it would hide); `available` = toolbar width / 2 via `availableWidthProvider` (unlimited until the toolbar is sized). Chevron popup = `ProjectTabActions.overflowGroup`. `ProjectTabsOverflowTest` (4) with `FakeProjectHolder` proxies |
 | E2.2 | Drag-to-reorder tabs within the strip; order persisted in `ProjectTabsModel` | ✅ | `ProjectTabsPanel.dragHandler` (press/drag/release on the tab surface via `ProjectTabLabel.addDragListener`; 4 px threshold; `insertionIndex(x)` against visible tab centres; focus-coloured marker painted in `paint`); `onReorder` → `ProjectTabsModel.moveTab`. `ProjectTabsReorderTest` (4) |
-| E2.3 | Actions `Agenstorm.NextProjectTab` / `Agenstorm.PrevProjectTab` (cyclic), unbound by default; `Agenstorm.CloseProjectTab` | 🔄 | |
-| E2.4 | Settings group "Project tabs": enable, mirror bounds, show icons, max tab width | 🔲 | |
+| E2.3 | Actions `Agenstorm.NextProjectTab` / `Agenstorm.PrevProjectTab` (cyclic), unbound by default; `Agenstorm.CloseProjectTab` | ✅ | `tabs/ProjectTabNavigationActions.kt` (BGT `DumbAwareAction`s; next/prev enabled with 2+ tabs; close reuses `ProjectTabActions.close`); registered in `plugin.xml` without shortcuts, README suggests `Ctrl+Alt+Shift+]`/`[`. `ProjectTabNavigationActionsTest` (3) |
+| E2.4 | Settings group "Project tabs": enable, mirror bounds, show icons, max tab width | 🔄 | |
 
 **Steps (detail):**
 
