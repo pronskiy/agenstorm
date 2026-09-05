@@ -2,6 +2,8 @@ package com.pronskiy.agenstorm.tabs.git
 
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
+import com.intellij.ide.ui.UISettingsListener
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ex.ActionUtil
@@ -59,10 +61,18 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
             override fun selectionChanged(event: FileEditorManagerEvent) = refresh()
         })
+        // The status bar has just added the component to its ordinary widget area; move it into the left slot now,
+        // and again whenever the navigation bar setting changes (the platform re-takes the slot when it comes back).
+        BranchWidgetPlacement.placeCentrally(statusBar, label)
+        ApplicationManager.getApplication().messageBus.connect(this).subscribe(
+            UISettingsListener.TOPIC,
+            UISettingsListener { BranchWidgetPlacement.onUiSettingsChanged(project, statusBar, this) },
+        )
         refresh()
     }
 
     override fun dispose() {
+        statusBar?.let { BranchWidgetPlacement.clearCentral(it, label) }
         statusBar = null
     }
 
