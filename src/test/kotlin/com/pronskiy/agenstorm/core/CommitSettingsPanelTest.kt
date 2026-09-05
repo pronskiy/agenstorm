@@ -1,6 +1,8 @@
 package com.pronskiy.agenstorm.core
 
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBPasswordField
@@ -10,10 +12,14 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.commit.PromptBuilder
 import com.pronskiy.agenstorm.commit.llm.ApiKeyStore
 import java.awt.Component
+import java.io.File
+import java.nio.file.Files
+import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JLabel
 import javax.swing.JPanel
 
-/** Step D3.1: the Commit messages group edits every commit setting, keeps the API keys in PasswordSafe only. */
+/** Step D3.1: the Commit messages group edits every commit setting, keeps the API keys in PasswordSafe only, tests the typed values. */
 class CommitSettingsPanelTest : BasePlatformTestCase() {
 
     private lateinit var configurable: AgenstormConfigurable
@@ -118,6 +124,31 @@ class CommitSettingsPanelTest : BasePlatformTestCase() {
         val featureTexts = listOf("settings.links.enabled", "settings.scratch.enabled", "settings.frame.hideFileName", "settings.commit.enabled", "settings.tabs.enabled", "settings.markdown.liveMarkup.enabled").map(AgenstormBundle::message)
         val checkBoxes = UIUtil.findComponentsOfType(panel, JBCheckBox::class.java)
         assertEquals(6, checkBoxes.count { it.text in featureTexts })
+    }
+
+    fun testTestConnectionRunsTheCliWithTheModelAsTyped() {
+        val args = Files.createTempFile("fake-claude-args", ".txt").toFile()
+        val wrapper = Files.createTempFile("fake-claude", ".sh").toFile()
+        try {
+            val fake = File("src/test/testData/commit/fake-claude.sh").absolutePath
+            wrapper.writeText("#!/bin/sh\nFAKE_CLAUDE_ARGS_FILE='${args.path}' exec '$fake' \"\$@\"\n")
+            wrapper.setExecutable(true)
+            named<ComboBox<*>>("commit.backend").selectedIndex = 2
+            named<TextFieldWithBrowseButton>("commit.cli.path").text = wrapper.path
+            named<JBTextField>("commit.model").text = "opus"
+
+            named<JButton>("commit.test").doClick()
+
+            val result = named<JLabel>("commit.testResult")
+            val running = AgenstormBundle.message("settings.commit.test.running")
+            PlatformTestUtil.waitWithEventsDispatching("Test Connection did not finish", { result.text.isNotEmpty() && result.text != running }, 20)
+            assertEquals(AgenstormBundle.message("settings.commit.test.ok"), result.text)
+            val recorded = args.readText().removeSuffix("\n").split("\n")
+            assertEquals(recorded.toString(), listOf("--model", "opus"), recorded.drop(3).take(2))
+        } finally {
+            wrapper.delete()
+            args.delete()
+        }
     }
 
     private inline fun <reified T : Component> named(name: String): T {

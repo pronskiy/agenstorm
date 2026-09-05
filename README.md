@@ -94,8 +94,10 @@ Configure the backend under Settings → Tools → Agenstorm → Commit messages
   (`http://localhost:11434/v1`, no key), LM Studio, OpenRouter and Groq. A model id is required; the key
   is optional and sent as a bearer token only when set.
 - **Claude CLI**: runs `claude -p --output-format text` with the prompt on stdin, so it uses your Claude
-  Code login and needs no key. Leave the executable empty to find `claude` on the PATH or in the usual
-  install locations. Flags that may change between CLI versions live in the "Extra arguments" field.
+  Code login and needs no key. The default model is `haiku`; the Model field takes any alias the CLI
+  accepts (`sonnet`, `opus`, `sonnet[1m]`) or a full model id. Leave the executable empty to find `claude`
+  on the PATH or in the usual install locations. Flags that may change between CLI versions live in the
+  "Extra arguments" field.
 
 **Test Connection** validates the values as typed. The prompt templates are editable: `{diff}`, `{stat}`,
 `{branch}`, `{hint}`, `{language}` and `{conventional}` are substituted, unknown placeholders are kept, and

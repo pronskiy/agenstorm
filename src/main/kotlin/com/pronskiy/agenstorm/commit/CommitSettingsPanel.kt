@@ -80,7 +80,7 @@ class CommitSettingsPanel(private val scope: CoroutineScope) {
                 .bindText({ state.commitModel }, { state.commitModel = it.trim() })
                 .align(AlignX.FILL)
                 .applyToComponent { name = "commit.model" }
-                .comment(AgenstormBundle.message("settings.commit.model.comment", AnthropicBackend.DEFAULT_MODEL))
+                .comment(AgenstormBundle.message("settings.commit.model.comment", AnthropicBackend.DEFAULT_MODEL, ClaudeCliBackend.DEFAULT_MODEL))
                 .component
         }
         panel.row(AgenstormBundle.message("settings.commit.apiKey")) {
@@ -176,7 +176,7 @@ class CommitSettingsPanel(private val scope: CoroutineScope) {
         val backend: LlmBackend = when (option.id) {
             AnthropicBackend.ID -> AnthropicBackend(apiKey = { String(anthropicKeyField.password) }, defaultModel = model.ifEmpty { AnthropicBackend.DEFAULT_MODEL })
             OpenAiCompatibleBackend.ID -> OpenAiCompatibleBackend(apiKey = { String(openAiKeyField.password) }, baseUrl = baseUrlField.text.trim(), defaultModel = model)
-            ClaudeCliBackend.ID -> ClaudeCliBackend(executable = { ClaudeCliBackend.discover(cliPathField.text) }, extraArgs = extraArgsField.text)
+            ClaudeCliBackend.ID -> ClaudeCliBackend(executable = { ClaudeCliBackend.discover(cliPathField.text) }, extraArgs = extraArgsField.text, defaultModel = model.ifEmpty { ClaudeCliBackend.DEFAULT_MODEL })
             else -> FakeBackend(delayMs = 0)
         }
         val label = testResult ?: return

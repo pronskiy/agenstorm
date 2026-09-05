@@ -18,14 +18,16 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * The local `claude` CLI: `claude -p --output-format text [--model …] [--system-prompt …] <extra args>` with
- * the user prompt on stdin. Text mode does not stream, so stdout is emitted as one chunk on exit 0; a non-zero
- * exit becomes an [LlmException] carrying stderr. Cancelling the collector destroys the process. Flags that
- * may drift between CLI versions live in the "extra arguments" setting ([DEFAULT_EXTRA_ARGS]).
+ * The local `claude` CLI: `claude -p --output-format text --model <model> [--system-prompt …] <extra args>` with
+ * the user prompt on stdin. The model is the request's, else [defaultModel] ([DEFAULT_MODEL] unless configured).
+ * Text mode does not stream, so stdout is emitted as one chunk on exit 0; a non-zero exit becomes an
+ * [LlmException] carrying stderr. Cancelling the collector destroys the process. Flags that may drift between
+ * CLI versions live in the "extra arguments" setting ([DEFAULT_EXTRA_ARGS]).
  */
 class ClaudeCliBackend(
     private val executable: () -> String?,
     private val extraArgs: String = DEFAULT_EXTRA_ARGS,
+    private val defaultModel: String = DEFAULT_MODEL,
     private val workingDirectory: String? = null,
     private val environment: Map<String, String> = emptyMap(),
     private val timeoutMs: Int = DEFAULT_TIMEOUT_MS,
@@ -36,7 +38,8 @@ class ClaudeCliBackend(
     override fun stream(request: LlmRequest): Flow<String> = flow {
         val exe = executable() ?: throw LlmException(AgenstormBundle.message("commit.backend.cli.notFound"))
         val command = GeneralCommandLine(exe, "-p", "--output-format", "text")
-        request.model?.takeIf { it.isNotBlank() }?.let { command.addParameters("--model", it) }
+        val model = request.model?.takeIf { it.isNotBlank() } ?: defaultModel
+        if (model.isNotBlank()) command.addParameters("--model", model)
         if (request.system.isNotBlank()) command.addParameters("--system-prompt", request.system)
         command.addParameters(ParametersListUtil.parse(extraArgs))
         workingDirectory?.let { command.withWorkDirectory(it) }
@@ -86,6 +89,8 @@ class ClaudeCliBackend(
 
     companion object {
         const val ID = "claude-cli"
+        /** Alias the CLI resolves to the current Haiku; cheap and quick for commit messages. Empty leaves the choice to the CLI. */
+        const val DEFAULT_MODEL = "haiku"
         /** No tools (the prompt already carries the diff) and no session clutter; editable in the settings. */
         const val DEFAULT_EXTRA_ARGS = "--tools \"\" --no-session-persistence"
         const val DEFAULT_TIMEOUT_MS = 120_000

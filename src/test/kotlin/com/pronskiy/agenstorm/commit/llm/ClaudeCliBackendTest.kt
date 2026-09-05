@@ -11,7 +11,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-/** Steps D2.3/D2.5: the `claude -p` subprocess backend against a shell script that records its invocation. */
+/** Steps D2.3/D2.5: the `claude -p` subprocess backend against a shell script that records its invocation; default model `haiku`. */
 class ClaudeCliBackendTest {
 
     private val script = File("src/test/testData/commit/fake-claude.sh").absolutePath
@@ -43,16 +43,42 @@ class ClaudeCliBackendTest {
     }
 
     @Test
-    fun omitsModelAndSystemPromptWhenAbsent() = runBlocking {
+    fun fallsBackToTheDefaultModelAndOmitsTheSystemPromptWhenAbsent() = runBlocking {
         val args = Files.createTempFile("fake-claude-args", ".txt").toFile()
         try {
             ClaudeCliBackend(executable = { script }, extraArgs = "", environment = mapOf("FAKE_CLAUDE_ARGS_FILE" to args.path))
                 .stream(request.copy(system = "", model = null)).toList()
-            assertEquals(listOf("-p", "--output-format", "text"), args.readText().removeSuffix("\n").split("\n"))
+            assertEquals(listOf("-p", "--output-format", "text", "--model", "haiku"), recordedArgs(args))
         } finally {
             args.delete()
         }
     }
+
+    @Test
+    fun anEmptyDefaultModelLeavesTheChoiceToTheCli() = runBlocking {
+        val args = Files.createTempFile("fake-claude-args", ".txt").toFile()
+        try {
+            ClaudeCliBackend(executable = { script }, extraArgs = "", defaultModel = "", environment = mapOf("FAKE_CLAUDE_ARGS_FILE" to args.path))
+                .stream(request.copy(system = "", model = null)).toList()
+            assertEquals(listOf("-p", "--output-format", "text"), recordedArgs(args))
+        } finally {
+            args.delete()
+        }
+    }
+
+    @Test
+    fun validateRunsWithTheConfiguredDefaultModel() = runBlocking {
+        val args = Files.createTempFile("fake-claude-args", ".txt").toFile()
+        try {
+            val backend = ClaudeCliBackend(executable = { script }, extraArgs = "", defaultModel = "opus", environment = mapOf("FAKE_CLAUDE_ARGS_FILE" to args.path))
+            assertNull(backend.validate())
+            assertEquals(listOf("-p", "--output-format", "text", "--model", "opus"), recordedArgs(args))
+        } finally {
+            args.delete()
+        }
+    }
+
+    private fun recordedArgs(file: File): List<String> = file.readText().removeSuffix("\n").split("\n")
 
     @Test
     fun nonZeroExitBecomesAnLlmExceptionWithStderr() {

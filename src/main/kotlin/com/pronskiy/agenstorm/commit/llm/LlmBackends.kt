@@ -20,6 +20,7 @@ object LlmBackends {
         ClaudeCliBackend.ID -> ClaudeCliBackend(
             executable = { ClaudeCliBackend.discover(state.commitClaudeCliPath) },
             extraArgs = state.commitClaudeCliExtraArgs,
+            defaultModel = state.commitModel.ifBlank { ClaudeCliBackend.DEFAULT_MODEL },
             workingDirectory = project?.basePath,
         )
         FakeBackend.ID -> FakeBackend()
