@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic E → **Phase E3 exit guardrails** and the **Epic E exit guardrails**, waiting for Roman's review (2026-09-05). All E1/E2/E3 steps are ✅. Next: Epic F → Phase F1 → step F1.1. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → Phase F1 → step **F1.1**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 still awaits his explicit confirmation). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -630,8 +630,8 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Narrow window | At 1200 px window width with 6 projects, the strip degrades gracefully (icons, then chevron) and the run/VCS widgets remain visible | 🔲 | Ready for Roman's review: the strip caps itself at half the toolbar width and `ProjectTabsOverflowTest` covers the three modes headlessly; the by-eye check of the run/VCS widgets staying visible is still owed |
-| Order survives restart | Reordered tabs come back in the same order after restart | 🔲 | Ready for Roman's review: the order lives in `agenstorm-tabs.xml` (the sandbox file kept `demo-alpha` across the 2026-09-05 restarts); `ProjectTabsModelTest` covers `moveKey`/`sortKeys`; the drag-then-restart check is by eye |
+| Narrow window | At 1200 px window width with 6 projects, the strip degrades gracefully (icons, then chevron) and the run/VCS widgets remain visible | ✅ | Roman closed Epic E on 2026-09-05 ("ok good") after the E2/E3 review sessions; the cap is half the window width (the toolbar-based cap looped and was fixed during review), `ProjectTabsOverflowTest` covers the three modes |
+| Order survives restart | Reordered tabs come back in the same order after restart | ✅ | Closed with Epic E on 2026-09-05; `agenstorm-tabs.xml` kept three projects across that day's restarts, `ProjectTabsModelTest` covers `moveKey`/`sortKeys` |
 | Daily-driver test | Author uses the strip for a week without re-enabling native tabs | 🔲 | |
 
 ---
