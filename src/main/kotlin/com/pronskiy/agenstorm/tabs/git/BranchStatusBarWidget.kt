@@ -141,15 +141,34 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         }
     }
 
-    /** The right edge (in [root] coordinates) of the leftmost tool window stripe, found through its buttons. */
-    private fun toolWindowStripeRightEdge(root: Container): Int? {
-        val stripe = UIUtil.uiTraverser(root)
-            .filter { it.isShowing && it.javaClass.simpleName.endsWith("StripeButton") }
-            .map { it.parent }
-            .filterNotNull()
-            .firstOrNull { SwingUtilities.convertPoint(it, 0, 0, root).x <= JBUI.scale(8) }
-            ?: return null
-        return SwingUtilities.convertPoint(stripe, stripe.width, 0, root).x
+    companion object {
+        private val LOG = logger<BranchStatusBarWidget>()
+        const val BRANCHES_ACTION = "Git.Branches"
+        /** Width of the new UI's tool window stripe, used until the real one has been measured. */
+        const val DEFAULT_STRIPE_WIDTH = 40
+        private val RIGHT_PADDING = JBUI.scale(8)
+
+        /** Padding that puts content starting at [labelX] onto [stripeRight]; never negative, never absurd. */
+        fun alignmentPadding(stripeRight: Int, labelX: Int): Int = (stripeRight - labelX).coerceIn(0, JBUI.scale(80))
+
+        /**
+         * The right edge (in [root] coordinates) of the leftmost tool window stripe, found through its buttons
+         * (any visible component whose class name ends with `StripeButton`, sitting in a container at the left edge).
+         * A plain sequence, not the tree traverser's `map`, which demands a reversible mapping.
+         */
+        internal fun toolWindowStripeRightEdge(root: Container): Int? {
+            val button = UIUtil.uiTraverser(root).asSequence().firstOrNull { component ->
+                val parent = component.parent
+                component.isVisible && component.javaClass.simpleName.endsWith("StripeButton") && parent != null &&
+                    SwingUtilities.convertPoint(parent, 0, 0, root).x <= JBUI.scale(8)
+            } ?: return null
+            val stripe = button.parent
+            return SwingUtilities.convertPoint(stripe, stripe.width, 0, root).x
+        }
+
+        /** Branch name, else the first 8 characters of a detached revision, else a "no branch" text. */
+        fun textFor(branch: String?, revision: String?): String =
+            branch?.takeIf { it.isNotBlank() } ?: revision?.takeIf { it.isNotBlank() }?.take(8) ?: AgenstormBundle.message("tabs.branch.noBranch")
     }
 
     private fun showPopup(event: MouseEvent) {
@@ -167,21 +186,6 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         val action = ActionManager.getInstance().getAction(BRANCHES_ACTION) ?: return
         val actionEvent = AnActionEvent.createEvent(action, DataManager.getInstance().getDataContext(label), null, ActionPlaces.STATUS_BAR_PLACE, ActionUiKind.NONE, event)
         ActionUtil.performAction(action, actionEvent)
-    }
-
-    companion object {
-        private val LOG = logger<BranchStatusBarWidget>()
-        const val BRANCHES_ACTION = "Git.Branches"
-        /** Width of the new UI's tool window stripe, used until the real one has been measured. */
-        const val DEFAULT_STRIPE_WIDTH = 40
-        private val RIGHT_PADDING = JBUI.scale(8)
-
-        /** Padding that puts content starting at [labelX] onto [stripeRight]; never negative, never absurd. */
-        fun alignmentPadding(stripeRight: Int, labelX: Int): Int = (stripeRight - labelX).coerceIn(0, JBUI.scale(80))
-
-        /** Branch name, else the first 8 characters of a detached revision, else a "no branch" text. */
-        fun textFor(branch: String?, revision: String?): String =
-            branch?.takeIf { it.isNotBlank() } ?: revision?.takeIf { it.isNotBlank() }?.take(8) ?: AgenstormBundle.message("tabs.branch.noBranch")
     }
 }
 

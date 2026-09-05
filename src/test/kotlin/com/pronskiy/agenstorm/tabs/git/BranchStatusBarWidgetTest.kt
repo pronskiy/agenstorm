@@ -50,6 +50,25 @@ class BranchStatusBarWidgetTest : BasePlatformTestCase() {
         assertEquals(com.intellij.util.ui.JBUI.scale(80), BranchStatusBarWidget.alignmentPadding(stripeRight = 500, labelX = 0))
     }
 
+    fun testStripeEdgeIsMeasuredFromAStripeButtonAtTheLeftEdge() {
+        val root = javax.swing.JPanel(null)
+        root.setBounds(0, 0, 800, 600)
+        val stripe = javax.swing.JPanel(null).apply { setBounds(0, 0, 40, 600) }
+        stripe.add(FakeStripeButton().apply { setBounds(4, 10, 32, 32) })
+        root.add(stripe)
+        val elsewhere = javax.swing.JPanel(null).apply { setBounds(300, 0, 40, 600) }
+        elsewhere.add(FakeStripeButton().apply { setBounds(4, 10, 32, 32) })
+        root.add(elsewhere)
+
+        assertEquals(40, BranchStatusBarWidget.toolWindowStripeRightEdge(root))
+
+        stripe.getComponent(0).isVisible = false
+        assertNull("only visible buttons count, and the right-hand one is not at the edge", BranchStatusBarWidget.toolWindowStripeRightEdge(root))
+        assertNull(BranchStatusBarWidget.toolWindowStripeRightEdge(javax.swing.JPanel()))
+    }
+
+    private class FakeStripeButton : javax.swing.JPanel()
+
     fun testWidgetWithoutRepositoriesHidesItsComponent() {
         val widget = BranchStatusBarWidget(project)
         assertNull(widget.repository())
