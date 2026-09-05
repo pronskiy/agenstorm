@@ -1,6 +1,7 @@
 package com.pronskiy.agenstorm.tabs.git
 
 import com.intellij.icons.AllIcons
+import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ex.ActionUtil
@@ -99,7 +100,7 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
             return
         }
         val action = ActionManager.getInstance().getAction(BRANCHES_ACTION) ?: return
-        ActionUtil.invokeAction(action, label, ActionPlaces.STATUS_BAR_PLACE, event, null)
+        ActionUtil.invokeAction(action, DataManager.getInstance().getDataContext(label), ActionPlaces.STATUS_BAR_PLACE, event, null)
     }
 
     companion object {
