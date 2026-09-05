@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A2 exit guardrails — Dumb mode verified; Performance and Copy Location Link have their automated halves; waiting for Roman to check **All hosts**, the `idea.log` part of **Performance** and the popup part of **Copy Location Link** in `runIde` (demo project in the session scratchpad). Next: Epic B → Phase B1 → step B1.1 (`AllowlistScratchFilter`).
+**Now on:** Epic B → Phase B1 → step B1.1 — `AllowlistScratchFilter : ScratchFileTypeFilter` reading `settings.scratchAllowedFileTypes`, registered in `agenstorm-scratch.xml`. Epic A is complete; all A2 guardrails passed on 2026-09-05.
 
 ---
 
@@ -306,10 +306,10 @@ Platform facts the implementation relies on (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| All hosts | In `runIde`: link highlighted + navigable in a PHP `//` comment, a PHPDoc block, a PHP string, a JS comment, and a Markdown link | 🔄 | All five hosts covered by tests (highlight + real GotoDeclaration for PHP `//`, PHPDoc, PHP string; references for JS/YAML; Markdown end-to-end). Awaiting Roman's check by eye |
-| Performance | Opening a 5,000-line PHP file with 200 comments shows no `HyperlinkAnnotator` slow-annotator warning in `idea.log`; no freeze | 🔄 | Automated: `testLargePhpFileWithManyCommentsHighlightsQuickly` highlights all 200 links (see the test report for the time). `idea.log` check on `big.php` in the demo project pending |
+| All hosts | In `runIde`: link highlighted + navigable in a PHP `//` comment, a PHPDoc block, a PHP string, a JS comment, and a Markdown link | ✅ | All five hosts covered by tests (highlight + real GotoDeclaration for PHP `//`, PHPDoc, PHP string; references for JS/YAML; Markdown end-to-end); Roman confirmed by eye on the demo project (2026-09-05) |
+| Performance | Opening a 5,000-line PHP file with 200 comments shows no `HyperlinkAnnotator` slow-annotator warning in `idea.log`; no freeze | ✅ | Automated: `testLargePhpFileWithManyCommentsHighlightsQuickly` highlights all 200 links (~12 s in the light test, dominated by PHP's own passes). Roman checked `big.php` in the sandbox: no slow-annotator warning, no freeze (2026-09-05) |
 | Dumb mode | With indexing in progress, links resolve via the relative/base-dir paths; the basename fallback is skipped without exceptions | ✅ | `FileLocationResolverTest.testDumbModeKeepsDirectLookupsAndSkipsTheBasenameFallback` via `DumbModeTestUtils.runInDumbModeSynchronously` (2026-09-05) |
-| Copy Location Link | Action visible in editor popup; clipboard content is `src/Foo.php:42:7` for caret at line 42 col 7 | 🔄 | Clipboard content verified by `CopyLocationLinkActionTest` (caret, selection start, column 1 omitted, Markdown flavor); popup placement awaits Roman's check |
+| Copy Location Link | Action visible in editor popup; clipboard content is `src/Foo.php:42:7` for caret at line 42 col 7 | ✅ | Clipboard content verified by `CopyLocationLinkActionTest` (caret, selection start, column 1 omitted, Markdown flavor); Roman confirmed the action in the editor and gutter popups (2026-09-05) |
 
 ---
 
