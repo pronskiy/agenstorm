@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D2 exit guardrails — settings panel (D3.1) is in place; waiting for Roman to try the three backends with his keys in `runIde` (**Three backends live**, **Cancellation**, **Error UX**); **No secrets on disk** is verified by test. Then D3.2–D3.4.
+**Now on:** Epic D → Phase D2 exit guardrails (**Three backends live**, **Cancellation**, **Error UX**) — waiting for Roman's confirmation from the sandbox run; D3 is complete. Then the Epic D exit guardrails (Size, Verifier automated; Daily-driver test is Roman's) and Epic E.
 
 ---
 
@@ -490,8 +490,8 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 |------|-------------|--------|-------|
 | D3.1 | "Commit messages" group: backend selector, per-backend fields, "Test connection", model, prompts (system/user) with "Reset to default", max diff chars, Conventional Commits, body, language | ✅ | Taken before the D2 guardrails (key entry needed). `commit/CommitSettingsPanel` rendered inside the Commit messages group; per-backend rows via `selectedValueMatches`; keys via `ApiKeyStore` on open/apply; Test Connection validates the typed values on `AgenstormAppScope`. `CommitSettingsPanelTest` (5 cases incl. keys never in the serialized state) |
 | D3.2 | Git context provider (optional `Git4Idea`): current branch name into `{branch}` via a tiny internal EP `com.pronskiy.agenstorm.commitContextProvider` | ✅ | As specified: EP declared (`dynamic`), `GitCommitContextProvider` in `agenstorm-git.xml` (`GitRepositoryManager`, repo containing the project dir preferred). Compiling against Git4Idea needs `platformBundledModules = intellij.platform.vcs.dvcs,intellij.platform.vcs.dvcs.impl` (its supertypes). `CommitContextTest` (3 cases) |
-| D3.3 | Hint handling polish: keep hint on failure; when hint looks like a full message (multi-line), ask the model to improve rather than replace (prompt variant) | 🔲 | |
-| D3.4 | README section: setup per backend, prompt variables, recommended shortcut | 🔲 | |
+| D3.3 | Hint handling polish: keep hint on failure; when hint looks like a full message (multi-line), ask the model to improve rather than replace (prompt variant) | ✅ | Built-in `prompts/user-improve.txt` used when the hint has ≥ 2 non-blank lines (`PromptBuilder.isDraft`); not exposed in the settings UI (only system/user templates are). Hint restore on failure since D1.4. `PromptBuilderTest` (8 cases) |
+| D3.4 | README section: setup per backend, prompt variables, recommended shortcut | ✅ | README "AI commit messages" section (three backends, Test Connection, prompt variables, exclusions, `Ctrl+Alt+Shift+G` suggestion); CHANGELOG now lists Epics A–D under Unreleased |
 
 **Steps (detail):**
 
