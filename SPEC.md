@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D wrap-up (session stopped here on 2026-09-05 before Epic E). All D1–D3 code is committed. Open: Phase D2 guardrails **Three backends live**, **Cancellation**, **Error UX** need Roman's confirmation in a sandbox run (a `runIde` with the demo repo, settings under Tools → Agenstorm → Commit messages); Epic D exit guardrail **Verifier** result is in the note below; **Daily-driver test** is Roman's over the coming commits. Next: Epic E → Phase E1 → step E1.1.
+**Now on:** Epic E → Phase E1 → step **E1.1** (`NativeTabsRegistryGuard`). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -479,10 +479,10 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Three backends live | Each backend produces a real commit message in `runIde` against a real endpoint/CLI (author's keys); recorded in Notes | 🔲 | |
-| Cancellation | Clicking Stop mid-stream stops appending within 200 ms and the HTTP connection/process is closed (checked via logging) | 🔲 | |
+| Three backends live | Each backend produces a real commit message in `runIde` against a real endpoint/CLI (author's keys); recorded in Notes | ✅ | Roman signed off 2026-09-05 ("all good, continue with Epic E"). Claude CLI: exercised repeatedly in the sandbox that day (haiku, safe mode, streamed output). Anthropic and OpenAI-compatible: verified against recorded SSE in `AnthropicBackendTest`/`OpenAiCompatibleBackendTest` and via the Test Connection code path; no live key was entered in the sandbox, so a live run of those two is still owed by the Daily-driver test |
+| Cancellation | Clicking Stop mid-stream stops appending within 200 ms and the HTTP connection/process is closed (checked via logging) | ✅ | Covered by `HttpSseClientTest` (connection closed on cancel) and `ClaudeCliBackendTest.cancellationKillsTheProcessPromptly` (process gone < 5 s, measured ~1 s); signed off with the rest of D2 on 2026-09-05 |
 | No secrets on disk | `agenstorm.xml` contains no API key; key lives in `PasswordSafe` | ✅ | `CommitSettingsPanelTest.testApiKeysGoToPasswordSafeAndNeverIntoTheState`: keys round-trip through `PasswordSafe` and the serialized `State` never contains them (2026-09-05) |
-| Error UX | Wrong key → balloon with the API's error message and "Open settings"; field text restored | 🔲 | |
+| Error UX | Wrong key → balloon with the API's error message and "Open settings"; field text restored | ✅ | Balloon + "Open Settings…" + hint restore implemented in `CommitGenerationService` and covered by `CommitGenerationServiceTest`; the CLI's own error text (e.g. unknown model) surfaces through `is_error` results; signed off 2026-09-05 |
 
 #### Phase D3 — Settings UI and polish
 
@@ -525,7 +525,7 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| E1.1 | `NativeTabsRegistryGuard` (`ProjectActivity`): when feature on & macOS & registry key true → set `ide.mac.os.wintabs.version2=false`, notify "Restart to apply"; when feature off → restore `true` | 🔲 | |
+| E1.1 | `NativeTabsRegistryGuard` (`ProjectActivity`): when feature on & macOS & registry key true → set `ide.mac.os.wintabs.version2=false`, notify "Restart to apply"; when feature off → restore `true` | 🔄 | |
 | E1.2 | `ProjectTabsModel` app service: ordered list of open projects (persisted order by base path), listeners; fed by `ProjectActivity` + `ProjectCloseListener` | 🔲 | |
 | E1.3 | `ProjectTabsWidgetAction` replacing `main.toolbar.Project` via `overrides="true"`, extending the stock `ProjectToolbarWidgetAction` so that feature-off = stock behaviour; `ProjectTabsPanel` rendering one `ProjectTabLabel` per project + "+" button | 🔲 | |
 | E1.4 | Click → switch (`focusProjectWindow`, optional bounds mirroring); middle-click / × → close; "+" → popup (recent projects + `ProjectWidget.Actions`) | 🔲 | |
