@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic F → Phase F1 → step **F1.4**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → **Phase F1 exit guardrails** (all F1 steps ✅; the four guardrails are 🔄 with the automated halves done, Roman's by-eye sign-off in the sandbox is what remains). Next step after sign-off: **F2.1**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -657,7 +657,7 @@ Platform facts (verified against build 262):
 | F1.2 | `LiveMarkupController` per `TextEditor` (via `textEditorCustomizer`): create/refresh light fold regions, debounce on document change, dispose with editor | ✅ | Attached through the public `editorFactoryListener` (`LiveMarkupEditorListener` + project service `LiveMarkupService`) instead of `textEditorCustomizer`, which is `@ApiStatus.Internal` in 262 — decision 20. Regions start expanded when created, so the controller collapses them; `UNTYPED` editors are accepted next to `MAIN_EDITOR` (plain `EditorFactory.createEditor` over a file, test fixtures) |
 | F1.3 | Caret policy: regions intersecting caret line(s)/selection expanded, all others collapsed; applied on caret/selection change and after re-sync | ✅ | Whole caret lines plus selection ranges, union over all carets; overlap is strict (a region touching the selection edge stays hidden). Re-applied via a coalesced `invokeLater` on line change / caret add-remove / selection change, never on moves within a line (test counts zero batch operations) |
 | F1.4 | Spike result recorded: regions survive Markdown plugin's own folding pass, `Fold All`/`Expand All`, and typing at region borders | ✅ | Decision 21. All four cases hold, one fix needed: a `FoldingListener` re-applies the caret policy after foreign batches |
-| F1.5 | Tests: collector on fixtures; controller in `BasePlatformTestCase` with `EditorTestUtil` (regions exist, caret line expanded) | 🔲 | |
+| F1.5 | Tests: collector on fixtures; controller in `BasePlatformTestCase` with `EditorTestUtil` (regions exist, caret line expanded) | ✅ | Shipped with each step: `MarkupRangeCollectorTest` (8), `LiveMarkupControllerTest` (12), `LiveMarkupPerformanceTest` (1). No `EditorTestUtil` needed — caret model, `CodeFoldingManager` and editor action handlers drive the editor directly |
 
 **Steps (detail):**
 
@@ -720,10 +720,10 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Hide/reveal | In `runIde`, `**bold**` shows as `bold`; placing the caret on that line reveals `**`; moving away hides them | 🔲 | |
-| Coexistence | Markdown plugin heading/list folding still works; `Fold All`/`Expand All` do not break live markup after the next caret move | 🔲 | |
-| Copy fidelity | Select-all + copy yields raw Markdown | 🔲 | |
-| Perf | 3,000-line file: no visible lag while typing; sync after edits < 50 ms (log timing at debug level) | 🔲 | |
+| Hide/reveal | In `runIde`, `**bold**` shows as `bold`; placing the caret on that line reveals `**`; moving away hides them | 🔄 | Automated in `LiveMarkupControllerTest` (caret following, selection, multi-caret). By-eye run pending: sandbox session of 2026-09-06 on `agenstorm-demo/docs/live-markup.md` |
+| Coexistence | Markdown plugin heading/list folding still works; `Fold All`/`Expand All` do not break live markup after the next caret move | 🔄 | Automated: the plugin's heading/list/fence/table regions appear next to ours and both actions are corrected on the next event-loop turn (decision 21). By-eye run pending |
+| Copy fidelity | Select-all + copy yields raw Markdown | 🔄 | Fold regions never change the document, and a selection reveals what it covers (F1.3). By-eye run pending |
+| Perf | 3,000-line file: no visible lag while typing; sync after edits < 50 ms (log timing at debug level) | 🔄 | Measured in `LiveMarkupPerformanceTest` on 3,000 lines / 7,500 regions: first sync 179 ms (creates every region), no-op sync 16 ms, sync after an edit 14 ms. Timings also logged at debug level (`#com.pronskiy.agenstorm.markdown.LiveMarkupController`). Typing feel is Roman's by-eye check on `docs/big.md` |
 
 #### Phase F2 — Styling, links, checkboxes, toggle
 
