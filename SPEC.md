@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic 0 → Phase 01 exit guardrails — verify Builds clean / Verifier green / Loads without optional deps, then the human check of Settings visible in `runIde`; Epic A → Phase A1 → step A1.1 follows.
+**Now on:** Epic 0 → Phase 01 exit guardrails — Builds clean, Verifier green and Loads without optional deps are verified; waiting for Roman to confirm **Settings visible** in `runIde`. Next: Epic A → Phase A1 → step A1.1 (`FileLocation` model + `FileLocationParser` with the positive/negative corpus test).
 
 ---
 
@@ -156,10 +156,10 @@ All epics are MVP. Recommended order: 0 → A → B → C → D → E → F (val
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Builds clean | `./gradlew buildPlugin` produces a zip; no deprecation errors from the Gradle plugin | 🔲 | |
-| Verifier green | `verifyPlugin` reports no compatibility problems against PhpStorm 2026.2 | 🔲 | |
-| Settings visible | `runIde` → Settings → Tools → Agenstorm shows six toggles; toggling persists across restart in `agenstorm.xml` | 🔲 | |
-| Loads without optional deps | Plugin loads in IntelliJ IDEA Community (no PHP plugin) without errors in `idea.log` | 🔲 | |
+| Builds clean | `./gradlew buildPlugin` produces a zip; no deprecation errors from the Gradle plugin | ✅ | 2026-09-05: `./gradlew buildPlugin verifyPlugin --warning-mode all` → `build/distributions/agenstorm-0.0.1.zip`; no Gradle deprecation warnings (the only WARN lines are the verifier's "Layout component … nonexistent classPath" notes about the IDE distribution itself) |
+| Verifier green | `verifyPlugin` reports no compatibility problems against PhpStorm 2026.2 | ✅ | Plugin Verifier 1.410: `com.pronskiy.agenstorm:0.0.1 against PS-262.10315.130` (PhpStorm 2026.2.2) → Compatible; "can probably be enabled or disabled without IDE restart" |
+| Settings visible | `runIde` → Settings → Tools → Agenstorm shows six toggles; toggling persists across restart in `agenstorm.xml` | 🔄 | Sandbox launched 2026-09-05; awaiting Roman's check by eye (settings file: `build/idea-sandbox/PS-2026.2/config/options/agenstorm.xml`) |
+| Loads without optional deps | Plugin loads in IntelliJ IDEA Community (no PHP plugin) without errors in `idea.log` | ✅ | IDEA Community has no 2026.x release (last: 2025.3), so the target is unified IntelliJ IDEA 2026.2.2 (`IU-262.10315.125`, no PHP plugin): `verifyPlugin` → Compatible, added permanently to `pluginVerification.ides`. Evidence is the verifier, not an IDEA sandbox `idea.log` (none launched) |
 
 ---
 
