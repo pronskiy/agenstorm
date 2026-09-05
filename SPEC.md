@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A1 exit guardrails — Parser corpus verified; waiting for Roman to confirm **Markdown navigation** and **No regressions** by eye in `runIde` (demo project in the session scratchpad, see the A1 guardrail rows). Next: Phase A2 → step A2.1 (`CommentLocationReferenceProvider`).
+**Now on:** Epic A → Phase A2 → step A2.1 — `CommentLocationReferenceProvider` (`PsiReferenceProvider`) under `referenceProviderType key="commentsReferenceProvider"`, with `FileLocationPsiReference` (A2.2) as its reference type. Phase A1 guardrails all passed on 2026-09-05.
 
 ---
 
@@ -259,8 +259,8 @@ Platform facts the implementation relies on (verified against build 262):
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
 | Parser corpus | 100% of positive/negative corpus cases pass in `FileLocationParserTest` | ✅ | 12/12 on 2026-09-05 (`./gradlew check`), corpus extended with a URL path and 7-digit line number |
-| Markdown navigation | In `runIde`, Cmd+click on `[x](src/Foo.php:3:5)` opens `Foo.php` with caret at line 3 col 5; hover shows underline | 🔄 | Offset and highlight are covered by `MarkdownLocationReferenceTest`; the click itself awaits Roman's check in the sandbox |
-| No regressions | `[y](other.md#heading)` still resolves via the Markdown plugin; no duplicate highlight | 🔄 | Automated: anchor reference still resolves and each destination gets exactly one `HIGHLIGHTED_REFERENCE`; the Markdown plugin's unresolved-file warning is suppressed only where a location resolves. Visual confirmation pending |
+| Markdown navigation | In `runIde`, Cmd+click on `[x](src/Foo.php:3:5)` opens `Foo.php` with caret at line 3 col 5; hover shows underline | ✅ | Offset and highlight covered by `MarkdownLocationReferenceTest`; Roman confirmed Cmd+click and hover underline in the sandbox on the demo project (2026-09-05) |
+| No regressions | `[y](other.md#heading)` still resolves via the Markdown plugin; no duplicate highlight | ✅ | Automated: anchor reference still resolves and each destination gets exactly one `HIGHLIGHTED_REFERENCE`; the unresolved-file warning is suppressed only where a location resolves. Roman confirmed visually (2026-09-05) |
 
 #### Phase A2 — Comments, PHP strings, Copy Location Link
 
