@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic 0 → Phase 01 exit guardrails — Builds clean, Verifier green and Loads without optional deps are verified; waiting for Roman to confirm **Settings visible** in `runIde`. Next: Epic A → Phase A1 → step A1.1 (`FileLocation` model + `FileLocationParser` with the positive/negative corpus test).
+**Now on:** Epic A → Phase A1 → step A1.1 — `FileLocation` model + `FileLocationParser` (regex, positive/negative corpus) with unit tests. Epic 0 is complete; all four Phase 01 guardrails passed on 2026-09-05.
 
 ---
 
@@ -158,7 +158,7 @@ All epics are MVP. Recommended order: 0 → A → B → C → D → E → F (val
 |-----------|----------------------|--------|----------------|
 | Builds clean | `./gradlew buildPlugin` produces a zip; no deprecation errors from the Gradle plugin | ✅ | 2026-09-05: `./gradlew buildPlugin verifyPlugin --warning-mode all` → `build/distributions/agenstorm-0.0.1.zip`; no Gradle deprecation warnings (the only WARN lines are the verifier's "Layout component … nonexistent classPath" notes about the IDE distribution itself) |
 | Verifier green | `verifyPlugin` reports no compatibility problems against PhpStorm 2026.2 | ✅ | Plugin Verifier 1.410: `com.pronskiy.agenstorm:0.0.1 against PS-262.10315.130` (PhpStorm 2026.2.2) → Compatible; "can probably be enabled or disabled without IDE restart" |
-| Settings visible | `runIde` → Settings → Tools → Agenstorm shows six toggles; toggling persists across restart in `agenstorm.xml` | 🔄 | `runIde` 2026-09-05: `idea.log` shows `Loaded custom plugins: Agenstorm (0.0.1)` and zero ERROR lines; the six toggles and the restart persistence still need Roman's check by eye (settings file: `.intellijPlatform/sandbox/agenstorm/PS-2026.2/config/options/agenstorm.xml`) |
+| Settings visible | `runIde` → Settings → Tools → Agenstorm shows six toggles; toggling persists across restart in `agenstorm.xml` | ✅ | `runIde` 2026-09-05: `idea.log` shows `Loaded custom plugins: Agenstorm (0.0.1)`, zero ERROR lines; Roman confirmed by screenshot that Tools → Agenstorm shows the six groups/toggles with the intro line. Persistence to `agenstorm.xml` is covered by `AgenstormSettingsTest` (skip-defaults XML round trip), not re-checked by eye |
 | Loads without optional deps | Plugin loads in IntelliJ IDEA Community (no PHP plugin) without errors in `idea.log` | ✅ | IDEA Community has no 2026.x release (last: 2025.3), so the target is unified IntelliJ IDEA 2026.2.2 (`IU-262.10315.125`, no PHP plugin): `verifyPlugin` → Compatible, added permanently to `pluginVerification.ides`. Evidence is the verifier, not an IDEA sandbox `idea.log` (none launched) |
 
 ---
@@ -751,6 +751,7 @@ Platform facts (verified against build 262):
 | 10 | 2026-09-05 | Live markup uses manually created light fold regions, not a `FoldingBuilder` | Builder regions shorter than 2 chars are dropped by `UpdateFoldRegionsOperation`; light regions survive folding passes and can be 1 char | Roman (from code walk) |
 | 11 | 2026-09-05 | Extending internal `ProjectToolbarWidgetAction` via `overrides="true"` is acceptable for 1.0 | Gives feature-off = stock widget without restart; verifier warning tolerated; fallback documented in E1.5 | Roman |
 | 12 | 2026-09-05 | No default keyboard shortcuts for new actions | Marketplace etiquette; README recommends bindings | Roman |
+| 13 | 2026-09-05 | "Loads without optional deps" is verified against the unified IntelliJ IDEA 2026.2 (no PHP plugin) through `verifyPlugin`, which is now a permanent verifier target | IntelliJ IDEA Community's last release is 2025.3, so no 262 build exists; the unified IDEA also lacks the PHP plugin and exercises the same optional-dependency path | Roman (confirmed after the Phase 01 report) |
 
 ---
 
