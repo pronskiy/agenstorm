@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic F → Phase F1 → step **F1.3**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → Phase F1 → step **F1.4**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -655,7 +655,7 @@ Platform facts (verified against build 262):
 |------|-------------|--------|-------|
 | F1.1 | `MarkupRangeCollector`: PSI → `List<MarkupRange(kind, range, placeholder)>`, skipping code fences/blocks/HTML | ✅ | PSI shape verified with a tree dump: heading space sits inside `ATX_CONTENT` (taken from the document text), `CHECK_BOX` token is `[ ] ` with a trailing space (only `[ ]` folded), `~~` is two `TILDE` tokens, nested `***x***` keeps markers as direct children so ranges never overlap. Closing `##` of a heading is hidden too. Empty headings and empty link text stay raw |
 | F1.2 | `LiveMarkupController` per `TextEditor` (via `textEditorCustomizer`): create/refresh light fold regions, debounce on document change, dispose with editor | ✅ | Attached through the public `editorFactoryListener` (`LiveMarkupEditorListener` + project service `LiveMarkupService`) instead of `textEditorCustomizer`, which is `@ApiStatus.Internal` in 262 — decision 20. Regions start expanded when created, so the controller collapses them; `UNTYPED` editors are accepted next to `MAIN_EDITOR` (plain `EditorFactory.createEditor` over a file, test fixtures) |
-| F1.3 | Caret policy: regions intersecting caret line(s)/selection expanded, all others collapsed; applied on caret/selection change and after re-sync | 🔲 | |
+| F1.3 | Caret policy: regions intersecting caret line(s)/selection expanded, all others collapsed; applied on caret/selection change and after re-sync | ✅ | Whole caret lines plus selection ranges, union over all carets; overlap is strict (a region touching the selection edge stays hidden). Re-applied via a coalesced `invokeLater` on line change / caret add-remove / selection change, never on moves within a line (test counts zero batch operations) |
 | F1.4 | Spike result recorded: regions survive Markdown plugin's own folding pass, `Fold All`/`Expand All`, and typing at region borders | 🔲 | Folding pass half already covered by `LiveMarkupControllerTest`: 36 light regions survive `CodeFoldingManager.updateFoldRegions` and `doHighlighting` while the Markdown plugin's heading/list/fence/table regions appear around them |
 | F1.5 | Tests: collector on fixtures; controller in `BasePlatformTestCase` with `EditorTestUtil` (regions exist, caret line expanded) | 🔲 | |
 
