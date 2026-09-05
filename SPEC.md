@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic E → **Phase E1 exit guardrails** (Single row, Consistency, Switching, Recovery need Roman's eyes in a sandbox run with 3–4 projects; Log clean is checked from `idea.log`). All E1 steps are ✅. Next: Phase E2 → step E2.1. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic E → Phase E2 → step **E2.1** (overflow). Phase E1 signed off 2026-09-05. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -568,17 +568,17 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Single row | Screenshot: with 3 projects open after restart, header is one row; the 28 px native tab strip is gone | 🔲 | |
-| Consistency | Opening/closing a project updates the tab strip in every open frame within one EDT cycle; no stale tabs | 🔲 | |
-| Switching | Click switches focus < 100 ms; bounds mirrored when both windows are normal; nothing weird in fullscreen (documented as unsupported if needed) | 🔲 | |
-| Recovery | Turning the feature off restores the stock project widget and (after restart) native tabs | 🔲 | |
-| Log clean | No exceptions in `idea.log` while opening 4 projects, closing 2, reopening 1 | 🔲 | |
+| Single row | Screenshot: with 3 projects open after restart, header is one row; the 28 px native tab strip is gone | ✅ | Roman, 2026-09-05 sandbox run ("all good, continue with E2"): registry key flipped on first start, native strip gone after restart, tabs in the toolbar row |
+| Consistency | Opening/closing a project updates the tab strip in every open frame within one EDT cycle; no stale tabs | ✅ | Roman, 2026-09-05 |
+| Switching | Click switches focus < 100 ms; bounds mirrored when both windows are normal; nothing weird in fullscreen (documented as unsupported if needed) | ✅ | Roman, 2026-09-05. Feedback fixed the same day: the × changed the tab width on hover; it now keeps its slot (always on the active tab, on hover elsewhere) |
+| Recovery | Turning the feature off restores the stock project widget and (after restart) native tabs | ✅ | Roman, 2026-09-05. Note: Restart Now inside a Gradle `runIde` sandbox only exits the IDE (the restarter cannot relaunch it); a real installation restarts normally |
+| Log clean | No exceptions in `idea.log` while opening 4 projects, closing 2, reopening 1 | ✅ | 2026-09-05 sandbox sessions 21:32–21:57: nothing thrown by `com.pronskiy.agenstorm`. One SEVERE blamed on the plugin only because Restart Now was the last action: `LspIntentionActionService.dispose` threw a CancellationException during the platform's own shutdown |
 
 #### Phase E2 — Overflow, order, keyboard
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| E2.1 | Overflow: shrink to icon-only when width is insufficient; then first N + chevron popup listing the rest | 🔲 | |
+| E2.1 | Overflow: shrink to icon-only when width is insufficient; then first N + chevron popup listing the rest | 🔄 | |
 | E2.2 | Drag-to-reorder tabs within the strip; order persisted in `ProjectTabsModel` | 🔲 | |
 | E2.3 | Actions `Agenstorm.NextProjectTab` / `Agenstorm.PrevProjectTab` (cyclic), unbound by default; `Agenstorm.CloseProjectTab` | 🔲 | |
 | E2.4 | Settings group "Project tabs": enable, mirror bounds, show icons, max tab width | 🔲 | |
