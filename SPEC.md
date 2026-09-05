@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D2 → step D2.4 (first, per the spec) — `SseReader` (lines → `SseEvent`s) plus the HTTP line stream over `HttpClient.sendAsync(..., BodyHandlers.ofLines())` with cancellation and HTTP ≥ 400 → `LlmException`. Phase D1 guardrails passed on 2026-09-05.
+**Now on:** Epic D → Phase D2 → step D2.1 — `AnthropicBackend` (Messages API, SSE `content_block_delta`, key from `PasswordSafe`) with a local-server test.
 
 ---
 
@@ -464,7 +464,7 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 | D2.1 | `AnthropicBackend`: Messages API, SSE, `content_block_delta` text deltas, API key from `PasswordSafe` | 🔲 | |
 | D2.2 | `OpenAiCompatibleBackend`: `POST {baseUrl}/chat/completions` with `stream:true`, SSE `choices[0].delta.content`, optional key | 🔲 | |
 | D2.3 | `ClaudeCliBackend`: `claude -p` subprocess, prompt on stdin, text output; executable discovery | 🔲 | |
-| D2.4 | Shared `SseReader` over `HttpClient.sendAsync(..., BodyHandlers.ofLines())` with cancellation | 🔲 | |
+| D2.4 | Shared `SseReader` over `HttpClient.sendAsync(..., BodyHandlers.ofLines())` with cancellation | ✅ | Split into `SseReader` (pure parser) and `HttpSseClient` (`channelFlow`, `invokeOnClose` cancels the future and closes the body stream; `error.message` extraction with bundled `kotlinx.serialization.json`). `SseReaderTest` 5, `HttpSseClientTest` 4 (incl. cancellation under 5 s against a hanging server) |
 | D2.5 | Backend tests against a local `com.sun.net.httpserver.HttpServer` serving canned SSE; CLI test with a fake `claude` script | 🔲 | |
 
 **Steps (detail):**
