@@ -35,20 +35,10 @@ class MessagePostProcessorTest {
     }
 
     @Test
-    fun wrapsLongBodyLinesAtWordBoundaries() {
-        val longLine = "This body line is deliberately made long enough to exceed the seventy-two column limit twice over so it wraps."
-        val result = MessagePostProcessor.process("feat: x\n\n$longLine")
-        val body = result.lines().drop(2)
-        assertTrue(body.size >= 2)
-        body.forEach { assertTrue("'$it' is ${it.length} chars", it.length <= 72) }
-        assertEquals(longLine, body.joinToString(" "))
-    }
-
-    @Test
-    fun leavesUnbreakableTokensAndListIndentationAlone() {
+    fun bodyLinesAreKeptExactlyAsWritten() {
+        val longLine = "This body line is deliberately made long enough to exceed the seventy-two column limit twice over and stays on one line."
         val url = "https://example.com/" + "a".repeat(80)
-        val result = MessagePostProcessor.process("feat: x\n\nSee $url\n- item one\n- item two")
-        assertEquals("feat: x\n\nSee\n$url\n- item one\n- item two", result)
+        assertEquals("feat: x\n\n$longLine\nSee $url\n- item one\n- item two", MessagePostProcessor.process("feat: x\n\n$longLine\nSee $url\n- item one\n- item two"))
     }
 
     @Test
