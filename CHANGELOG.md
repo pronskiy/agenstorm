@@ -13,4 +13,4 @@
 - New Scratch File popup limited to an allow-list of file types (Text, Markdown, PHP, JavaScript by default)
 - Window title shows the project only, never the current file
 - Generate Commit Message action streaming a subject and body from the Anthropic API, any OpenAI-compatible endpoint or the local `claude` CLI, with one-step Undo, editable prompts and a hint/draft mode
-- Project tabs inside the main toolbar: one tab per open project, click to switch, middle-click or × to close, "+" for the recent-projects popup, right-click menu; native macOS project tabs are switched off while the feature is on
+- Project tabs inside the main toolbar: one tab per open project, click to switch, middle-click or × to close, "+" for the recent-projects popup, right-click menu, drag to reorder (order remembered), icon-only and "…" overflow modes for narrow toolbars, Next/Previous/Close Project Tab actions without default shortcuts, options for window-bounds mirroring, icons and max tab width; native macOS project tabs are switched off while the feature is on
