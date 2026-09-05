@@ -36,6 +36,11 @@
                                implementationClass="com.pronskiy.agenstorm.links.comments.CommentLocationReferenceProvider"/>
         <!-- links: Go to Declaration for hosts whose getReferences() does not consult the registry (PHPDoc & co). -->
         <gotoDeclarationHandler implementation="com.pronskiy.agenstorm.links.LocationGotoDeclarationHandler"/>
+
+        <!-- frame: window title without the file name. Service override allowed by SPEC.md §2; fails soft. -->
+        <applicationService serviceInterface="com.intellij.openapi.wm.impl.FrameTitleBuilder"
+                            serviceImplementation="com.pronskiy.agenstorm.frame.ProjectOnlyFrameTitleBuilder"
+                            overrides="true"/>
     </extensions>
 
     <actions resource-bundle="messages.AgenstormBundle">

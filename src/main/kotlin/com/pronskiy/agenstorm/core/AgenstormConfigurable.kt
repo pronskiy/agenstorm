@@ -14,6 +14,7 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
+import com.pronskiy.agenstorm.frame.FrameTitleRefresher
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
 
@@ -51,7 +52,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                 }
             }
         }
-        featureGroup("settings.group.frame", "settings.frame.hideFileName", AgenstormSettings.State::hideFileNameInTitle)
+        featureGroup("settings.group.frame", "settings.frame.hideFileName", AgenstormSettings.State::hideFileNameInTitle, onApply = FrameTitleRefresher::refreshOpenFrames)
         featureGroup("settings.group.commit", "settings.commit.enabled", AgenstormSettings.State::commitEnabled)
         featureGroup("settings.group.tabs", "settings.tabs.enabled", AgenstormSettings.State::projectTabsEnabled)
         featureGroup("settings.group.markdown", "settings.markdown.liveMarkup.enabled", AgenstormSettings.State::liveMarkupEnabled)
@@ -66,13 +67,15 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
         titleKey: String,
         toggleKey: String,
         toggle: KMutableProperty1<AgenstormSettings.State, Boolean>,
+        onApply: (() -> Unit)? = null,
         extraRows: Panel.() -> Unit = {},
     ) {
         group(AgenstormBundle.message(titleKey)) {
             row {
-                checkBox(AgenstormBundle.message(toggleKey))
+                val cell = checkBox(AgenstormBundle.message(toggleKey))
                     // Read and write through the service on every access: loadState() may replace the State instance.
                     .bindSelected({ toggle.get(AgenstormSettings.getInstance().state) }, { toggle.set(AgenstormSettings.getInstance().state, it) })
+                if (onApply != null) cell.onApply(onApply)
             }
             extraRows()
         }
