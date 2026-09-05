@@ -26,7 +26,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
 - **`gradle.properties`** holds the plugin metadata (`pluginGroup`, `pluginName`, `pluginVersion`, `pluginSinceBuild`, `pluginUntilBuild`, `platformVersion`) and the platform dependencies (`platformBundledPlugins`, currently `com.jetbrains.php`; add `org.intellij.plugins.markdown` and `Git4Idea` when their epics start). `build.gradle.kts` reads everything through `providers.gradleProperty(...)` — change the properties, not the script.
 - **Marketplace metadata:** the plugin description is extracted from `README.md` between the `<!-- Plugin description -->` markers (the build fails without them); change notes come from the `[Unreleased]` section of `CHANGELOG.md` (Keep a Changelog) via the Gradle Changelog Plugin.
 - Kotlin stdlib is not bundled (`kotlin.stdlib.default.dependency = false`) — the platform's copy is used. Gradle configuration cache and build cache are on.
-- Sandbox IDE logs: `build/idea-sandbox/*/log/idea.log`.
+- Sandbox IDE (`runIde`) lives in `.intellijPlatform/sandbox/agenstorm/PS-2026.2/` — logs in `log/idea.log`, persisted settings in `config/options/` (e.g. `agenstorm.xml`); tests use the sibling `*-test` dirs. Verifier reports: `build/reports/pluginVerifier/<IDE>/`.
 
 ## Code conventions
 
