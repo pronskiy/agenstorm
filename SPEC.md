@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic E → Phase E1 → step **E1.2** (`ProjectTabsModel`). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic E → Phase E1 → step **E1.3** (`ProjectTabsWidgetAction` + `ProjectTabsPanel`). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -526,8 +526,8 @@ Platform facts (verified against build 262):
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | E1.1 | `NativeTabsRegistryGuard` (`ProjectActivity`): when feature on & macOS & registry key true → set `ide.mac.os.wintabs.version2=false`, notify "Restart to apply"; when feature off → restore `true` | ✅ | Key verified in `misc/registry.properties` of build 262 (`=true`, `restartRequired=true`). Deviation: feature off restores `true` only when the new `State.nativeTabsDisabledByAgenstorm` flag says Agenstorm flipped it, so a user who disabled native tabs themselves keeps that. Balloon has "Restart Now" (`Application.restart()`) when `isRestartCapable`. Wired as `postStartupActivity` + `onApply` of the tabs toggle. `core/AgenstormNotifications` holds the group id. `NativeTabsRegistryGuardTest` (6 cases: on/off, user's own choice, flag-only, non-mac, missing key). The activity also runs in the test IDE, so `SettingsSmokeTest` now resets the state first |
-| E1.2 | `ProjectTabsModel` app service: ordered list of open projects (persisted order by base path), listeners; fed by `ProjectActivity` + `ProjectCloseListener` | 🔄 | |
-| E1.3 | `ProjectTabsWidgetAction` replacing `main.toolbar.Project` via `overrides="true"`, extending the stock `ProjectToolbarWidgetAction` so that feature-off = stock behaviour; `ProjectTabsPanel` rendering one `ProjectTabLabel` per project + "+" button | 🔲 | |
+| E1.2 | `ProjectTabsModel` app service: ordered list of open projects (persisted order by base path), listeners; fed by `ProjectActivity` + `ProjectCloseListener` | ✅ | `tabs/ProjectTabsModel` (`agenstorm-tabs.xml`, key = base path, `MAX_REMEMBERED` 100 with closed keys forgotten first); `TabsStartupActivity` (shared with E1.1) + `TabsProjectCloseListener` under `<applicationListeners>`; listeners fire on the EDT (`invokeLater(ModalityState.any())` off it). `ProjectTabsModelTest` (6 cases: storage, order/append, remember/cap, move, listener dispose, EDT delivery) |
+| E1.3 | `ProjectTabsWidgetAction` replacing `main.toolbar.Project` via `overrides="true"`, extending the stock `ProjectToolbarWidgetAction` so that feature-off = stock behaviour; `ProjectTabsPanel` rendering one `ProjectTabLabel` per project + "+" button | 🔄 | |
 | E1.4 | Click → switch (`focusProjectWindow`, optional bounds mirroring); middle-click / × → close; "+" → popup (recent projects + `ProjectWidget.Actions`) | 🔲 | |
 | E1.5 | Verifier check of the override; if extending the internal `ProjectToolbarWidgetAction` is rejected, fall back to a standalone `CustomComponentAction` with a minimal own "project dropdown" for the feature-off state (record decision) | 🔲 | |
 
