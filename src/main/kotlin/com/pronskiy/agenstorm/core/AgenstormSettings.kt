@@ -34,8 +34,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var scratchAllowedFileTypes: MutableList<String> = mutableListOf("PLAIN_TEXT", "Markdown", "PHP", "JavaScript"),
         /** Epic D: backend id (`anthropic`, `openai`, `claude-cli`, `fake`); an unknown id disables the action. */
         var commitBackendId: String = "anthropic",
-        /** Epic D: model id passed to the backend; empty = the backend's default. */
+        /** Epic D: model id passed to the backend; empty = the backend's default (required for `openai`). */
         var commitModel: String = "",
+        /** Epic D: base URL of the OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, OpenRouter, Groq). */
+        var commitOpenAiBaseUrl: String = "https://api.openai.com/v1",
         /** Epic D: budget for the unified diff sent to the model, in characters. */
         var commitMaxDiffChars: Int = 60_000,
         var commitConventionalCommits: Boolean = true,
