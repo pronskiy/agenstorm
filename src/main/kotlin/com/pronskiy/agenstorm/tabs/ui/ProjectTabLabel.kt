@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.NamedColorUtil
 import com.intellij.util.ui.UIUtil
@@ -23,9 +24,11 @@ import javax.swing.Icon
 import javax.swing.JPanel
 
 /**
- * One tab: project icon, project name (ellipsized between 72 and 220 px), a × that appears on hover, the base
- * path as tooltip. The active tab is filled; a hovered tab gets the toolbar hover colour. Colours come from named
- * UI keys with the action-button colours as fallback, so every theme paints something sensible.
+ * One tab: project icon, project name (ellipsized between 72 and 220 px), a × and the base path as tooltip. Like
+ * editor tabs, the × is always drawn on the active tab and only on hover on the others, and its slot is reserved
+ * either way so the tab never changes width. The active tab is filled; a hovered tab gets the toolbar hover
+ * colour. Colours come from named UI keys with the action-button colours as fallback, so every theme paints
+ * something sensible.
  */
 class ProjectTabLabel(
     val project: Project,
@@ -40,6 +43,7 @@ class ProjectTabLabel(
             if (field == value) return
             field = value
             nameLabel.foreground = textColor()
+            updateCloseIcon()
             repaint()
         }
 
@@ -48,15 +52,17 @@ class ProjectTabLabel(
 
     /** The text shown on the tab (the project name). */
     val title: String get() = nameLabel.text
-    private val closeLabel = JBLabel(AllIcons.Actions.Close).apply {
-        isVisible = false
-        toolTipText = null
+    internal val closeLabel = JBLabel(HIDDEN_CLOSE).apply {
         addMouseListener(object : MouseAdapter() {
-            override fun mouseEntered(e: MouseEvent) { icon = AllIcons.Actions.CloseHovered }
-            override fun mouseExited(e: MouseEvent) { icon = AllIcons.Actions.Close }
-            override fun mouseClicked(e: MouseEvent) { if (e.button == MouseEvent.BUTTON1) onClose() }
+            override fun mouseEntered(e: MouseEvent) { if (isCloseShown) icon = AllIcons.Actions.CloseHovered }
+            override fun mouseExited(e: MouseEvent) { if (isCloseShown) icon = AllIcons.Actions.Close }
+            override fun mouseClicked(e: MouseEvent) { if (e.button == MouseEvent.BUTTON1 && isCloseShown) onClose() }
         })
     }
+
+    /** Whether the × is drawn right now (its room is reserved regardless). */
+    val isCloseShown: Boolean
+        get() = closeLabel.icon !== HIDDEN_CLOSE
 
     init {
         isOpaque = false
@@ -64,6 +70,7 @@ class ProjectTabLabel(
         toolTipText = project.basePath ?: project.name
         nameLabel.foreground = textColor()
         nameLabel.iconTextGap = JBUI.scale(6)
+        updateCloseIcon()
         add(nameLabel, BorderLayout.CENTER)
         add(closeLabel, BorderLayout.EAST)
         alignmentY = CENTER_ALIGNMENT
@@ -94,9 +101,15 @@ class ProjectTabLabel(
     private fun setHovered(value: Boolean) {
         if (hovered == value) return
         hovered = value
-        closeLabel.isVisible = value
-        revalidate()
+        updateCloseIcon()
         repaint()
+    }
+
+    /** Active tab: always; other tabs: while hovered. Swapping icons of equal size keeps the layout still. */
+    private fun updateCloseIcon() {
+        val show = isSelected || hovered
+        if (show && !isCloseShown) closeLabel.icon = AllIcons.Actions.Close
+        if (!show && isCloseShown) closeLabel.icon = HIDDEN_CLOSE
     }
 
     private fun textColor() = if (isSelected) JBColor.namedColor("MainToolbar.Dropdown.foreground", UIUtil.getLabelForeground()) else NamedColorUtil.getInactiveTextColor()
@@ -138,6 +151,8 @@ class ProjectTabLabel(
         const val MAX_WIDTH = 220
         const val HEIGHT = 30
         private val LOG = logger<ProjectTabLabel>()
+        /** Same size as the close icon, paints nothing: keeps the ×'s room when it is not shown. */
+        private val HIDDEN_CLOSE: Icon = EmptyIcon.create(AllIcons.Actions.Close)
         private val SELECTED_BACKGROUND = JBColor.namedColor("MainToolbar.Dropdown.pressedBackground", JBUI.CurrentTheme.ActionButton.pressedBackground())
         private val HOVER_BACKGROUND = JBColor.namedColor("MainToolbar.Dropdown.hoverBackground", JBUI.CurrentTheme.ActionButton.hoverBackground())
 
