@@ -3,6 +3,7 @@ import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.models.ProductRelease
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 plugins {
     id("java") // Java support
@@ -106,6 +107,13 @@ intellijPlatform {
     }
 
     pluginVerification {
+        // Internal API usages are tolerated on purpose: SPEC.md §2 lists them (scratchLanguageFilter, the
+        // FrameTitleBuilder override with its IdeFrameEx title refresh) and each one is toggle-guarded and fail-soft.
+        failureLevel = listOf(
+            VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+            VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+            VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+        )
         ides {
             recommended()
             // IntelliJ IDEA does not bundle the PHP plugin: verifying against it proves the plugin
