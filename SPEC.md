@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A2 → step A2.3 — `PhpStringLocationReferenceContributor` registering `CommentLocationReferenceProvider` on `StringLiteralExpression` in `agenstorm-php.xml`.
+**Now on:** Epic A → Phase A2 → step A2.4 — `CopyLocationLinkAction` in the editor and gutter popup menus (bare token as plain text, Markdown link as a second flavor).
 
 ---
 
@@ -268,7 +268,7 @@ Platform facts the implementation relies on (verified against build 262):
 |------|-------------|--------|-------|
 | A2.1 | `CommentLocationReferenceProvider` (`PsiReferenceProvider`) under `referenceProviderType key="commentsReferenceProvider"` | ✅ | Parse cached per element, bombed char sequence, 20 KB cap; references for every token, highlighted only when resolvable (A2.2). The EP lives in the lang module → `plugin.xml` also depends on `com.intellij.modules.lang`. **PHPDoc caveat:** `PhpDocCommentImpl.getReferences()` ignores the registry, so highlighting worked but Cmd+click did not; added `LocationGotoDeclarationHandler` (`gotoDeclarationHandler` EP) serving our references via `PsiReferenceService` only for hosts that do not expose them. `@see path:line` also carries PHP's own file reference (file top). `CommentLocationReferenceTest` (11 cases) incl. the real GotoDeclaration action |
 | A2.2 | `FileLocationPsiReference` (old API): `PsiReferenceBase` + `HighlightedReference`, resolves to a `Navigatable` fake element | ✅ | Done before A2.1 (the provider needs the type). `isHighlightedWhenSoft() = resolve() != null`, so unresolved tokens are neither errors nor links, and no resolution result is cached. Target navigates via `OpenFileDescriptor(project, file, toOffset(...))`. `FileLocationPsiReferenceTest`, 4 cases incl. caret position after `navigate()` |
-| A2.3 | `PhpStringLocationReferenceContributor` for `StringLiteralExpression` in `agenstorm-php.xml` | 🔲 | |
+| A2.3 | `PhpStringLocationReferenceContributor` for `StringLiteralExpression` in `agenstorm-php.xml` | ✅ | Reuses `CommentLocationReferenceProvider` at `LOWER_PRIORITY`; `PhpStringLocationReferenceTest` (7 cases: quotes, heredoc, size cap, negatives, highlight + GotoDeclaration, toggle) |
 | A2.4 | `CopyLocationLinkAction` (editor popup + gutter popup): copies `relpath:line[:col]`; with selection copies `relpath:line:col` of selection start | 🔲 | |
 | A2.5 | Tests for comments (PHP `//`, `/* */`, PHPDoc; Kotlin/JS comment in a plain-text-like fixture) and PHP strings | 🔲 | |
 
