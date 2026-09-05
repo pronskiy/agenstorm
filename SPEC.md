@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic C exit guardrails — waiting for Roman to check **Title**, **Native tabs** and **No side effects** in `runIde`. Next: Epic D → Phase D1 → step D1.1 (`LlmBackend` contract + `FakeBackend`).
+**Now on:** Epic D → Phase D1 → step D1.1 — `LlmBackend` interface + `LlmRequest` model, `LlmException`, and a `FakeBackend` (selectable for tests and the D1 guardrail run). Epic C is complete; its guardrails passed on 2026-09-05.
 
 ---
 
@@ -390,9 +390,9 @@ Platform facts: `FrameTitleBuilder` is an application service registered `open="
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Title | With `Foo.php` open, the window title is the project name only; Mission Control shows the same | 🔲 | |
-| Native tabs | With native macOS project tabs still on (Epic E not yet applied), tabs show project names only | 🔲 | |
-| No side effects | File-type icon in the title bar (`ide.show.fileType.icon.in.titleBar`) still works; "Show full paths in window header" setting still affects the project part | 🔲 | |
+| Title | With `Foo.php` open, the window title is the project name only; Mission Control shows the same | ✅ | Roman confirmed in the sandbox on the demo project (2026-09-05) |
+| Native tabs | With native macOS project tabs still on (Epic E not yet applied), tabs show project names only | ✅ | Roman confirmed (2026-09-05) |
+| No side effects | File-type icon in the title bar (`ide.show.fileType.icon.in.titleBar`) still works; "Show full paths in window header" setting still affects the project part | ✅ | Roman confirmed (2026-09-05); `getProjectTitle` is untouched by design |
 
 ---
 
