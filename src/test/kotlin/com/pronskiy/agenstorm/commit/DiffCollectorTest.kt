@@ -8,7 +8,6 @@ import com.intellij.openapi.vcs.changes.SimpleContentRevision
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.vcsUtil.VcsUtil
-import java.io.File
 
 /**
  * Steps D1.2/D1.6: ranking, per-file cap, total budget, stat lines for every file, binary and generated
@@ -103,15 +102,16 @@ class DiffCollectorTest : BasePlatformTestCase() {
     }
 
     fun testUnversionedFilesAreWrappedAsAdditions() {
-        // Unversioned files come from the local file system under the project base path (not the fixture's temp:// root).
-        val ioFile = File(base, "src/Fresh.php")
-        FileUtil.writeToFile(ioFile, "<?php\nfresh\n")
+        // CurrentContentRevision reads through the local file system, so the file must be a real one; the system
+        // temp directory is an allowed VFS root in tests, the fixture's temp:// root is not a local file.
+        val ioFile = FileUtil.createTempFile("agenstorm-fresh", ".php")
         try {
+            FileUtil.writeToFile(ioFile, "<?php\nfresh\n")
             val file = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(ioFile)!!
 
-            val result = DiffCollector(project).collect(emptyList(), unversioned = listOf(VcsUtil.getFilePath(file)))
+            val result = DiffCollector(project, basePath = file.parent.path).collect(emptyList(), unversioned = listOf(VcsUtil.getFilePath(file)))
 
-            assertEquals("A src/Fresh.php (+2 -0)", result.stat)
+            assertEquals("A ${file.name} (+2 -0)", result.stat)
             assertTrue(result.diff.contains("+fresh"))
         } finally {
             FileUtil.delete(ioFile)

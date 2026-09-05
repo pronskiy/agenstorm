@@ -30,6 +30,8 @@ class DiffCollector(
     private val project: Project,
     private val maxDiffChars: Int = DEFAULT_MAX_DIFF_CHARS,
     private val perFileCap: Int = DEFAULT_PER_FILE_CAP,
+    /** Directory paths are made relative to; defaults to the project base path. */
+    private val basePath: String? = project.basePath,
 ) {
 
     fun collect(changes: Collection<Change>, unversioned: Collection<FilePath> = emptyList()): CollectedDiff {
@@ -93,15 +95,16 @@ class DiffCollector(
 
     private fun relativePath(file: FilePath): String {
         val path = FileUtil.toSystemIndependentName(file.path)
-        val base = project.basePath?.let(FileUtil::toSystemIndependentName) ?: return path
+        val base = basePath?.let(FileUtil::toSystemIndependentName) ?: return path
         return FileUtil.getRelativePath(base, path, '/') ?: path
     }
 
     private fun patchText(change: Change): PatchText? = try {
-        val basePath = Paths.get(project.basePath ?: "")
-        val patches = IdeaTextPatchBuilder.buildPatch(project, listOf(change), basePath, false, true)
+        val base = Paths.get(basePath ?: "")
+        val patches = IdeaTextPatchBuilder.buildPatch(project, listOf(change), base, false, true)
         val writer = StringWriter()
-        UnifiedDiffWriter.write(project, patches, writer, "\n", null)
+        // No PatchEPs: the default CharsetEP refreshes the VFS synchronously, which is forbidden under a read lock.
+        UnifiedDiffWriter.write(project, base, patches, writer, "\n", null, emptyList())
         val lines = patches.filterIsInstance<TextFilePatch>().flatMap { it.hunks }.flatMap { it.lines }
         PatchText(writer.toString(), lines.count { it.type == PatchLine.Type.ADD }, lines.count { it.type == PatchLine.Type.REMOVE })
     } catch (e: VcsException) {

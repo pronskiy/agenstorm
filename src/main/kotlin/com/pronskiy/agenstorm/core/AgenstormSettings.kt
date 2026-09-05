@@ -32,6 +32,19 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupEnabled: Boolean = true,
         /** Epic B: internal `FileType.name`s that stay in the New Scratch File popup when the filter is on. */
         var scratchAllowedFileTypes: MutableList<String> = mutableListOf("PLAIN_TEXT", "Markdown", "PHP", "JavaScript"),
+        /** Epic D: backend id (`anthropic`, `openai`, `claude-cli`, `fake`); an unknown id disables the action. */
+        var commitBackendId: String = "anthropic",
+        /** Epic D: model id passed to the backend; empty = the backend's default. */
+        var commitModel: String = "",
+        /** Epic D: budget for the unified diff sent to the model, in characters. */
+        var commitMaxDiffChars: Int = 60_000,
+        var commitConventionalCommits: Boolean = true,
+        var commitBodyEnabled: Boolean = true,
+        /** Epic D: language the message is written in; empty = the model's default (English). */
+        var commitLanguage: String = "",
+        /** Epic D: prompt templates; empty = the built-in templates in `resources/prompts/`. */
+        var commitSystemPrompt: String = "",
+        var commitUserPrompt: String = "",
     )
 
     private var currentState = State()
