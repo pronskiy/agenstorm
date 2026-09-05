@@ -1,7 +1,9 @@
 package com.pronskiy.agenstorm.links
 
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.io.File
 
@@ -62,6 +64,15 @@ class FileLocationResolverTest : BasePlatformTestCase() {
         assertNull(resolve("elsewhere/Foo.php", null))
         // A written path that is a suffix of exactly one candidate disambiguates.
         assertEquals(inTempDir("vendor/pkg/src/Foo.php"), resolve("pkg/src/Foo.php", null))
+    }
+
+    fun testDumbModeKeepsDirectLookupsAndSkipsTheBasenameFallback() {
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            assertTrue(DumbService.isDumb(project))
+            assertEquals(inTempDir("src/Foo.php"), resolve("src/Foo.php", null))
+            assertNull(resolve("wrong/dir/Unique.php", null))
+        }
+        assertEquals(inTempDir("src/lib/Unique.php"), resolve("wrong/dir/Unique.php", null))
     }
 
     fun testDirectoriesAndMissingFilesResolveToNull() {

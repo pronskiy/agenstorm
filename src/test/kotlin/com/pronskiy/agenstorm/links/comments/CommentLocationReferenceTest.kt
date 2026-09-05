@@ -62,6 +62,34 @@ class CommentLocationReferenceTest : BasePlatformTestCase() {
         assertTarget(singleReference(file), "src/Foo.php", 3, null)
     }
 
+    fun testJavaScriptLineAndDocComments() {
+        val file = myFixture.configureByText("a.js", "// see src/Foo.php:3\n/**\n * Fixed in src/Foo.php:3:5\n */\nfunction f() {}\n")
+        val references = ourReferences(file)
+        assertEquals(listOf(FileLocation("src/Foo.php", 3, null), FileLocation("src/Foo.php", 3, 5)), references.map { it.match.location })
+        references.forEach { assertTarget(it, "src/Foo.php", it.match.location.line, it.match.location.column) }
+    }
+
+    fun testYamlComment() {
+        val file = myFixture.configureByText("a.yaml", "# see src/Foo.php:3\nkey: value\n")
+        assertTarget(singleReference(file), "src/Foo.php", 3, null)
+    }
+
+    fun testLargePhpFileWithManyCommentsHighlightsQuickly() {
+        val lines = ArrayList<String>(5_100)
+        lines += "<?php"
+        for (i in 1..5_000) {
+            lines += if (i % 25 == 0) "// see src/Foo.php:3:5 (comment $i)" else "\$v$i = $i;"
+        }
+        myFixture.configureByText("big.php", lines.joinToString("\n") + "\n")
+
+        val started = System.nanoTime()
+        val highlighted = myFixture.doHighlighting().count { it.forcedTextAttributesKey == DefaultLanguageHighlighterColors.HIGHLIGHTED_REFERENCE }
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+
+        assertEquals(200, highlighted)
+        assertTrue("highlighting took ${'$'}elapsedMs ms", elapsedMs < 15_000)
+    }
+
     fun testUrlWithPortAndPlainTextYieldNothing() {
         val file = myFixture.configureByText("a.php", "<?php\n// see http://x:80/index.php:80 and 10:20:30\n")
         assertEmpty(ourReferences(file))
