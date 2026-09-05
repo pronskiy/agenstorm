@@ -4,6 +4,7 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.SkipDefaultsSerializationFilter
 import com.intellij.util.xmlb.XmlSerializer
@@ -67,6 +68,39 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
 
         val restored = XmlSerializer.deserialize(element, AgenstormSettings.State::class.java)
         assertEquals(state, restored)
+    }
+
+    fun testScratchAllowListRoundTripsThroughXml() {
+        val state = AgenstormSettings.State(scratchAllowedFileTypes = mutableListOf("JSON", "PHP"))
+
+        val element = XmlSerializer.serialize(state, SkipDefaultsSerializationFilter())
+        val option = element.getChildren("option").single()
+        assertEquals("scratchAllowedFileTypes", option.getAttributeValue("name"))
+        assertEquals(listOf("JSON", "PHP"), option.getChild("list").getChildren("option").map { it.getAttributeValue("value") })
+
+        assertEquals(state, XmlSerializer.deserialize(element, AgenstormSettings.State::class.java))
+    }
+
+    fun testScratchAllowListIsEditedAsOneNamePerLine() {
+        val configurable = AgenstormConfigurable()
+        try {
+            val panel = configurable.createComponent()!!
+            val area = UIUtil.findComponentsOfType(panel, JBTextArea::class.java).single()
+            assertEquals("PLAIN_TEXT\nMarkdown\nPHP\nJavaScript", area.text)
+            assertFalse(configurable.isModified)
+
+            area.text = "JSON\n\n  PHP \nJSON\n"
+            assertTrue(configurable.isModified)
+            configurable.apply()
+            assertEquals(listOf("JSON", "PHP"), settings.state.scratchAllowedFileTypes)
+            assertFalse(configurable.isModified)
+
+            settings.loadState(AgenstormSettings.State())
+            configurable.reset()
+            assertEquals("PLAIN_TEXT\nMarkdown\nPHP\nJavaScript", area.text)
+        } finally {
+            configurable.disposeUIResources()
+        }
     }
 
     fun testConfigurableShowsOneTogglePerFeatureAndAppliesChanges() {

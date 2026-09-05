@@ -41,6 +41,10 @@ plugin is missing.
 switch. Everything is on by default. Settings are stored in `agenstorm.xml` in the IDE config
 directory, so they roam with Settings Sync.
 
+The **Scratch files** group also holds the allow-list for the New Scratch File popup: one internal
+file type name per line (`PLAIN_TEXT`, `Markdown`, `PHP` and `JavaScript` by default), with buttons
+to add the current file's type or pick from every registered type.
+
 ## Links for agents
 
 Agenstorm makes bare file locations clickable wherever they appear: Markdown link destinations,
