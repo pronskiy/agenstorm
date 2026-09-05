@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic E → Phase E2 → step **E2.4** (settings group). Phase E1 signed off 2026-09-05. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic E → **exit guardrails**, waiting for Roman's review (2026-09-05): Narrow window and Order survives restart by eye in a sandbox run; Daily-driver is a week of use; decision 18 to confirm. All E1/E2 steps are ✅. Next: Epic F → Phase F1 → step F1.1. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -581,7 +581,7 @@ Platform facts (verified against build 262):
 | E2.1 | Overflow: shrink to icon-only when width is insufficient; then first N + chevron popup listing the rest | ✅ | `ProjectTabsPanel` lays itself out (no BoxLayout): `plan(available)` picks FULL / COMPACT (32 px icon tabs, name in tooltip, no ×) / OVERFLOW (first N compact + `AllIcons.Actions.MoreHorizontal` chevron, owner tab swapped in when it would hide); `available` = toolbar width / 2 via `availableWidthProvider` (unlimited until the toolbar is sized). Chevron popup = `ProjectTabActions.overflowGroup`. `ProjectTabsOverflowTest` (4) with `FakeProjectHolder` proxies |
 | E2.2 | Drag-to-reorder tabs within the strip; order persisted in `ProjectTabsModel` | ✅ | `ProjectTabsPanel.dragHandler` (press/drag/release on the tab surface via `ProjectTabLabel.addDragListener`; 4 px threshold; `insertionIndex(x)` against visible tab centres; focus-coloured marker painted in `paint`); `onReorder` → `ProjectTabsModel.moveTab`. `ProjectTabsReorderTest` (4) |
 | E2.3 | Actions `Agenstorm.NextProjectTab` / `Agenstorm.PrevProjectTab` (cyclic), unbound by default; `Agenstorm.CloseProjectTab` | ✅ | `tabs/ProjectTabNavigationActions.kt` (BGT `DumbAwareAction`s; next/prev enabled with 2+ tabs; close reuses `ProjectTabActions.close`); registered in `plugin.xml` without shortcuts, README suggests `Ctrl+Alt+Shift+]`/`[`. `ProjectTabNavigationActionsTest` (3) |
-| E2.4 | Settings group "Project tabs": enable, mirror bounds, show icons, max tab width | 🔄 | |
+| E2.4 | Settings group "Project tabs": enable, mirror bounds, show icons, max tab width | ✅ | `State.tabsMirrorWindowBounds` / `tabsShowIcons` / `tabsMaxWidth` (72–600, default 220); rows in the tabs `featureGroup` named `tabs.mirrorBounds`, `tabs.showIcons`, `tabs.maxWidth`; `ProjectTabsModel.refresh()` re-renders every strip; per-cell `onApply` because the DSL runs a cell's apply callback only when that cell changed. `TabsSettingsPanelTest` (2), `ProjectTabLabelTest` +1 |
 
 **Steps (detail):**
 
@@ -594,8 +594,8 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Narrow window | At 1200 px window width with 6 projects, the strip degrades gracefully (icons, then chevron) and the run/VCS widgets remain visible | 🔲 | |
-| Order survives restart | Reordered tabs come back in the same order after restart | 🔲 | |
+| Narrow window | At 1200 px window width with 6 projects, the strip degrades gracefully (icons, then chevron) and the run/VCS widgets remain visible | 🔲 | Ready for Roman's review: the strip caps itself at half the toolbar width and `ProjectTabsOverflowTest` covers the three modes headlessly; the by-eye check of the run/VCS widgets staying visible is still owed |
+| Order survives restart | Reordered tabs come back in the same order after restart | 🔲 | Ready for Roman's review: the order lives in `agenstorm-tabs.xml` (the sandbox file kept `demo-alpha` across the 2026-09-05 restarts); `ProjectTabsModelTest` covers `moveKey`/`sortKeys`; the drag-then-restart check is by eye |
 | Daily-driver test | Author uses the strip for a week without re-enabling native tabs | 🔲 | |
 
 ---
