@@ -348,7 +348,7 @@ Platform fact: `com.intellij.scratchLanguageFilter` EP (`platform/lang-impl/src/
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Popup content | `runIde` → File → New → Scratch File shows exactly Text, Markdown, PHP, JavaScript (plus the "from selection" extra when applicable) | 🔄 | `ScratchFileTypeFilter.isEnabled` verified for these four (true) and JSON/XML/YAML (false) in `AllowlistScratchFilterTest`; the popup itself awaits Roman's check |
+| Popup content | `runIde` → File → New → Scratch File shows exactly Text, Markdown, PHP, JavaScript (plus the "from selection" extra when applicable) | 🔄 | Roman's check (2026-09-05): the popup shows Text, Markdown, PHP, JavaScript **plus ActionScript and ECMAScript 6**. Those are JavaScript dialects whose `associatedFileType` is the JavaScript file type itself; `ScratchFileTypeFilter.isProhibited(FileType)` receives the same object for all three, so the EP cannot separate them. See the open question in §7 |
 | Toggle | Disabling the feature restores the full list without restart | ✅ | The filter reads the settings on every call (`testFeatureOffProhibitsNothing`), and the EP is dynamic; no restart involved (2026-09-05) |
 
 ---
@@ -763,6 +763,7 @@ Platform facts (verified against build 262):
 - [ ] Should live markup also render images (`![alt](src)`) — as `🖼 alt` placeholder or as a block inlay? Deferred; not in 1.0.
 - [ ] Epic E on Windows/Linux: the widget works, but is it wanted there (native tabs do not exist)? Default: available, off by default outside macOS.
 - [ ] Should `Copy Location Link` also offer `path:line:col` relative to the *repository* root vs. content root when they differ (monorepos)? Default: content root; decide after use.
+- [ ] **Epic B, dialects:** the scratch popup lists *languages*, but `scratchLanguageFilter` filters by *file type*; JavaScript dialects (ActionScript = `ECMA Script Level 4`, `ECMAScript 6`) map to the JavaScript file type and therefore stay whenever JavaScript is allowed. Options: (a) accept and document; (b) override the `NewScratchFile` action (`ScratchFileActions$NewFileAction`, lang-impl) with our own language-level allow-list popup built on public `ScratchRootType.createScratchFile`, delegating to the stock action when the feature is off — internal impl class, no LRU ordering, no language-from-selection detection. Roman to decide (2026-09-05).
 
 ---
 
