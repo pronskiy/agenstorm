@@ -126,9 +126,14 @@ only if Agenstorm was the one that switched them off. Tab order is remembered pe
 when even those do not fit the first ones stay and a "…" button lists the rest. Off macOS the strip works
 the same; there are simply no native tabs to replace.
 
-The **Project tabs** settings group holds the switch plus three options: move the other window onto
-this one's position and size when switching (on by default), show project icons, and the maximum tab
-width before names are shortened (220 px by default).
+With the tabs on, the Git branch moves out of the toolbar too: the VCS widget next to the tabs is hidden
+and the current branch shows bottom-left in the status bar, where the navigation bar (breadcrumbs) was.
+Click it for the branches popup. The navigation bar is hidden for that, and comes back when the option is
+turned off, provided Agenstorm was the one that hid it.
+
+The **Project tabs** settings group holds the switch plus four options: the Git branch in the status bar,
+moving the other window onto this one's position and size when switching, project icons, and the maximum
+tab width before names are shortened (220 px by default). All are on by default.
 
 Three actions come without a shortcut so they never collide with your keymap: **Next Project Tab**,
 **Previous Project Tab** (both wrap around) and **Close Project Tab**. Assign them under Settings → Keymap

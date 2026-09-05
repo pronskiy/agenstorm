@@ -32,11 +32,13 @@ class TabsSettingsPanelTest : BasePlatformTestCase() {
     }
 
     fun testFieldsShowTheDefaultsAndApplyWritesTheState() {
+        assertTrue(named<JBCheckBox>("tabs.branchInStatusBar").isSelected)
         assertTrue(named<JBCheckBox>("tabs.mirrorBounds").isSelected)
         assertTrue(named<JBCheckBox>("tabs.showIcons").isSelected)
         assertEquals("220", named<JBTextField>("tabs.maxWidth").text)
         assertFalse(configurable.isModified)
 
+        named<JBCheckBox>("tabs.branchInStatusBar").isSelected = false
         named<JBCheckBox>("tabs.mirrorBounds").isSelected = false
         named<JBCheckBox>("tabs.showIcons").isSelected = false
         named<JBTextField>("tabs.maxWidth").text = "160"
@@ -45,6 +47,7 @@ class TabsSettingsPanelTest : BasePlatformTestCase() {
         configurable.apply()
 
         val state = AgenstormSettings.getInstance().state
+        assertFalse(state.branchInStatusBar)
         assertFalse(state.tabsMirrorWindowBounds)
         assertFalse(state.tabsShowIcons)
         assertEquals(160, state.tabsMaxWidth)
@@ -66,6 +69,19 @@ class TabsSettingsPanelTest : BasePlatformTestCase() {
         named<JBTextField>("tabs.maxWidth").text = "150"
         configurable.apply()
         assertEquals(2, refreshed)
+    }
+
+    fun testTogglingTheBranchOptionNotifiesSettingsListeners() {
+        var fired = 0
+        com.intellij.openapi.application.ApplicationManager.getApplication().messageBus.connect(testRootDisposable)
+            .subscribe(com.pronskiy.agenstorm.core.AgenstormSettingsListener.TOPIC, com.pronskiy.agenstorm.core.AgenstormSettingsListener { fired++ })
+
+        configurable.apply()
+        assertEquals(0, fired)
+
+        named<JBCheckBox>("tabs.branchInStatusBar").isSelected = false
+        configurable.apply()
+        assertEquals(1, fired)
     }
 
     private inline fun <reified T : Component> named(name: String): T {

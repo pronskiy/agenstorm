@@ -76,6 +76,13 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .applyToComponent { name = "tabs.mirrorBounds" }
             }
             row {
+                checkBox(AgenstormBundle.message("settings.tabs.branchInStatusBar"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.branchInStatusBar }, { AgenstormSettings.getInstance().state.branchInStatusBar = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "tabs.branchInStatusBar" }
+                    .comment(AgenstormBundle.message("settings.tabs.branchInStatusBar.comment"))
+            }
+            row {
                 checkBox(AgenstormBundle.message("settings.tabs.showIcons"))
                     .bindSelected({ AgenstormSettings.getInstance().state.tabsShowIcons }, { AgenstormSettings.getInstance().state.tabsShowIcons = it })
                     .onApply { ProjectTabsModel.getInstance().refresh() }
@@ -124,6 +131,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
     private fun applyTabSettings() {
         NativeTabsRegistryGuard.syncFromSettings()
         ProjectTabsModel.getInstance().refresh()
+        AgenstormSettingsListener.fire()
     }
 
     /** The file type of the file selected in the most recently opened project's editor, if any. */
