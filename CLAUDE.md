@@ -54,7 +54,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
   ├── .github/workflows/build.yml
   ├── SPEC.md, CLAUDE.md, README.md, CHANGELOG.md, LICENSE
   ```
-  What exists today: `core/AgenstormBundle.kt`, `messages/AgenstormBundle.properties`, `META-INF/plugin.xml` plus the three optional-dependency config files (`agenstorm-markdown.xml`, `agenstorm-php.xml`, `agenstorm-git.xml`, still empty), `src/test/kotlin/com/pronskiy/agenstorm/MyPluginTest.kt` with `src/test/testData/rename/`, and `.github/workflows/{build,release,run-ui-tests}.yml`.
+  What exists today: `core/AgenstormBundle.kt`, `core/AgenstormSettings.kt` (light `@Service`, `agenstorm.xml`), `core/AgenstormConfigurable.kt` (Tools → Agenstorm, one group + toggle per feature), `messages/AgenstormBundle.properties`, `META-INF/plugin.xml` plus the three optional-dependency config files (`agenstorm-markdown.xml`, `agenstorm-php.xml`, `agenstorm-git.xml`, still empty), `src/test/kotlin/com/pronskiy/agenstorm/MyPluginTest.kt` with `src/test/testData/rename/`, `src/test/kotlin/com/pronskiy/agenstorm/core/AgenstormSettingsTest.kt`, and `.github/workflows/{build,release,run-ui-tests}.yml`.
   One feature = one package = one optional `config-file` when it needs an optional plugin. Features never import each other; only `core/`.
 - **Style:** Kotlin official code style (IntelliJ default). No wildcard imports. Prefer Kotlin UI DSL (`com.intellij.ui.dsl.builder`) for settings panels. Every user-visible string goes through `AgenstormBundle` (`messages/AgenstormBundle.properties`). Run `./gradlew check` before every commit.
 - **Platform threading rules (non-negotiable):**

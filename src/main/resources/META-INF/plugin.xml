@@ -17,4 +17,13 @@
     <depends optional="true" config-file="agenstorm-git.xml">Git4Idea</depends>
 
     <resource-bundle>messages.AgenstormBundle</resource-bundle>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- AgenstormSettings is a light @Service (no XML registration needed). -->
+        <applicationConfigurable parentId="tools"
+                                 id="com.pronskiy.agenstorm"
+                                 instance="com.pronskiy.agenstorm.core.AgenstormConfigurable"
+                                 key="settings.display.name"
+                                 bundle="messages.AgenstormBundle"/>
+    </extensions>
 </idea-plugin>
