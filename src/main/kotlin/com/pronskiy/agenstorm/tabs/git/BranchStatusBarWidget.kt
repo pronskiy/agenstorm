@@ -129,7 +129,7 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         }
         val action = ActionManager.getInstance().getAction(BRANCHES_ACTION) ?: return
         val actionEvent = AnActionEvent.createEvent(action, DataManager.getInstance().getDataContext(label), null, ActionPlaces.STATUS_BAR_PLACE, ActionUiKind.NONE, event)
-        ActionUtil.performActionDumbAwareWithCallbacks(action, actionEvent)
+        ActionUtil.performAction(action, actionEvent)
     }
 
     companion object {
