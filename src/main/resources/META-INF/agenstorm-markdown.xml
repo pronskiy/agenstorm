@@ -15,5 +15,7 @@
         <!-- markdown (Epic F): live markup attaches to every main editor of a Markdown file. Public listener on purpose:
              the platform's TextEditorCustomizer hook is @ApiStatus.Internal and not on the SPEC.md §2 list. -->
         <editorFactoryListener implementation="com.pronskiy.agenstorm.markdown.LiveMarkupEditorListener"/>
+        <!-- markdown (Epic F): bold/italic/strike/link styling for files in live markup, only where the scheme lacks it. -->
+        <annotator language="Markdown" implementationClass="com.pronskiy.agenstorm.markdown.LiveMarkupAnnotator"/>
     </extensions>
 </idea-plugin>
