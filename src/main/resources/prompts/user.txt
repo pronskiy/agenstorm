@@ -1,0 +1,9 @@
+Branch: {branch}
+
+Hint from the author (follow it if present): {hint}
+
+Files:
+{stat}
+
+Diff:
+{diff}
