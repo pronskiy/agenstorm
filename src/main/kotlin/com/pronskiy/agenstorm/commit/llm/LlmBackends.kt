@@ -4,6 +4,7 @@ package com.pronskiy.agenstorm.commit.llm
 object LlmBackends {
 
     fun forId(id: String): LlmBackend? = when (id.trim()) {
+        AnthropicBackend.ID -> AnthropicBackend(apiKey = { ApiKeyStore.get(AnthropicBackend.ID) })
         FakeBackend.ID -> FakeBackend()
         else -> null
     }

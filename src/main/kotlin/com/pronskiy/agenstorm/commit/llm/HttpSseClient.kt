@@ -4,6 +4,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -32,6 +33,7 @@ class HttpSseClient(
         .build(),
 ) {
 
+    @OptIn(DelicateCoroutinesApi::class) // isClosedForSend: best-effort check whether the consumer already left
     fun lines(request: HttpRequest): Flow<String> = channelFlow {
         val future = client.sendAsync(request, HttpResponse.BodyHandlers.ofLines())
         var body: Stream<String>? = null
@@ -59,6 +61,7 @@ class HttpSseClient(
                     while (iterator.hasNext()) send(iterator.next())
                 }
             } catch (e: UncheckedIOException) {
+                // Closing the body after the consumer left also surfaces here; report it only while the channel is open.
                 if (!isClosedForSend) throw LlmException("Connection lost: ${rootMessage(e)}", e)
             } catch (e: IOException) {
                 if (!isClosedForSend) throw LlmException("Connection lost: ${rootMessage(e)}", e)
