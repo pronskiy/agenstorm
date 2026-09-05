@@ -62,6 +62,10 @@
     </applicationListeners>
 
     <actions resource-bundle="messages.AgenstormBundle">
+        <!-- tabs: the main-toolbar project widget becomes a strip of project tabs; feature off = the stock widget
+             (the class extends the internal ProjectToolbarWidgetAction, accepted by SPEC.md §2; E1.5 has the fallback). -->
+        <action id="main.toolbar.Project" class="com.pronskiy.agenstorm.tabs.ProjectTabsWidgetAction" overrides="true"/>
+
         <!-- links: copies relpath:line[:col] for the caret / selection start / clicked gutter line. No default shortcut. -->
         <action id="Agenstorm.CopyLocationLink"
                 class="com.pronskiy.agenstorm.links.CopyLocationLinkAction"
