@@ -505,7 +505,7 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
 | Daily-driver test | Author uses the feature for 10 real commits across two projects; ≥ 8 accepted with ≤ 1 line edited | 🔲 | |
-| Size | Plugin zip grew < 300 KB since Epic C | 🔲 | |
+| Size | Plugin zip grew < 300 KB since Epic C | ✅ | `agenstorm-0.0.1.zip`: 75,260 bytes at the end of Epic C (commit 3a255ca, rebuilt in a worktree) → 231,078 bytes after D3 = +152 KB, no third-party jars (2026-09-05) |
 | Verifier | `verifyPlugin` still clean (no new internal API usages beyond the documented ones) | 🔲 | |
 
 ---
