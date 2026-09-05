@@ -1,5 +1,5 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
-<idea-plugin>
+<idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
     <id>com.pronskiy.agenstorm</id>
     <name>Agenstorm</name>
     <vendor url="https://pronskiy.com" email="roman@pronskiy.com">Roman Pronskiy</vendor>
@@ -18,6 +18,10 @@
     <depends optional="true" config-file="agenstorm-git.xml">Git4Idea</depends>
 
     <resource-bundle>messages.AgenstormBundle</resource-bundle>
+
+    <!-- Always included, but kept separate: it is the one file that registers against an @ApiStatus.Internal
+         extension point (scratchLanguageFilter), so a future platform change shows up exactly here. -->
+    <xi:include href="/META-INF/agenstorm-scratch.xml"/>
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- AgenstormSettings is a light @Service (no XML registration needed). -->

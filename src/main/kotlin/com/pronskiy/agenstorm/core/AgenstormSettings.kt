@@ -30,6 +30,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var projectTabsEnabled: Boolean = true,
         /** Epic F: Obsidian-style live markup for Markdown. */
         var liveMarkupEnabled: Boolean = true,
+        /** Epic B: internal `FileType.name`s that stay in the New Scratch File popup when the filter is on. */
+        var scratchAllowedFileTypes: MutableList<String> = mutableListOf("PLAIN_TEXT", "Markdown", "PHP", "JavaScript"),
     )
 
     private var currentState = State()
