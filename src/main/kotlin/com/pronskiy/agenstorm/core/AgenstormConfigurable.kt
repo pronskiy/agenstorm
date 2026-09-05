@@ -10,7 +10,9 @@ import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.MutableProperty
 import com.intellij.ui.dsl.builder.Panel
+import com.intellij.ui.dsl.builder.bindIntText
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
@@ -18,6 +20,7 @@ import com.intellij.ui.dsl.builder.rows
 import com.pronskiy.agenstorm.commit.CommitSettingsPanel
 import com.pronskiy.agenstorm.frame.FrameTitleRefresher
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
+import com.pronskiy.agenstorm.tabs.ProjectTabsModel
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
 
@@ -66,7 +69,26 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
         featureGroup("settings.group.commit", "settings.commit.enabled", AgenstormSettings.State::commitEnabled) {
             commitPanel = CommitSettingsPanel(ApplicationManager.getApplication().getService(AgenstormAppScope::class.java).scope).also { it.render(this) }
         }
-        featureGroup("settings.group.tabs", "settings.tabs.enabled", AgenstormSettings.State::projectTabsEnabled, onApply = NativeTabsRegistryGuard::syncFromSettings)
+        featureGroup("settings.group.tabs", "settings.tabs.enabled", AgenstormSettings.State::projectTabsEnabled, onApply = ::applyTabSettings) {
+            row {
+                checkBox(AgenstormBundle.message("settings.tabs.mirrorBounds"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.tabsMirrorWindowBounds }, { AgenstormSettings.getInstance().state.tabsMirrorWindowBounds = it })
+                    .applyToComponent { name = "tabs.mirrorBounds" }
+            }
+            row {
+                checkBox(AgenstormBundle.message("settings.tabs.showIcons"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.tabsShowIcons }, { AgenstormSettings.getInstance().state.tabsShowIcons = it })
+                    .onApply { ProjectTabsModel.getInstance().refresh() }
+                    .applyToComponent { name = "tabs.showIcons" }
+            }
+            row(AgenstormBundle.message("settings.tabs.maxWidth")) {
+                intTextField(72..600, 10)
+                    .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.tabsMaxWidth }, { AgenstormSettings.getInstance().state.tabsMaxWidth = it }))
+                    .onApply { ProjectTabsModel.getInstance().refresh() }
+                    .applyToComponent { name = "tabs.maxWidth" }
+                    .comment(AgenstormBundle.message("settings.tabs.maxWidth.comment"))
+            }
+        }
         featureGroup("settings.group.markdown", "settings.markdown.liveMarkup.enabled", AgenstormSettings.State::liveMarkupEnabled)
     }
 
@@ -93,6 +115,15 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
             }
             extraRows()
         }
+    }
+
+    /**
+     * The tabs toggle changed: align the native-tabs registry key and re-render every strip. (A cell's apply
+     * callback only runs when that cell changed, so the icon and width rows carry their own refresh.)
+     */
+    private fun applyTabSettings() {
+        NativeTabsRegistryGuard.syncFromSettings()
+        ProjectTabsModel.getInstance().refresh()
     }
 
     /** The file type of the file selected in the most recently opened project's editor, if any. */

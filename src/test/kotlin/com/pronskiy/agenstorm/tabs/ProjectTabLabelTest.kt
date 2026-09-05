@@ -40,6 +40,18 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
         assertEquals(1, closed)
     }
 
+    fun testSettingsControlTheIconAndTheMaximumWidth() {
+        val long = FakeProjectHolder.another(project, "a-project-with-a-very-long-name-that-needs-an-ellipsis-for-sure")
+        val wide = ProjectTabLabel(long, selected = false, onSelect = {}, onClose = {}, maxWidth = 600)
+        val narrow = ProjectTabLabel(long, selected = false, onSelect = {}, onClose = {}, maxWidth = 100)
+        assertTrue(wide.preferredSize.width > narrow.preferredSize.width)
+        assertEquals(com.intellij.util.ui.JBUI.scale(100), narrow.preferredSize.width)
+
+        val noIcon = ProjectTabLabel(project, selected = false, onSelect = {}, onClose = {}, showIcon = false)
+        val withIcon = ProjectTabLabel(project, selected = false, onSelect = {}, onClose = {}, showIcon = true)
+        assertTrue(noIcon.preferredSize.width <= withIcon.preferredSize.width)
+    }
+
     private fun mouse(target: Component, id: Int, x: Int, y: Int) {
         target.dispatchEvent(MouseEvent(target, id, System.currentTimeMillis(), 0, x, y, 0, false))
     }

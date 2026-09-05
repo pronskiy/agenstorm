@@ -67,6 +67,11 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
         fire()
     }
 
+    /** Re-renders every strip, e.g. after the tab settings changed. */
+    fun refresh() {
+        fire()
+    }
+
     /** Stored order first (open keys only), then the keys the model has not seen, in the given order. */
     internal fun sortKeys(openKeys: Collection<String>): List<String> =
         state.order.filter { it in openKeys } + openKeys.filter { it !in state.order }

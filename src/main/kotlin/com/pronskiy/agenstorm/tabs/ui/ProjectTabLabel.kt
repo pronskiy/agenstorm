@@ -10,6 +10,7 @@ import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.NamedColorUtil
 import com.intellij.util.ui.UIUtil
+import com.pronskiy.agenstorm.core.AgenstormSettings
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
@@ -37,6 +38,8 @@ class ProjectTabLabel(
     private val onSelect: () -> Unit,
     private val onClose: () -> Unit,
     private val onContextMenu: (Component, Point) -> Unit = { _, _ -> },
+    showIcon: Boolean = AgenstormSettings.getInstance().state.tabsShowIcons,
+    private val maxWidth: Int = AgenstormSettings.getInstance().state.tabsMaxWidth,
 ) : JPanel(BorderLayout(JBUI.scale(4), 0)) {
 
     var isSelected: Boolean = selected
@@ -61,7 +64,7 @@ class ProjectTabLabel(
         }
 
     private var hovered = false
-    private val nameLabel = JBLabel(project.name, projectIcon(project), JBLabel.LEFT)
+    private val nameLabel = JBLabel(project.name, if (showIcon) projectIcon(project) else null, JBLabel.LEFT)
 
     /** The text shown on the tab (the project name). */
     val title: String get() = nameLabel.text
@@ -151,7 +154,7 @@ class ProjectTabLabel(
         val textWidth = getFontMetrics(nameLabel.font).stringWidth(project.name)
         val iconWidth = if (icon != null) icon.iconWidth + nameLabel.iconTextGap else 0
         val content = insets.left + iconWidth + textWidth + JBUI.scale(4) + AllIcons.Actions.Close.iconWidth + insets.right
-        return content.coerceIn(JBUI.scale(MIN_WIDTH), JBUI.scale(MAX_WIDTH))
+        return content.coerceIn(JBUI.scale(MIN_WIDTH), JBUI.scale(maxWidth.coerceIn(MIN_WIDTH, MAX_WIDTH_LIMIT)))
     }
 
     override fun getPreferredSize(): Dimension = Dimension(preferredWidth(isCompact), JBUI.scale(HEIGHT))
@@ -183,7 +186,9 @@ class ProjectTabLabel(
 
     companion object {
         const val MIN_WIDTH = 72
+        /** Default and upper bound of the "max tab width" setting. */
         const val MAX_WIDTH = 220
+        const val MAX_WIDTH_LIMIT = 600
         const val COMPACT_WIDTH = 32
         const val HEIGHT = 30
         private val LOG = logger<ProjectTabLabel>()

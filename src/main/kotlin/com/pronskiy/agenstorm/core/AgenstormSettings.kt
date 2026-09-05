@@ -55,6 +55,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var nativeTabsDisabledByAgenstorm: Boolean = false,
         /** Epic E: switching tabs moves the target window onto the current one's bounds (skipped in full screen). */
         var tabsMirrorWindowBounds: Boolean = true,
+        /** Epic E: project icons on the tabs. */
+        var tabsShowIcons: Boolean = true,
+        /** Epic E: widest a tab may grow before the name is ellipsized, in pixels (72–600). */
+        var tabsMaxWidth: Int = 220,
     )
 
     private var currentState = State()

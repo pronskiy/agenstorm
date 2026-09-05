@@ -126,6 +126,10 @@ only if Agenstorm was the one that switched them off. Tab order is remembered pe
 when even those do not fit the first ones stay and a "…" button lists the rest. Off macOS the strip works
 the same; there are simply no native tabs to replace.
 
+The **Project tabs** settings group holds the switch plus three options: move the other window onto
+this one's position and size when switching (on by default), show project icons, and the maximum tab
+width before names are shortened (220 px by default).
+
 Three actions come without a shortcut so they never collide with your keymap: **Next Project Tab**,
 **Previous Project Tab** (both wrap around) and **Close Project Tab**. Assign them under Settings → Keymap
 by searching for "Project Tab"; `Ctrl+Alt+Shift+]` and `Ctrl+Alt+Shift+[` are a natural pair for next and
