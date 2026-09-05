@@ -49,7 +49,7 @@ class GenerateCommitMessageAction : DumbAwareAction() {
         }
         val ui = e.getData(VcsDataKeys.COMMIT_WORKFLOW_UI) ?: return
         val message = e.getData(VcsDataKeys.COMMIT_MESSAGE_CONTROL) as? CommitMessage ?: return
-        val backend = LlmBackends.forId(AgenstormSettings.getInstance().state.commitBackendId) ?: return
+        val backend = LlmBackends.forId(AgenstormSettings.getInstance().state.commitBackendId, project = project) ?: return
         val changes = ui.getIncludedChanges()
         val unversioned = ui.getIncludedUnversionedFiles()
         if (changes.isEmpty() && unversioned.isEmpty()) {

@@ -38,6 +38,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var commitModel: String = "",
         /** Epic D: base URL of the OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, OpenRouter, Groq). */
         var commitOpenAiBaseUrl: String = "https://api.openai.com/v1",
+        /** Epic D: path to the `claude` executable; empty = PATH lookup plus the usual install locations. */
+        var commitClaudeCliPath: String = "",
+        /** Epic D: extra `claude -p` arguments; flags that may drift between CLI versions live here, not in code. */
+        var commitClaudeCliExtraArgs: String = "--tools \"\" --no-session-persistence",
         /** Epic D: budget for the unified diff sent to the model, in characters. */
         var commitMaxDiffChars: Int = 60_000,
         var commitConventionalCommits: Boolean = true,
