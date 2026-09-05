@@ -23,6 +23,13 @@
          extension point (scratchLanguageFilter), so a future platform change shows up exactly here. -->
     <xi:include href="/META-INF/agenstorm-scratch.xml"/>
 
+    <extensionPoints>
+        <!-- commit: repository facts for the prompt ({branch}); the Git provider is registered in agenstorm-git.xml. -->
+        <extensionPoint qualifiedName="com.pronskiy.agenstorm.commitContextProvider"
+                        interface="com.pronskiy.agenstorm.commit.context.CommitContextProvider"
+                        dynamic="true"/>
+    </extensionPoints>
+
     <extensions defaultExtensionNs="com.intellij">
         <!-- AgenstormSettings is a light @Service (no XML registration needed). -->
         <applicationConfigurable parentId="tools"

@@ -17,6 +17,7 @@ import com.intellij.openapi.vcs.VcsConfiguration
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.ui.CommitMessage
 import com.intellij.platform.ide.progress.withBackgroundProgress
+import com.pronskiy.agenstorm.commit.context.CommitContext
 import com.pronskiy.agenstorm.commit.llm.LlmBackend
 import com.pronskiy.agenstorm.commit.llm.LlmException
 import com.pronskiy.agenstorm.core.AgenstormBundle
@@ -63,10 +64,11 @@ class CommitGenerationService(private val project: Project, private val scope: C
                     }
                     replaceText(document, "", groupId)
                     val collected = readAction { DiffCollector(project, state.commitMaxDiffChars).collect(changes, unversioned) }
+                    val branch = readAction { CommitContext.branchName(project) }
                     val context = PromptContext(
                         diff = collected.diff,
                         stat = collected.stat,
-                        branch = "",
+                        branch = branch,
                         hint = hint,
                         language = state.commitLanguage,
                         conventionalCommits = state.commitConventionalCommits,

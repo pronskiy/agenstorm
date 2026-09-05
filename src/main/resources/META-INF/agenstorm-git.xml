@@ -1,4 +1,7 @@
 <!-- Loaded only when the Git plugin (Git4Idea) is present.
-     Epic D (AI commit messages) registers Git-specific extensions here. -->
+     Epic D: the current branch name for the commit message prompt ({branch}). -->
 <idea-plugin>
+    <extensions defaultExtensionNs="com.pronskiy.agenstorm">
+        <commitContextProvider implementation="com.pronskiy.agenstorm.commit.context.GitCommitContextProvider"/>
+    </extensions>
 </idea-plugin>
