@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D1 → step D1.2 — `DiffCollector`: changes → ranked, budgeted unified diff + stat (`IdeaTextPatchBuilder` + `UnifiedDiffWriter`), then D1.4.
+**Now on:** Epic D → Phase D1 → step D1.4 — `GenerateCommitMessageAction` in `Vcs.MessageActionGroup`: run/stop toggle, streaming into `CommitMessage` on the EDT in one undo group, `CommitGenerationService` (project-level coroutine scope), error balloon; settings fields for backend/model/prompts.
 
 ---
 
@@ -414,7 +414,7 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | D1.1 | `LlmBackend` interface + `LlmRequest`/`LlmChunk` model; `FakeBackend` for tests | ✅ | Chunks are plain `String` deltas (no `LlmChunk` type needed). `FakeBackend` lives in main (id `fake`) so the D1 guardrail can select it; configurable chunks, delay and failure. `FakeBackendTest` (plain JUnit, 4 cases) |
-| D1.2 | `DiffCollector`: changes → ranked, budgeted unified diff + stat | 🔲 | |
+| D1.2 | `DiffCollector`: changes → ranked, budgeted unified diff + stat | ✅ | Category by path/extension heuristics (not `FileType`); `VirtualFile.isTooLarge` does not exist in 262 → `FileSizeLimit.isTooLargeForContentLoading`. Per-file patch via `buildPatch(project, [change], basePath, false, true)` + `UnifiedDiffWriter.write`. `DiffCollectorTest` (7 cases incl. the 100 KB generated file budget case) |
 | D1.3 | `PromptBuilder` with templates and `{diff} {stat} {branch} {hint} {language}` variables | ✅ | Templates in `resources/prompts/{system,user}.txt`; `{conventional}` too; empty hint/branch → `(none)`/`(unknown)`; unknown placeholders kept. `PromptBuilderTest` (6 cases) |
 | D1.4 | `GenerateCommitMessageAction` in `Vcs.MessageActionGroup`: run/stop toggle, streaming into `CommitMessage`, single undo group | 🔲 | |
 | D1.5 | `MessagePostProcessor`: strip fences/prefixes, enforce subject length, wrap body at 72 | ✅ | Done before D1.2–D1.4 (the action depends on it). Subject length is *not* enforced (left to the platform inspection, as specified); also unquotes a single quoted line. `MessagePostProcessorTest` (9 cases) |
