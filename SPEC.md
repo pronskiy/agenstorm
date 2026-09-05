@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic E → **exit guardrails**, waiting for Roman's review (2026-09-05): Narrow window and Order survives restart by eye in a sandbox run; Daily-driver is a week of use; decision 18 to confirm. All E1/E2 steps are ✅. Next: Epic F → Phase F1 → step F1.1. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic E → **Phase E3** → step **E3.1** (hide the toolbar VCS group). Added 2026-09-05 from Roman's review; the Epic E exit guardrails stay open until E3 is done. Next after E3: Epic F → Phase F1 → step F1.1. Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -39,7 +39,7 @@ Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an a
 | HTTP / JSON | `java.net.http.HttpClient` (SSE via `BodyHandlers.ofLines()`); JSON via `kotlinx.serialization.json` bundled with the platform (`compileOnly`), Gson as fallback if the bundled artifact is unavailable | Zero extra jars; this is the whole reason not to use langchain4j |
 | Secrets | `PasswordSafe` via `CredentialAttributes(generateServiceName("Agenstorm", backendId))` | Never put API keys into `PersistentStateComponent` XML |
 | Settings | One app-level `AgenstormSettings : PersistentStateComponent` (`agenstorm.xml`) + one `Configurable` under Tools → Agenstorm with a group per feature and an on/off switch per feature | One place to find everything; each feature can be disabled by users who hit a conflict |
-| Internal API usage | `FrameTitleBuilder` override (incl. the `IdeFrameEx.setFileTitle` refresh on toggle), `scratchLanguageFilter`, `commentsReferenceProvider`, registry write for macOS window tabs, subclassing `ProjectToolbarWidgetAction` for the `main.toolbar.Project` override — all guarded by null checks / `Registry.is` and a feature toggle; `verifyPlugin` tolerates INTERNAL_API_USAGES on purpose | Public Marketplace plugin: a missing hook must log and no-op, never throw |
+| Internal API usage | `FrameTitleBuilder` override (incl. the `IdeFrameEx.setFileTitle` refresh on toggle), `scratchLanguageFilter`, `commentsReferenceProvider`, registry write for macOS window tabs, subclassing `ProjectToolbarWidgetAction` for the `main.toolbar.Project` override, `IdeStatusBarImpl.setCentralWidget` and `GitBranchesTreePopupOnBackend.create` for the status-bar branch (Phase E3) — all guarded by null checks / `Registry.is` / `LinkageError` catches and a feature toggle; `verifyPlugin` tolerates INTERNAL_API_USAGES on purpose | Public Marketplace plugin: a missing hook must log and no-op, never throw |
 | Markdown live markup mechanism | "Light" fold regions created manually via `FoldingModelEx.createFoldRegion` (not a `FoldingBuilder`) + a per-editor controller | Manual regions survive folding passes (`UpdateFoldRegionsOperation` keeps regions without `SIGNATURE`), can be 1 char long (builder regions < 2 chars are removed), and we own their lifecycle |
 | Project tabs mechanism | Own toolbar widget in `MainToolbarLeft` replacing `main.toolbar.Project`; native macOS window tabs disabled via registry | Re-parenting the platform's `WindowTabsComponent` breaks `MacWinTabsHandlerV2` bookkeeping (`getTabsComponent` requires exactly one child) |
 | Location link syntax | Bare `path:line[:col]` (GitHub/compiler style), resolved relative to file → project base → content roots → unique basename | It is what agents and tools already emit; no URL scheme, no Toolbox dependency |
@@ -590,6 +590,42 @@ Platform facts (verified against build 262):
 - **E2.3 — Actions.** Deliverable: three `DumbAwareAction`s registered in `plugin.xml`; README suggests shortcuts; no defaults to avoid keymap conflicts.
 - **E2.4 — Settings.** Deliverable: fields in `AgenstormSettings.State` + UI group.
 
+#### Phase E3 — Git branch out of the toolbar, into the status bar
+
+**Why:** with the project tabs in the toolbar's left slot, the Git widget right next to them competes for the same row and repeats what the tab already says about the project. Bottom-left, where the navigation bar (breadcrumbs) sits by default in the new UI, is where a branch belongs in an agent-driven workflow: always visible, never in the way. Requested by Roman during the Epic E review (2026-09-05).
+
+Platform facts (verified against build 262):
+
+- The toolbar's VCS slot is the group `MainToolbarVCSGroup`, declared by the Git plugin with `add-to-group MainToolbarLeft anchor="before" relative-to-action="MainToolbarGeneralActionsGroup"`; its children are `main.toolbar.git.Branches` (`com.intellij.vcs.git.frontend.widget.GitToolbarWidgetAction`, a frontend-module class), `main.toolbar.git.MergeRebase` and `Vcs.ToolbarWidget.CreateRepository`. Groups can be replaced with `<group id="…" class="…" overrides="true"/>`; whether children other plugins added survive the replacement is checked by a test (fallback: re-resolve the three ids).
+- The stock status-bar branch widget `git4idea.ui.branch.GitBranchWidget$Factory` (id `git`) is unavailable in the new UI while the main toolbar is visible: `isAvailable` = `(!isNewUI || isEnabledByDefault) && repositories non-empty`, `isEnabledByDefault` = `!(showNewMainToolbar && ToolbarSettings visible && available)`. An own widget is therefore needed: `StatusBarWidgetFactory` EP (public) with a `StatusBarWidget.MultipleTextValuesPresentation` (`getSelectedValue`, `getIcon`, `getTooltipText`, `getPopup`/`getClickConsumer`).
+- Branch data (public git4idea API): `GitRepositoryManager.getInstance(project).repositories`, `GitBranchUtil.guessWidgetRepository(project, file)`, `GitRepository.currentBranch?.name`, project-bus topic `GitRepository.GIT_REPO_CHANGE` (`GitRepositoryChangeListener.repositoryChanged`), plus `FileEditorManagerListener` for the current file.
+- Popup: `GitBranchesTreePopupOnBackend.create(project, repository): JBPopup` (public static, but the class carries `@ApiStatus.Internal`) is what the `Git.Branches` action shows via `showCenteredInCurrentWindow`. Preferred: the same popup shown under the widget; fallback when the class is missing: invoke the public action `Git.Branches`.
+- Bottom navigation bar: `UISettings.showNavigationBar` / `navBarLocation` (`NavBarLocation.BOTTOM`), `UISettings.fireUISettingsChanged()`. The status bar's left area is filled through `IdeStatusBarImpl.setCentralWidget(key, component)` (the nav bar's key is `IdeStatusBarImpl.NAVBAR_WIDGET_KEY` = `NavBar`); `IdeStatusBarImpl` is an impl class, so this is internal usage — guarded, with normal widget placement (`order="first"`) as the fallback.
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| E3.1 | `VcsToolbarGroup` overriding `MainToolbarVCSGroup` (in `agenstorm-git.xml`): hidden while project tabs and "branch in status bar" are on; stock children preserved (or re-resolved by id) so feature-off = stock toolbar | 🔲 | |
+| E3.2 | `BranchStatusBarWidget` + `Factory` (id `agenstorm.branch`, `agenstorm-git.xml`): current branch of the repository for the focused file (else the project's first), `AllIcons.Vcs.Branch`, tooltip = repository root; updates on `GIT_REPO_CHANGE` and editor switches; click → branches popup under the widget | 🔲 | |
+| E3.3 | Placement: hide the bottom navigation bar (`State.navBarHiddenByAgenstorm` remembers it was us, restored on feature-off like the registry key) and install the widget as the status bar's central widget; fail-soft to ordinary placement | 🔲 | |
+| E3.4 | Setting "Show the Git branch in the status bar instead of the toolbar" (default on) in the Project tabs group; README + CHANGELOG | 🔲 | |
+
+**Steps (detail):**
+
+- **E3.1 — Toolbar.** Deliverable: `tabs/git/VcsToolbarGroup.kt`, a `DefaultActionGroup` whose `update` sets the presentation invisible while `projectTabsEnabled && branchInStatusBar`; `getActionUpdateThread = BGT`. Registered as `<group id="MainToolbarVCSGroup" class="…" overrides="true"/>` inside `agenstorm-git.xml` so it only exists when Git4Idea is present. Test: `ActionManager.getAction("MainToolbarVCSGroup")` is ours and still lists `main.toolbar.git.Branches`; if the platform drops the children on replacement, `getChildren` re-resolves the three known ids.
+- **E3.2 — Widget.** Deliverable: `tabs/git/BranchStatusBarWidget.kt` (`StatusBarWidget` + `MultipleTextValuesPresentation`), `BranchStatusBarWidgetFactory` (`isAvailable` = feature on && Git repositories present; `isEnabledByDefault` = true). Text: `currentBranch?.name`, else the short revision or "no branch"; tooltip = repository root path. Refresh: `statusBar.updateWidget(ID)` on `GIT_REPO_CHANGE` (any repository) and on `FileEditorManagerListener.selectionChanged`. Click: `GitBranchesTreePopupOnBackend.create(project, repo).show(RelativePoint above the widget)` inside a `LinkageError` guard, else `ActionUtil.invokeAction(Git.Branches, component, place, event, null)`.
+- **E3.3 — Placement.** Deliverable: `tabs/git/BranchWidgetPlacement.kt` run from `TabsStartupActivity` and the settings hook. With the feature on: if `UISettings.showNavigationBar && navBarLocation == BOTTOM`, set `showNavigationBar = false`, mark `navBarHiddenByAgenstorm`, `fireUISettingsChanged()`; then `(WindowManager.getStatusBar(project) as? IdeStatusBarImpl)?.setCentralWidget("agenstorm.branch", widget.component)`. Feature off: remove the central widget, restore `showNavigationBar` only when the flag is set. Any `LinkageError`/cast failure → log once, keep the widget where the platform put it.
+- **E3.4 — Setting.** `State.branchInStatusBar = true`; checkbox in the Project tabs group named `tabs.branchInStatusBar` with an apply hook that re-runs the placement for every open project and refreshes the toolbar (`ActionToolbarImpl.updateAllToolbarsImmediately()`).
+
+**Exit guardrails — Phase E3**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Branch bottom-left | With the feature on, the current branch shows at the left end of the status bar where the breadcrumbs were; the toolbar has no VCS widget | 🔲 | |
+| Live | Checking out another branch (popup or terminal) updates the text within a second; switching editors between two repositories switches the branch shown | 🔲 | |
+| Popup | Clicking the branch opens the branches popup anchored to the widget (or centered, if the fallback path is in use — recorded) | 🔲 | |
+| Recovery | Feature off → toolbar VCS widget and the bottom navigation bar are back without restart | 🔲 | |
+| Log clean + verifier | No exceptions from the plugin; `verifyPlugin` Compatible, new internal usages listed in §2 | 🔲 | |
+
 **Exit guardrails — Epic E → Epic F**
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
@@ -757,6 +793,7 @@ Platform facts (verified against build 262):
 | 16 | 2026-09-05 | The Claude CLI backend disables extended thinking through the `MAX_THINKING_TOKENS=0` environment variable rather than a flag, and skips MCP servers with `--strict-mcp-config` in the default extra args | Roman found generation "quite slow": a one-line diff took 20–50 s on Haiku, almost all of it thinking. No CLI flag turns thinking off (`--effort low` had no effect; `--settings '{"alwaysThinkingEnabled":false}'` works but needs JSON quoting inside the extra-args field), so the backend sets the documented env var, overridable through its `environment` parameter. Result: ~3 s end to end | Claude, confirmed by Roman's report |
 | 17 | 2026-09-05 | The Claude CLI backend runs with `--safe-mode` by default, so the user's CLAUDE.md, plugins, skills, hooks and MCP servers stay out of commit-message generation | Measured per call with the plugin's prompt: ~6,000 prompt tokens (CLAUDE.md files, a plugin's session hook, 66 skills) versus 775 in safe mode, $0.012 versus $0.003 on Haiku, same ~3 s. Message style now comes only from the plugin's prompt and settings, which makes output identical across machines; users who want their CLAUDE.md rules applied remove the flag in the Extra arguments field. `--bare` was rejected because it refuses OAuth logins; `--disable-slash-commands` and `--setting-sources local` remove only part of the context | Roman |
 | 18 | 2026-09-05 | Project tabs keep extending the internal `ProjectToolbarWidgetAction` (no standalone fallback) | The verifier reports the subclassing as internal-API usage but stays Compatible on PhpStorm and IntelliJ IDEA 2026.2; Marketplace tolerates warnings of that kind, and `failureLevel` excludes them on purpose. Extending the stock action is what makes feature-off identical to stock. The E1.5 fallback (own `CustomComponentAction` + minimal dropdown) stays documented for the day the class becomes final or the usage becomes an error | Claude (proposed), Roman to confirm |
+| 19 | 2026-09-05 | With project tabs on, the Git branch leaves the main toolbar and takes the bottom-left of the status bar, replacing the navigation bar (breadcrumbs) | Roman, reviewing Epic E: the toolbar branch widget "does not make sense" next to project tabs, "where it does make sense is in the bottom toolbar, left corner, instead of breadcrumbs". The stock status-bar widget is unavailable while the new toolbar is shown, so the plugin ships its own (Phase E3); the toolbar VCS group is hidden by overriding it; both flips are reversible from the same toggle | Roman |
 
 ---
 
