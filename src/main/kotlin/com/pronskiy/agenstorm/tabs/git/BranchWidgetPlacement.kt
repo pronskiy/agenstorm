@@ -11,7 +11,6 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
 import com.intellij.ui.components.JBLabel
-import com.intellij.util.ui.JBUI
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.AgenstormSettingsListener
 import java.awt.BorderLayout
@@ -90,7 +89,6 @@ object BranchWidgetPlacement {
         val west = existing ?: JPanel().apply {
             this.layout = BoxLayout(this, BoxLayout.X_AXIS)
             isOpaque = false
-            border = JBUI.Borders.emptyLeft(4)
             bar.add(this, BorderLayout.WEST)
             own = this
         }

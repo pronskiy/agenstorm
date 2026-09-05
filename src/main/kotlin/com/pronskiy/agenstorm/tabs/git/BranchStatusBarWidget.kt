@@ -30,11 +30,16 @@ import git4idea.repo.GitRepositoryManager
 import git4idea.ui.branch.popup.GitBranchesTreePopupOnBackend
 import com.intellij.openapi.application.ModalityState
 import java.awt.BorderLayout
+import java.awt.Container
 import java.awt.Cursor
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
+import java.awt.event.HierarchyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 
 /**
  * Step E3.2. The Git branch of the repository behind the focused file (else the project's first repository),
@@ -52,13 +57,19 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         isVisible = false
     }
     internal val label = JBLabel(AllIcons.Vcs.Branch).apply {
-        border = JBUI.Borders.empty(0, 8)
+        border = JBUI.Borders.empty(0, JBUI.scale(DEFAULT_STRIPE_WIDTH), 0, RIGHT_PADDING)
         iconTextGap = JBUI.scale(4)
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 if (e.button == MouseEvent.BUTTON1) showPopup(e)
             }
+        })
+        // Pixel alignment with the tool window above: pad the icon out to the tool window stripe's right edge,
+        // whatever inset the status bar itself adds. Re-done whenever the label is shown or moved; converges.
+        addHierarchyListener { if (it.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong() != 0L && isShowing) alignWithToolWindowStripe() }
+        addComponentListener(object : ComponentAdapter() {
+            override fun componentMoved(e: ComponentEvent) = alignWithToolWindowStripe()
         })
     }
 
@@ -115,6 +126,32 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         }
     }
 
+    /** Left padding so the icon starts where the tool window content starts: at the left stripe's right edge. */
+    private fun alignWithToolWindowStripe() {
+        if (!label.isShowing) return
+        val root = SwingUtilities.getRoot(label) as? Container ?: return
+        val stripeRight = toolWindowStripeRightEdge(root) ?: JBUI.scale(DEFAULT_STRIPE_WIDTH)
+        val labelX = SwingUtilities.convertPoint(label, 0, 0, root).x
+        val left = alignmentPadding(stripeRight, labelX)
+        val current = label.insets.left
+        if (left != current) {
+            label.border = JBUI.Borders.empty(0, left, 0, RIGHT_PADDING)
+            label.revalidate()
+            label.repaint()
+        }
+    }
+
+    /** The right edge (in [root] coordinates) of the leftmost tool window stripe, found through its buttons. */
+    private fun toolWindowStripeRightEdge(root: Container): Int? {
+        val stripe = UIUtil.uiTraverser(root)
+            .filter { it.isShowing && it.javaClass.simpleName.endsWith("StripeButton") }
+            .map { it.parent }
+            .filterNotNull()
+            .firstOrNull { SwingUtilities.convertPoint(it, 0, 0, root).x <= JBUI.scale(8) }
+            ?: return null
+        return SwingUtilities.convertPoint(stripe, stripe.width, 0, root).x
+    }
+
     private fun showPopup(event: MouseEvent) {
         val repository = repository() ?: return
         val popup = try {
@@ -135,6 +172,12 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
     companion object {
         private val LOG = logger<BranchStatusBarWidget>()
         const val BRANCHES_ACTION = "Git.Branches"
+        /** Width of the new UI's tool window stripe, used until the real one has been measured. */
+        const val DEFAULT_STRIPE_WIDTH = 40
+        private val RIGHT_PADDING = JBUI.scale(8)
+
+        /** Padding that puts content starting at [labelX] onto [stripeRight]; never negative, never absurd. */
+        fun alignmentPadding(stripeRight: Int, labelX: Int): Int = (stripeRight - labelX).coerceIn(0, JBUI.scale(80))
 
         /** Branch name, else the first 8 characters of a detached revision, else a "no branch" text. */
         fun textFor(branch: String?, revision: String?): String =

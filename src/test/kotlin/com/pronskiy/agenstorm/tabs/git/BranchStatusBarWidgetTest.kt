@@ -44,6 +44,12 @@ class BranchStatusBarWidgetTest : BasePlatformTestCase() {
         assertEquals(AgenstormBundle.message("tabs.branch.noBranch"), BranchStatusBarWidget.textFor(null, null))
     }
 
+    fun testAlignmentPaddingMovesTheIconToTheStripeEdge() {
+        assertEquals(26, BranchStatusBarWidget.alignmentPadding(stripeRight = 40, labelX = 14))
+        assertEquals(0, BranchStatusBarWidget.alignmentPadding(stripeRight = 10, labelX = 30))
+        assertEquals(com.intellij.util.ui.JBUI.scale(80), BranchStatusBarWidget.alignmentPadding(stripeRight = 500, labelX = 0))
+    }
+
     fun testWidgetWithoutRepositoriesHidesItsComponent() {
         val widget = BranchStatusBarWidget(project)
         assertNull(widget.repository())
