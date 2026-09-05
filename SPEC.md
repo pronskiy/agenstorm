@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D2 → step D2.2 — `OpenAiCompatibleBackend` (`POST {baseUrl}/chat/completions`, `stream:true`, `choices[0].delta.content`, optional bearer key) with a local-server test.
+**Now on:** Epic D → Phase D2 → step D2.3 — `ClaudeCliBackend` (`claude -p --output-format text --tools "" --no-session-persistence [--model …] [--system-prompt …]`, prompt on stdin, `CapturingProcessHandler`, executable discovery) with a fake-script test.
 
 ---
 
@@ -462,7 +462,7 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | D2.1 | `AnthropicBackend`: Messages API, SSE, `content_block_delta` text deltas, API key from `PasswordSafe` | ✅ | Default model `claude-sonnet-5` (free-text override); no `thinking` param sent, so the model's default applies and thinking deltas are ignored. `ApiKeyStore` = `PasswordSafe` + `generateServiceName("Agenstorm", backendId)`. `AnthropicBackendTest` (6 cases) against recorded SSE in `testData/commit/` |
-| D2.2 | `OpenAiCompatibleBackend`: `POST {baseUrl}/chat/completions` with `stream:true`, SSE `choices[0].delta.content`, optional key | 🔲 | |
+| D2.2 | `OpenAiCompatibleBackend`: `POST {baseUrl}/chat/completions` with `stream:true`, SSE `choices[0].delta.content`, optional key | ✅ | Model required (no default OpenAI id guessed), no token-limit parameter (servers disagree on its name). Setting `commitOpenAiBaseUrl`. `OpenAiCompatibleBackendTest` (6 cases) |
 | D2.3 | `ClaudeCliBackend`: `claude -p` subprocess, prompt on stdin, text output; executable discovery | 🔲 | |
 | D2.4 | Shared `SseReader` over `HttpClient.sendAsync(..., BodyHandlers.ofLines())` with cancellation | ✅ | Split into `SseReader` (pure parser) and `HttpSseClient` (`channelFlow`, `invokeOnClose` cancels the future and closes the body stream; `error.message` extraction with bundled `kotlinx.serialization.json`). `SseReaderTest` 5, `HttpSseClientTest` 4 (incl. cancellation under 5 s against a hanging server) |
 | D2.5 | Backend tests against a local `com.sun.net.httpserver.HttpServer` serving canned SSE; CLI test with a fake `claude` script | 🔲 | |
