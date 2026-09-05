@@ -4,8 +4,17 @@
     <name>Agenstorm</name>
     <vendor url="https://pronskiy.com" email="roman@pronskiy.com">Roman Pronskiy</vendor>
 
+    <!-- <idea-version since-build/until-build> is patched in by the Gradle build from
+         pluginSinceBuild / pluginUntilBuild in gradle.properties (262 / 262.*). -->
+
     <depends>com.intellij.modules.platform</depends>
-    <depends>com.jetbrains.php</depends>
+    <depends>com.intellij.modules.vcs</depends>
+
+    <!-- Optional dependencies: one config file per feature package that needs a bundled plugin.
+         The plugin must load (and every core feature must work) in IDEs where these are absent. -->
+    <depends optional="true" config-file="agenstorm-markdown.xml">org.intellij.plugins.markdown</depends>
+    <depends optional="true" config-file="agenstorm-php.xml">com.jetbrains.php</depends>
+    <depends optional="true" config-file="agenstorm-git.xml">Git4Idea</depends>
 
     <resource-bundle>messages.AgenstormBundle</resource-bundle>
 </idea-plugin>

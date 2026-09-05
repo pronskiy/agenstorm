@@ -23,7 +23,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
 ```
 
 - **Toolchain:** Kotlin 2.3.10, JVM toolchain 21 (the Foojay resolver provisions a JDK if none matches), Gradle 9.3.1 with Kotlin DSL, IntelliJ Platform Gradle Plugin 2.x. Plugin and library versions live in `gradle/libs.versions.toml`.
-- **`gradle.properties`** holds the plugin metadata (`pluginGroup`, `pluginName`, `pluginVersion`, `pluginSinceBuild`, `platformVersion`) and the platform dependencies (`platformBundledPlugins`, currently `com.jetbrains.php`; add `org.intellij.plugins.markdown` and `Git4Idea` when their epics start). `build.gradle.kts` reads everything through `providers.gradleProperty(...)` — change the properties, not the script.
+- **`gradle.properties`** holds the plugin metadata (`pluginGroup`, `pluginName`, `pluginVersion`, `pluginSinceBuild`, `pluginUntilBuild`, `platformVersion`) and the platform dependencies (`platformBundledPlugins`, currently `com.jetbrains.php`; add `org.intellij.plugins.markdown` and `Git4Idea` when their epics start). `build.gradle.kts` reads everything through `providers.gradleProperty(...)` — change the properties, not the script.
 - **Marketplace metadata:** the plugin description is extracted from `README.md` between the `<!-- Plugin description -->` markers (the build fails without them); change notes come from the `[Unreleased]` section of `CHANGELOG.md` (Keep a Changelog) via the Gradle Changelog Plugin.
 - Kotlin stdlib is not bundled (`kotlin.stdlib.default.dependency = false`) — the platform's copy is used. Gradle configuration cache and build cache are on.
 - Sandbox IDE logs: `build/idea-sandbox/*/log/idea.log`.
@@ -54,7 +54,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
   ├── .github/workflows/build.yml
   ├── SPEC.md, CLAUDE.md, README.md, CHANGELOG.md, LICENSE
   ```
-  What exists today: `core/AgenstormBundle.kt`, `messages/AgenstormBundle.properties`, `META-INF/plugin.xml` (hard `depends` on `com.jetbrains.php` until step 01.2 makes it optional), `src/test/kotlin/com/pronskiy/agenstorm/MyPluginTest.kt` with `src/test/testData/rename/`, and `.github/workflows/{build,release,run-ui-tests}.yml`.
+  What exists today: `core/AgenstormBundle.kt`, `messages/AgenstormBundle.properties`, `META-INF/plugin.xml` plus the three optional-dependency config files (`agenstorm-markdown.xml`, `agenstorm-php.xml`, `agenstorm-git.xml`, still empty), `src/test/kotlin/com/pronskiy/agenstorm/MyPluginTest.kt` with `src/test/testData/rename/`, and `.github/workflows/{build,release,run-ui-tests}.yml`.
   One feature = one package = one optional `config-file` when it needs an optional plugin. Features never import each other; only `core/`.
 - **Style:** Kotlin official code style (IntelliJ default). No wildcard imports. Prefer Kotlin UI DSL (`com.intellij.ui.dsl.builder`) for settings panels. Every user-visible string goes through `AgenstormBundle` (`messages/AgenstormBundle.properties`). Run `./gradlew check` before every commit.
 - **Platform threading rules (non-negotiable):**

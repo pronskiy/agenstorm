@@ -1,0 +1,4 @@
+<!-- Loaded only when the PHP plugin (com.jetbrains.php) is present.
+     Epic A (path:line:col links in PHP string literals) registers its extensions here. -->
+<idea-plugin>
+</idea-plugin>

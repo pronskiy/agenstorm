@@ -1,0 +1,4 @@
+<!-- Loaded only when the Git plugin (Git4Idea) is present.
+     Epic D (AI commit messages) registers Git-specific extensions here. -->
+<idea-plugin>
+</idea-plugin>

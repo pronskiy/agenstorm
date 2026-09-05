@@ -1,0 +1,4 @@
+<!-- Loaded only when the Markdown plugin (org.intellij.plugins.markdown) is present.
+     Epic A (path:line:col links in Markdown link destinations) and Epic F (live markup) register their extensions here. -->
+<idea-plugin>
+</idea-plugin>
