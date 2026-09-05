@@ -23,7 +23,7 @@ class SettingsSmokeTest : BasePlatformTestCase() {
 
         val required = plugin.dependencies.filterNot { it.isOptional }.map { it.pluginId.idString }.toSet()
         val optional = plugin.dependencies.filter { it.isOptional }.map { it.pluginId.idString }.toSet()
-        assertEquals(setOf("com.intellij.modules.platform", "com.intellij.modules.vcs"), required)
+        assertEquals(setOf("com.intellij.modules.platform", "com.intellij.modules.lang", "com.intellij.modules.vcs"), required)
         assertEquals(setOf("org.intellij.plugins.markdown", "com.jetbrains.php", "Git4Idea"), optional)
     }
 

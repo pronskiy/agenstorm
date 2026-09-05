@@ -8,6 +8,7 @@
          pluginSinceBuild / pluginUntilBuild in gradle.properties (262 / 262.*). -->
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
     <depends>com.intellij.modules.vcs</depends>
 
     <!-- Optional dependencies: one config file per feature package that needs a bundled plugin.
@@ -25,5 +26,11 @@
                                  instance="com.pronskiy.agenstorm.core.AgenstormConfigurable"
                                  key="settings.display.name"
                                  bundle="messages.AgenstormBundle"/>
+
+        <!-- links: path:line[:col] tokens in comments of every language (keyed collector, see ReferenceProviderType). -->
+        <referenceProviderType key="commentsReferenceProvider"
+                               implementationClass="com.pronskiy.agenstorm.links.comments.CommentLocationReferenceProvider"/>
+        <!-- links: Go to Declaration for hosts whose getReferences() does not consult the registry (PHPDoc & co). -->
+        <gotoDeclarationHandler implementation="com.pronskiy.agenstorm.links.LocationGotoDeclarationHandler"/>
     </extensions>
 </idea-plugin>
