@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A1 → step A1.3 — `FileLocationSymbol` (`NavigatableSymbol`) + `FileLocationSymbolReference` (`PsiSymbolReference` + `PsiHighlightedReference`).
+**Now on:** Epic A → Phase A1 → step A1.4 — `MarkdownLocationReferenceProvider` for `MarkdownLinkDestination`, registered in `agenstorm-markdown.xml` (add `org.intellij.plugins.markdown` to `platformBundledPlugins`).
 
 ---
 
@@ -182,7 +182,7 @@ Platform facts the implementation relies on (verified against build 262):
 |------|-------------|--------|-------|
 | A1.1 | `FileLocation` model + `FileLocationParser` (regex, negative cases) with unit tests | ✅ | Plain JUnit `FileLocationParserTest`, 12 cases (full corpus + `https://example.com/a/b.php:42`, punctuation, 7-digit lines). Lookbehind also rejects a preceding `.` so URL paths never match; line/column 0 are dropped |
 | A1.2 | `FileLocationResolver`: containing dir → project base → content roots → unique basename | ✅ | Absolute paths are tried first; directories never resolve; `toOffset` clamps. `FileLocationResolverTest` (9 cases) on the light fixture incl. basename fallback with three `Foo.php` candidates |
-| A1.3 | `FileLocationSymbol` (`NavigatableSymbol`) + `FileLocationSymbolReference` (`PsiHighlightedReference`) | 🔲 | |
+| A1.3 | `FileLocationSymbol` (`NavigatableSymbol`) + `FileLocationSymbolReference` (`PsiHighlightedReference`) | ✅ | Reference is built by `create(host, match)` only when the location resolves and carries the file; separate `FileLocationNavigationTarget` exposes `offset`. `navigationRequest()` must run off the EDT (platform assertion). `FileLocationSymbolReferenceTest`, 5 cases |
 | A1.4 | `MarkdownLocationReferenceProvider` registered for `MarkdownLinkDestination` in `agenstorm-markdown.xml` | 🔲 | |
 | A1.5 | Tests: resolve + navigation offset for `.md` fixtures | 🔲 | |
 
