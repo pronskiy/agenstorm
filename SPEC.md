@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D1 → step D1.1 — `LlmBackend` interface + `LlmRequest` model, `LlmException`, and a `FakeBackend` (selectable for tests and the D1 guardrail run). Epic C is complete; its guardrails passed on 2026-09-05.
+**Now on:** Epic D → Phase D1 → step D1.5 (taken before D1.2–D1.4 because the action depends on it) — `MessagePostProcessor`: strip prefixes/fences, wrap body at 72, one blank line, body toggle.
 
 ---
 
@@ -413,7 +413,7 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| D1.1 | `LlmBackend` interface + `LlmRequest`/`LlmChunk` model; `FakeBackend` for tests | 🔲 | |
+| D1.1 | `LlmBackend` interface + `LlmRequest`/`LlmChunk` model; `FakeBackend` for tests | ✅ | Chunks are plain `String` deltas (no `LlmChunk` type needed). `FakeBackend` lives in main (id `fake`) so the D1 guardrail can select it; configurable chunks, delay and failure. `FakeBackendTest` (plain JUnit, 4 cases) |
 | D1.2 | `DiffCollector`: changes → ranked, budgeted unified diff + stat | 🔲 | |
 | D1.3 | `PromptBuilder` with templates and `{diff} {stat} {branch} {hint} {language}` variables | 🔲 | |
 | D1.4 | `GenerateCommitMessageAction` in `Vcs.MessageActionGroup`: run/stop toggle, streaming into `CommitMessage`, single undo group | 🔲 | |
