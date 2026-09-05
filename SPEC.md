@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic 0 → Phase 01 → step 01.1 — create the Gradle project skeleton with the IntelliJ Platform Gradle Plugin 2.x targeting PhpStorm 2026.2.
+**Now on:** Epic 0 → Phase 01 → step 01.2 — `plugin.xml` with id, MIT vendor block, `since/until-build`, optional depends and per-feature config files.
 
 ---
 
@@ -100,7 +100,7 @@ All epics are MVP. Recommended order: 0 → A → B → C → D → E → F (val
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| 01.1 | Gradle project with IntelliJ Platform Gradle Plugin 2.x targeting PhpStorm 2026.2 | 🔲 | |
+| 01.1 | Gradle project with IntelliJ Platform Gradle Plugin 2.x targeting PhpStorm 2026.2 | ✅ | Template scaffold renamed and building against PhpStorm 2026.2 with plugin id `com.pronskiy.agenstorm` (commits c6437b3, 8b2c590) |
 | 01.2 | `plugin.xml` with id, MIT vendor block, `since/until-build`, optional depends and per-feature config files | 🔲 | |
 | 01.3 | `AgenstormSettings` + `AgenstormConfigurable` with a toggle per feature | 🔲 | |
 | 01.4 | Test framework wired: one `BasePlatformTestCase` smoke test | 🔲 | |
