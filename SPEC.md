@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A1 → step A1.5 — fixture-based tests in `testData/links/md/` (resolve, navigation offset, `../` path, missing file).
+**Now on:** Epic A → Phase A1 exit guardrails — Parser corpus verified; waiting for Roman to confirm **Markdown navigation** and **No regressions** by eye in `runIde` (demo project in the session scratchpad, see the A1 guardrail rows). Next: Phase A2 → step A2.1 (`CommentLocationReferenceProvider`).
 
 ---
 
@@ -184,7 +184,7 @@ Platform facts the implementation relies on (verified against build 262):
 | A1.2 | `FileLocationResolver`: containing dir → project base → content roots → unique basename | ✅ | Absolute paths are tried first; directories never resolve; `toOffset` clamps. `FileLocationResolverTest` (9 cases) on the light fixture incl. basename fallback with three `Foo.php` candidates |
 | A1.3 | `FileLocationSymbol` (`NavigatableSymbol`) + `FileLocationSymbolReference` (`PsiHighlightedReference`) | ✅ | Reference is built by `create(host, match)` only when the location resolves and carries the file; separate `FileLocationNavigationTarget` exposes `offset`. `navigationRequest()` must run off the EDT (platform assertion). `FileLocationSymbolReferenceTest`, 5 cases |
 | A1.4 | `MarkdownLocationReferenceProvider` registered for `MarkdownLinkDestination` in `agenstorm-markdown.xml` | ✅ | Registration needs `referenceClass=FileLocationSymbolReference` or `HyperlinkAnnotator` never sees the reference; `highlightReference` must set `HIGHLIGHTED_REFERENCE` (default sets nothing). Added `LocationLinkInspectionSuppressor` (`lang.inspectionSuppressor`) because `MarkdownUnresolvedFileReference` warns on `Foo.php:3:5`. The Markdown plugin's `LineNumberPathReferenceProvider` only handles `#L10` anchors, no conflict. 6 tests incl. highlighting + suppression |
-| A1.5 | Tests: resolve + navigation offset for `.md` fixtures | 🔲 | |
+| A1.5 | Tests: resolve + navigation offset for `.md` fixtures | ✅ | `testData/links/md/` (`src/Foo.php`, `README.md`, `docs/plan.md`); `MarkdownLocationReferenceTest` (5 cases): resolution as written incl. `../`, offset vs. target document, one highlight per resolvable link, warning only on the broken link, heading anchors untouched |
 
 **Steps (detail):**
 
@@ -258,9 +258,9 @@ Platform facts the implementation relies on (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Parser corpus | 100% of positive/negative corpus cases pass in `FileLocationParserTest` | 🔲 | |
-| Markdown navigation | In `runIde`, Cmd+click on `[x](src/Foo.php:3:5)` opens `Foo.php` with caret at line 3 col 5; hover shows underline | 🔲 | |
-| No regressions | `[y](other.md#heading)` still resolves via the Markdown plugin; no duplicate highlight | 🔲 | |
+| Parser corpus | 100% of positive/negative corpus cases pass in `FileLocationParserTest` | ✅ | 12/12 on 2026-09-05 (`./gradlew check`), corpus extended with a URL path and 7-digit line number |
+| Markdown navigation | In `runIde`, Cmd+click on `[x](src/Foo.php:3:5)` opens `Foo.php` with caret at line 3 col 5; hover shows underline | 🔄 | Offset and highlight are covered by `MarkdownLocationReferenceTest`; the click itself awaits Roman's check in the sandbox |
+| No regressions | `[y](other.md#heading)` still resolves via the Markdown plugin; no duplicate highlight | 🔄 | Automated: anchor reference still resolves and each destination gets exactly one `HIGHLIGHTED_REFERENCE`; the Markdown plugin's unresolved-file warning is suppressed only where a location resolves. Visual confirmation pending |
 
 #### Phase A2 — Comments, PHP strings, Copy Location Link
 
