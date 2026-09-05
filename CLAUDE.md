@@ -13,12 +13,12 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
 ## Build
 
 ```bash
-./gradlew build              # compile + test + plugin structure check
-./gradlew check              # everything `build` verifies — run before every commit
+./gradlew build              # assemble + check
+./gradlew check              # compile + test + Kover coverage — run before every commit
 ./gradlew test               # unit tests only
 ./gradlew runIde             # PhpStorm 2026.2 sandbox with the plugin loaded
 ./gradlew buildPlugin        # distributable ZIP in build/distributions/
-./gradlew verifyPlugin       # IntelliJ Plugin Verifier against the recommended IDEs (downloads them)
+./gradlew verifyPlugin       # IntelliJ Plugin Verifier against the recommended IDEs (downloads them; not part of check)
 ./gradlew publishPlugin      # JetBrains Marketplace (needs PUBLISH_TOKEN)
 ```
 
