@@ -105,16 +105,36 @@ class CommitSettingsPanelTest : BasePlatformTestCase() {
 
         configurable.apply()
 
-        assertEquals("sk-ant-secret", ApiKeyStore.get("anthropic"))
-        assertEquals("sk-oa-secret", ApiKeyStore.get("openai"))
+        // Keys are written off the EDT, so the store catches up a moment later.
+        waitFor("keys not stored") { ApiKeyStore.get("anthropic") == "sk-ant-secret" && ApiKeyStore.get("openai") == "sk-oa-secret" }
         val serialized = com.intellij.util.xmlb.XmlSerializer.serialize(AgenstormSettings.getInstance().state).toString()
         assertFalse(serialized.contains("secret"))
 
-        // A fresh panel reads the stored keys back.
+        // A fresh panel reads the stored keys back, in the background, without looking modified.
         val again = AgenstormConfigurable()
         try {
             val fresh = again.createComponent()
-            assertEquals("sk-ant-secret", String(UIUtil.uiTraverser(fresh).filter { it.name == "commit.anthropic.key" }.first().let { (it as JBPasswordField).password }))
+            val field = UIUtil.uiTraverser(fresh).filter { it.name == "commit.anthropic.key" }.first() as JBPasswordField
+            waitFor("stored key not loaded into the fresh panel") { String(field.password) == "sk-ant-secret" }
+            assertFalse(again.isModified)
+        } finally {
+            again.disposeUIResources()
+        }
+    }
+
+    fun testAKeyTypedBeforeTheStoreAnswersIsKept() {
+        ApiKeyStore.set("anthropic", "sk-ant-stored")
+        ApiKeyStore.set("openai", "sk-oa-stored")
+        val again = AgenstormConfigurable()
+        try {
+            val fresh = again.createComponent()
+            val anthropic = UIUtil.uiTraverser(fresh).filter { it.name == "commit.anthropic.key" }.first() as JBPasswordField
+            val openAi = UIUtil.uiTraverser(fresh).filter { it.name == "commit.openai.key" }.first() as JBPasswordField
+            anthropic.text = "sk-ant-typed"
+            // The OpenAI field filling up proves the background load has finished.
+            waitFor("background load did not finish") { String(openAi.password) == "sk-oa-stored" }
+            assertEquals("sk-ant-typed", String(anthropic.password))
+            assertTrue(again.isModified)
         } finally {
             again.disposeUIResources()
         }
@@ -152,6 +172,9 @@ class CommitSettingsPanelTest : BasePlatformTestCase() {
             args.delete()
         }
     }
+
+    private fun waitFor(message: String, condition: () -> Boolean) =
+        PlatformTestUtil.waitWithEventsDispatching(message, condition, 10)
 
     private inline fun <reified T : Component> named(name: String): T {
         val component = UIUtil.uiTraverser(panel).filter { it.name == name }.first()

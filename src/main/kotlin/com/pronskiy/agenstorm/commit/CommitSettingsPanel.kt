@@ -27,14 +27,17 @@ import com.pronskiy.agenstorm.core.AgenstormConfigurable.BackendOption
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.swing.JLabel
 
 /**
- * The rows of the "Commit messages" settings group. API keys are read from [ApiKeyStore] when the panel is
- * built and written back on apply; they never touch `agenstorm.xml`. "Test Connection" runs the selected
- * backend's `validate()` with the values currently typed (not yet applied) on [scope].
+ * The rows of the "Commit messages" settings group. API keys come from [ApiKeyStore] and never touch
+ * `agenstorm.xml`: PasswordSafe forbids keychain access on the EDT, so the fields start empty, [loadStoredKeys]
+ * fills them from a background coroutine once the panel is built, and a changed key is written back off the EDT
+ * on apply. "Test Connection" runs the selected backend's `validate()` with the values currently typed (not yet
+ * applied) on [scope]. Call [dispose] when the page closes.
  */
 class CommitSettingsPanel(private val scope: CoroutineScope) {
 
@@ -43,6 +46,10 @@ class CommitSettingsPanel(private val scope: CoroutineScope) {
 
     private var anthropicKey: String = ""
     private var openAiKey: String = ""
+    /** What PasswordSafe holds, once known: null until [loadStoredKeys] has answered or a save has happened. */
+    private var storedAnthropicKey: String? = null
+    private var storedOpenAiKey: String? = null
+    private var keyLoad: Job? = null
     private var cliPath: String
         get() = state.commitClaudeCliPath
         set(value) {
@@ -59,9 +66,6 @@ class CommitSettingsPanel(private val scope: CoroutineScope) {
     private var testResult: JLabel? = null
 
     fun render(panel: Panel) {
-        anthropicKey = ApiKeyStore.get(AnthropicBackend.ID) ?: ""
-        openAiKey = ApiKeyStore.get(OpenAiCompatibleBackend.ID) ?: ""
-
         panel.row(AgenstormBundle.message("settings.commit.backend")) {
             backendCombo = comboBox(BACKENDS)
                 .bindItem(
@@ -86,7 +90,7 @@ class CommitSettingsPanel(private val scope: CoroutineScope) {
         panel.row(AgenstormBundle.message("settings.commit.apiKey")) {
             anthropicKeyField = passwordField()
                 .bindText(::anthropicKey)
-                .onApply { ApiKeyStore.set(AnthropicBackend.ID, anthropicKey) }
+                .onApply { saveKey(AnthropicBackend.ID, anthropicKey, storedAnthropicKey) { storedAnthropicKey = it } }
                 .align(AlignX.FILL)
                 .applyToComponent { name = "commit.anthropic.key" }
                 .comment(AgenstormBundle.message("settings.commit.apiKey.comment"))
@@ -103,7 +107,7 @@ class CommitSettingsPanel(private val scope: CoroutineScope) {
         panel.row(AgenstormBundle.message("settings.commit.apiKey")) {
             openAiKeyField = passwordField()
                 .bindText(::openAiKey)
-                .onApply { ApiKeyStore.set(OpenAiCompatibleBackend.ID, openAiKey) }
+                .onApply { saveKey(OpenAiCompatibleBackend.ID, openAiKey, storedOpenAiKey) { storedOpenAiKey = it } }
                 .align(AlignX.FILL)
                 .applyToComponent { name = "commit.openai.key" }
                 .comment(AgenstormBundle.message("settings.commit.openai.apiKey.comment"))
@@ -154,6 +158,43 @@ class CommitSettingsPanel(private val scope: CoroutineScope) {
         }
         promptRow(panel, "settings.commit.systemPrompt", "commit.systemPrompt", PromptBuilder.DEFAULT_SYSTEM, { state.commitSystemPrompt }, { state.commitSystemPrompt = it })
         promptRow(panel, "settings.commit.userPrompt", "commit.userPrompt", PromptBuilder.DEFAULT_USER, { state.commitUserPrompt }, { state.commitUserPrompt = it })
+        loadStoredKeys()
+    }
+
+    /** Cancels a key load still in flight; the page is closing and nobody is waiting for the fields. */
+    fun dispose() {
+        keyLoad?.cancel()
+        keyLoad = null
+    }
+
+    /**
+     * Reads both keys off the EDT and shows them without marking the page modified (the bound property moves
+     * together with the field). A key the user typed before the answer arrived wins; a key saved meanwhile too.
+     */
+    private fun loadStoredKeys() {
+        keyLoad = scope.launch {
+            val anthropic = ApiKeyStore.load(AnthropicBackend.ID) ?: ""
+            val openAi = ApiKeyStore.load(OpenAiCompatibleBackend.ID) ?: ""
+            withContext(Dispatchers.EDT) {
+                if (storedAnthropicKey == null) {
+                    storedAnthropicKey = anthropic
+                    anthropicKey = anthropic
+                    if (anthropicKeyField.password.isEmpty()) anthropicKeyField.text = anthropic
+                }
+                if (storedOpenAiKey == null) {
+                    storedOpenAiKey = openAi
+                    openAiKey = openAi
+                    if (openAiKeyField.password.isEmpty()) openAiKeyField.text = openAi
+                }
+            }
+        }
+    }
+
+    /** Writes a key that differs from the stored one, off the EDT; an unchanged key costs no keychain round trip. */
+    private fun saveKey(backendId: String, key: String, stored: String?, remember: (String) -> Unit) {
+        if (key == (stored ?: "")) return
+        remember(key)
+        scope.launch { ApiKeyStore.store(backendId, key) }
     }
 
     /** Shows the effective template; a value equal to the built-in default is stored as "" (= default). */

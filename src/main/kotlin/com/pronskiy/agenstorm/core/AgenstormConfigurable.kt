@@ -32,6 +32,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
     }
 
     private var allowListArea: JBTextArea? = null
+    private var commitPanel: CommitSettingsPanel? = null
 
     override fun createPanel(): DialogPanel = panel {
         row {
@@ -62,7 +63,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
         }
         featureGroup("settings.group.frame", "settings.frame.hideFileName", AgenstormSettings.State::hideFileNameInTitle, onApply = FrameTitleRefresher::refreshOpenFrames)
         featureGroup("settings.group.commit", "settings.commit.enabled", AgenstormSettings.State::commitEnabled) {
-            CommitSettingsPanel(ApplicationManager.getApplication().getService(AgenstormAppScope::class.java).scope).render(this)
+            commitPanel = CommitSettingsPanel(ApplicationManager.getApplication().getService(AgenstormAppScope::class.java).scope).also { it.render(this) }
         }
         featureGroup("settings.group.tabs", "settings.tabs.enabled", AgenstormSettings.State::projectTabsEnabled)
         featureGroup("settings.group.markdown", "settings.markdown.liveMarkup.enabled", AgenstormSettings.State::liveMarkupEnabled)
@@ -70,6 +71,8 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
 
     override fun disposeUIResources() {
         allowListArea = null
+        commitPanel?.dispose()
+        commitPanel = null
         super.disposeUIResources()
     }
 
