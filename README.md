@@ -110,6 +110,20 @@ Configure the backend under Settings → Tools → Agenstorm → Commit messages
 The action has no default shortcut; `Ctrl+Alt+Shift+G` is free in the default keymaps (Settings → Keymap,
 search for "Generate Commit Message").
 
+## Project tabs
+
+On macOS, open projects appear as tabs inside the main toolbar, in the slot where the project widget
+normally sits, so the window has one header row instead of two. Each tab shows the project icon and
+name only; the frame's own project is highlighted. Click a tab to switch to that project's window (the
+target window first moves onto the current window's bounds, unless one of them is in full screen),
+middle-click or use the × to close it, and the "+" button opens the usual recent-projects popup with
+New Project, Open and Clone. Right-click a tab for Close, Close Others and Copy Path.
+
+The native macOS project tabs are switched off while this feature is on (a balloon offers to restart
+the IDE, which the change needs). Turning the feature off restores them after another restart, but
+only if Agenstorm was the one that switched them off. Tab order is remembered per project in
+`agenstorm-tabs.xml`. Off macOS the strip works the same; there are simply no native tabs to replace.
+
 ## Development
 
 ```bash
