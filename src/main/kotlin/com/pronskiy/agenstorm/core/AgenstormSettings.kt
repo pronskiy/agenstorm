@@ -51,6 +51,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         /** Epic D: prompt templates; empty = the built-in templates in `resources/prompts/`. */
         var commitSystemPrompt: String = "",
         var commitUserPrompt: String = "",
+        /** Epic E: set when Agenstorm turned the native macOS project tabs off, so turning the feature off restores them; a user's own registry choice is left alone. */
+        var nativeTabsDisabledByAgenstorm: Boolean = false,
     )
 
     private var currentState = State()

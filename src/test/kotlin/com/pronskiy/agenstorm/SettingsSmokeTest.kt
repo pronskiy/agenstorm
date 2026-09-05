@@ -14,6 +14,20 @@ import com.pronskiy.agenstorm.core.AgenstormSettings
  */
 class SettingsSmokeTest : BasePlatformTestCase() {
 
+    override fun setUp() {
+        super.setUp()
+        // Startup activities (e.g. the native-tabs registry guard) may already have touched the app-level state.
+        AgenstormSettings.getInstance().loadState(AgenstormSettings.State())
+    }
+
+    override fun tearDown() {
+        try {
+            AgenstormSettings.getInstance().loadState(AgenstormSettings.State())
+        } finally {
+            super.tearDown()
+        }
+    }
+
     fun testPluginDescriptorIsLoadedWithOptionalDependencies() {
         val plugin = PluginManagerCore.getPlugin(PluginId.getId(PLUGIN_ID))
         assertNotNull("plugin $PLUGIN_ID is not loaded in the test IDE", plugin)

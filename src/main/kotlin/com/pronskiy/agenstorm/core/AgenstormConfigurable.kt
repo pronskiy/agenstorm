@@ -17,6 +17,7 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
 import com.pronskiy.agenstorm.commit.CommitSettingsPanel
 import com.pronskiy.agenstorm.frame.FrameTitleRefresher
+import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
 
@@ -65,7 +66,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
         featureGroup("settings.group.commit", "settings.commit.enabled", AgenstormSettings.State::commitEnabled) {
             commitPanel = CommitSettingsPanel(ApplicationManager.getApplication().getService(AgenstormAppScope::class.java).scope).also { it.render(this) }
         }
-        featureGroup("settings.group.tabs", "settings.tabs.enabled", AgenstormSettings.State::projectTabsEnabled)
+        featureGroup("settings.group.tabs", "settings.tabs.enabled", AgenstormSettings.State::projectTabsEnabled, onApply = NativeTabsRegistryGuard::syncFromSettings)
         featureGroup("settings.group.markdown", "settings.markdown.liveMarkup.enabled", AgenstormSettings.State::liveMarkupEnabled)
     }
 
