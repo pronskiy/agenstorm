@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D2 exit guardrails — the HTTP backends need the D3.1 settings panel (API key entry) before Roman can try them, so D3.1 is taken next; the `claude-cli` backend can be tried right away via the sandbox `agenstorm.xml`.
+**Now on:** Epic D → Phase D2 exit guardrails — settings panel (D3.1) is in place; waiting for Roman to try the three backends with his keys in `runIde` (**Three backends live**, **Cancellation**, **Error UX**); **No secrets on disk** is verified by test. Then D3.2–D3.4.
 
 ---
 
@@ -481,14 +481,14 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 |-----------|----------------------|--------|----------------|
 | Three backends live | Each backend produces a real commit message in `runIde` against a real endpoint/CLI (author's keys); recorded in Notes | 🔲 | |
 | Cancellation | Clicking Stop mid-stream stops appending within 200 ms and the HTTP connection/process is closed (checked via logging) | 🔲 | |
-| No secrets on disk | `agenstorm.xml` contains no API key; key lives in `PasswordSafe` | 🔲 | |
+| No secrets on disk | `agenstorm.xml` contains no API key; key lives in `PasswordSafe` | ✅ | `CommitSettingsPanelTest.testApiKeysGoToPasswordSafeAndNeverIntoTheState`: keys round-trip through `PasswordSafe` and the serialized `State` never contains them (2026-09-05) |
 | Error UX | Wrong key → balloon with the API's error message and "Open settings"; field text restored | 🔲 | |
 
 #### Phase D3 — Settings UI and polish
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| D3.1 | "Commit messages" group: backend selector, per-backend fields, "Test connection", model, prompts (system/user) with "Reset to default", max diff chars, Conventional Commits, body, language | 🔲 | |
+| D3.1 | "Commit messages" group: backend selector, per-backend fields, "Test connection", model, prompts (system/user) with "Reset to default", max diff chars, Conventional Commits, body, language | ✅ | Taken before the D2 guardrails (key entry needed). `commit/CommitSettingsPanel` rendered inside the Commit messages group; per-backend rows via `selectedValueMatches`; keys via `ApiKeyStore` on open/apply; Test Connection validates the typed values on `AgenstormAppScope`. `CommitSettingsPanelTest` (5 cases incl. keys never in the serialized state) |
 | D3.2 | Git context provider (optional `Git4Idea`): current branch name into `{branch}` via a tiny internal EP `com.pronskiy.agenstorm.commitContextProvider` | 🔲 | |
 | D3.3 | Hint handling polish: keep hint on failure; when hint looks like a full message (multi-line), ask the model to improve rather than replace (prompt variant) | 🔲 | |
 | D3.4 | README section: setup per backend, prompt variables, recommended shortcut | 🔲 | |
