@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic B → Phase B1 → step B1.1 — `AllowlistScratchFilter : ScratchFileTypeFilter` reading `settings.scratchAllowedFileTypes`, registered in `agenstorm-scratch.xml`. Epic A is complete; all A2 guardrails passed on 2026-09-05.
+**Now on:** Epic B → Phase B1 → step B1.2 — settings UI for the allow-list (multi-line list of `FileType.name`s with an "Add current file's type" helper) in the Scratch files group.
 
 ---
 
@@ -324,9 +324,9 @@ Platform fact: `com.intellij.scratchLanguageFilter` EP (`platform/lang-impl/src/
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| B1.1 | `AllowlistScratchFilter : ScratchFileTypeFilter` reading `settings.scratchAllowedFileTypes` | 🔲 | |
+| B1.1 | `AllowlistScratchFilter : ScratchFileTypeFilter` reading `settings.scratchAllowedFileTypes` | ✅ | EP `com.intellij.scratchLanguageFilter` (interface `ScratchFileTypeFilter`, `@ApiStatus.Internal`, dynamic) confirmed in build 262; registered in `agenstorm-scratch.xml`, `xi:include`d from `plugin.xml`. Internal names `PLAIN_TEXT`, `Markdown`, `PHP`, `JavaScript` confirmed at runtime by the test |
 | B1.2 | Settings UI: multi-line list of `FileType.name`s with an "Add current file's type" helper; defaults `PLAIN_TEXT, Markdown, PHP, JavaScript` | 🔲 | |
-| B1.3 | Test: `ScratchFileTypeFilter.isEnabled(PhpFileType)` true, `isEnabled(JsonFileType)` false, feature off → all true | 🔲 | |
+| B1.3 | Test: `ScratchFileTypeFilter.isEnabled(PhpFileType)` true, `isEnabled(JsonFileType)` false, feature off → all true | ✅ | Shipped with B1.1: `AllowlistScratchFilterTest` (4 cases) goes through the platform's static `isEnabled`, so it also proves the registration |
 
 **Steps (detail):**
 
