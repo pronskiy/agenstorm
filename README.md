@@ -122,7 +122,14 @@ New Project, Open and Clone. Right-click a tab for Close, Close Others and Copy 
 The native macOS project tabs are switched off while this feature is on (a balloon offers to restart
 the IDE, which the change needs). Turning the feature off restores them after another restart, but
 only if Agenstorm was the one that switched them off. Tab order is remembered per project in
-`agenstorm-tabs.xml`. Off macOS the strip works the same; there are simply no native tabs to replace.
+`agenstorm-tabs.xml`; drag a tab to reorder. When the toolbar gets narrow the tabs shrink to icons, and
+when even those do not fit the first ones stay and a "…" button lists the rest. Off macOS the strip works
+the same; there are simply no native tabs to replace.
+
+Three actions come without a shortcut so they never collide with your keymap: **Next Project Tab**,
+**Previous Project Tab** (both wrap around) and **Close Project Tab**. Assign them under Settings → Keymap
+by searching for "Project Tab"; `Ctrl+Alt+Shift+]` and `Ctrl+Alt+Shift+[` are a natural pair for next and
+previous.
 
 ## Development
 
