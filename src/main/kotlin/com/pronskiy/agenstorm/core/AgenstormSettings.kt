@@ -59,6 +59,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var tabsShowIcons: Boolean = true,
         /** Epic E: widest a tab may grow before the name is ellipsized, in pixels (72–600). */
         var tabsMaxWidth: Int = 220,
+        /** Epic E (Phase E3): the Git branch leaves the toolbar and shows bottom-left in the status bar. */
+        var branchInStatusBar: Boolean = true,
+        /** Epic E (Phase E3): set when Agenstorm hid the bottom navigation bar, so turning the feature off restores it. */
+        var navBarHiddenByAgenstorm: Boolean = false,
     )
 
     private var currentState = State()

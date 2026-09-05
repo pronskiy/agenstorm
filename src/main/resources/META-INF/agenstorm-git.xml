@@ -4,4 +4,16 @@
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
         <commitContextProvider implementation="com.pronskiy.agenstorm.commit.context.GitCommitContextProvider"/>
     </extensions>
+
+    <!-- tabs (Phase E3): the Git branch moves from the main toolbar to the status bar's left slot. -->
+    <extensions defaultExtensionNs="com.intellij">
+        <statusBarWidgetFactory id="agenstorm.branch"
+                                implementation="com.pronskiy.agenstorm.tabs.git.BranchStatusBarWidgetFactory"
+                                order="first"/>
+        <postStartupActivity implementation="com.pronskiy.agenstorm.tabs.git.BranchStartupActivity"/>
+    </extensions>
+    <actions>
+        <!-- Hides the stock VCS group (branch, merge/rebase, create repository) while the branch lives in the status bar. -->
+        <group id="MainToolbarVCSGroup" class="com.pronskiy.agenstorm.tabs.git.VcsToolbarGroup" overrides="true"/>
+    </actions>
 </idea-plugin>
