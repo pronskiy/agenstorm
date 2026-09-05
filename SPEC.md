@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic C → Phase C1 → step C1.1 — `ProjectOnlyFrameTitleBuilder : PlatformFrameTitleBuilder` returning `""` for file titles when enabled. Epic B is complete (guardrails passed on 2026-09-05 with the documented dialect limitation).
+**Now on:** Epic C exit guardrails — waiting for Roman to check **Title**, **Native tabs** and **No side effects** in `runIde`. Next: Epic D → Phase D1 → step D1.1 (`LlmBackend` contract + `FakeBackend`).
 
 ---
 
@@ -364,9 +364,9 @@ Platform facts: `FrameTitleBuilder` is an application service registered `open="
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| C1.1 | `ProjectOnlyFrameTitleBuilder : PlatformFrameTitleBuilder` returning `""` for file titles when enabled | 🔲 | |
-| C1.2 | Register with `overrides="true"`; settings toggle "Hide file name in window title" (default on) | 🔲 | |
-| C1.3 | Manual checklist + a unit test that `getFileTitle` returns `""`/default depending on the toggle | 🔲 | |
+| C1.1 | `ProjectOnlyFrameTitleBuilder : PlatformFrameTitleBuilder` returning `""` for file titles when enabled | ✅ | Both `getFileTitle` and the suspend `getFileTitleAsync`; `getProjectTitle` untouched |
+| C1.2 | Register with `overrides="true"`; settings toggle "Hide file name in window title" (default on) | ✅ | `applicationService overrides="true"` in `plugin.xml`; the toggle's `onApply` calls `FrameTitleRefresher.refreshOpenFrames()` → `IdeFrameEx.setFileTitle(null, null)` (not `@Internal`, wrapped in a fail-soft catch) |
+| C1.3 | Manual checklist + a unit test that `getFileTitle` returns `""`/default depending on the toggle | ✅ | `ProjectOnlyFrameTitleBuilderTest` (4 cases): service instance is ours, empty title on, platform title off (sync == async), project title unchanged. Checklist = the Epic C guardrails below |
 
 **Steps (detail):**
 
