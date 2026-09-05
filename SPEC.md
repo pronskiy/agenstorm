@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D1 → step D1.6 — remaining pipeline tests (most shipped with each step); then the Phase D1 exit guardrails (`FakeBackend` run in the sandbox).
+**Now on:** Epic D → Phase D1 exit guardrails — Budget honoured is verified; waiting for Roman to run the fake backend in the sandbox (**Streaming works end-to-end**, **Never blocks EDT**). Next: Phase D2 → step D2.4 (`SseReader`, done first per the spec).
 
 ---
 
@@ -418,7 +418,7 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 | D1.3 | `PromptBuilder` with templates and `{diff} {stat} {branch} {hint} {language}` variables | ✅ | Templates in `resources/prompts/{system,user}.txt`; `{conventional}` too; empty hint/branch → `(none)`/`(unknown)`; unknown placeholders kept. `PromptBuilderTest` (6 cases) |
 | D1.4 | `GenerateCommitMessageAction` in `Vcs.MessageActionGroup`: run/stop toggle, streaming into `CommitMessage`, single undo group | ✅ | Included changes are read in `actionPerformed` (the commit tree is EDT-only), so `update()` checks UI presence + backend id only. Chunks go through `Document.insertString` under one `CommandProcessor` group id. **Platform gotcha:** `UnifiedDiffWriter.write` with default PatchEPs runs `CharsetEP`, which refreshes the VFS synchronously and is forbidden under a read lock → use the overload with an empty `PatchEP` list. Settings fields added: `commitBackendId` (default `anthropic`), `commitModel`, `commitMaxDiffChars`, `commitConventionalCommits`, `commitBodyEnabled`, `commitLanguage`, `commitSystemPrompt`, `commitUserPrompt`. `CommitGenerationServiceTest` (4 cases: stream+post-process, one undo step, failure restores hint, cancel keeps partial text) |
 | D1.5 | `MessagePostProcessor`: strip fences/prefixes, enforce subject length, wrap body at 72 | ✅ | Done before D1.2–D1.4 (the action depends on it). Subject length is *not* enforced (left to the platform inspection, as specified); also unquotes a single quoted line. `MessagePostProcessorTest` (9 cases) |
-| D1.6 | Tests for D1.2, D1.3, D1.5 with `FakeBackend` | 🔲 | |
+| D1.6 | Tests for D1.2, D1.3, D1.5 with `FakeBackend` | ✅ | `DiffCollectorTest` 7, `PromptBuilderTest` 6, `MessagePostProcessorTest` 9, `CommitGenerationServiceTest` 4 (incl. the single undo step) and `GenerateCommitMessageActionTest` 5 (proxied `CommitWorkflowUi`, real `CommitMessage`) |
 
 **Steps (detail):**
 
@@ -453,9 +453,9 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Streaming works end-to-end | With `FakeBackend` selected in `runIde`, clicking the action streams text into the field and Undo removes it in one step | 🔲 | |
-| Never blocks EDT | No "UI freeze" report in `idea.log` during diff collection of a 50-file change set | 🔲 | |
-| Budget honoured | `DiffCollectorTest` proves output ≤ `maxDiffChars` with a lock file and a 100 KB generated file present | 🔲 | |
+| Streaming works end-to-end | With `FakeBackend` selected in `runIde`, clicking the action streams text into the field and Undo removes it in one step | 🔄 | Automated in `CommitGenerationServiceTest`/`GenerateCommitMessageActionTest`; the sandbox run uses `commitBackendId=fake` written into the sandbox `agenstorm.xml`. Awaiting Roman's check |
+| Never blocks EDT | No "UI freeze" report in `idea.log` during diff collection of a 50-file change set | 🔄 | Diff collection runs in `readAction` on the service's coroutine scope; the demo repo carries 50 modified files for the sandbox check |
+| Budget honoured | `DiffCollectorTest` proves output ≤ `maxDiffChars` with a lock file and a 100 KB generated file present | ✅ | `testBudgetIsHonouredWithALockFileAndAHugeGeneratedFilePresent` (2026-09-05) |
 
 #### Phase D2 — Backends
 
