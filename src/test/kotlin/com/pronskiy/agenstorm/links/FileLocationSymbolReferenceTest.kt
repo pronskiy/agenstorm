@@ -54,7 +54,7 @@ class FileLocationSymbolReferenceTest : BasePlatformTestCase() {
         assertEquals(11, target.offset)
         // navigationRequest() is a background-thread API: the platform calls it in a non-blocking read action.
         val request = ApplicationManager.getApplication().executeOnPooledThread<NavigationRequest?> {
-            ReadAction.compute<NavigationRequest?, Throwable> { target.navigationRequest() }
+            ReadAction.nonBlocking<NavigationRequest?> { target.navigationRequest() }.executeSynchronously()
         }.get()
         assertNotNull(request)
         assertEquals("Foo.php:3", target.computePresentation().presentableText)
