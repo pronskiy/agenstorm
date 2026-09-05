@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic F → Phase F2 → step **F2.2**. Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → Phase F2 → step **F2.3**. Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -730,7 +730,7 @@ Platform facts (verified against build 262):
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | F2.1 | `LiveMarkupAnnotator` (only when live mode is on for that file): bold/italic/strike font attributes when the scheme lacks them; link text underlined + link colour | ✅ | The bundled 262 scheme already renders all four (`MARKDOWN_LINK_TEXT` falls back to `HYPERLINK_ATTRIBUTES`, `MARKDOWN_STRIKE_THROUGH` to `DEPRECATED_ATTRIBUTES`; bold/italic are defined outright), so the annotator is a no-op there and only matters for schemes that dropped them. Per-file gate: a counter on the `VirtualFile` maintained by `LiveMarkupService.attach/detach`, with a daemon restart when it flips |
-| F2.2 | Checkbox toggle: click on a ☐/☑ placeholder flips `[ ]`↔`[x]` in a write command | 🔲 | |
+| F2.2 | Checkbox toggle: click on a ☐/☑ placeholder flips `[ ]`↔`[x]` in a write command | ✅ | `EditorMouseListener.mousePressed` + `EditorMouseEvent.collapsedFoldRegion`; only the middle character is replaced so the fold region (a range marker) survives, then placeholder and kind are swapped in place; the event is consumed (no caret move, no expand). One undo step; hand cursor on hover |
 | F2.3 | Link navigation from the visible link text: Cmd/Ctrl+click on `LINK_TEXT` navigates via the (hidden) destination's references; URLs open in browser | 🔲 | |
 | F2.4 | `ToggleLiveMarkupAction` in `Markdown.Toolbar.Right` and `Markdown.EditorContextMenuGroup`; per-editor state; settings default + group "Markdown live markup" | 🔲 | |
 | F2.5 | Bullets `- `/`* ` rendered as `• ` (placeholder), optional setting | 🔲 | |
