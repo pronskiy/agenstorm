@@ -87,7 +87,9 @@ class CommentLocationReferenceTest : BasePlatformTestCase() {
         val elapsedMs = (System.nanoTime() - started) / 1_000_000
 
         assertEquals(200, highlighted)
-        assertTrue("highlighting took ${'$'}elapsedMs ms", elapsedMs < 15_000)
+        // Most of the time is PHP's own highlighting of 5,000 lines (~12 s on a laptop); the bound only
+        // catches pathological regressions such as regex backtracking, not ordinary slowness.
+        assertTrue("highlighting took ${'$'}elapsedMs ms", elapsedMs < 60_000)
     }
 
     fun testUrlWithPortAndPlainTextYieldNothing() {
