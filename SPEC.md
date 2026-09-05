@@ -620,11 +620,11 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Branch bottom-left | With the feature on, the current branch shows at the left end of the status bar where the breadcrumbs were; the toolbar has no VCS widget | 🔲 | |
-| Live | Checking out another branch (popup or terminal) updates the text within a second; switching editors between two repositories switches the branch shown | 🔲 | |
-| Popup | Clicking the branch opens the branches popup anchored to the widget (or centered, if the fallback path is in use — recorded) | 🔲 | |
-| Recovery | Feature off → toolbar VCS widget and the bottom navigation bar are back without restart | 🔲 | |
-| Log clean + verifier | No exceptions from the plugin; `verifyPlugin` Compatible, new internal usages listed in §2 | 🔲 | Verifier 2026-09-05: Compatible on PS/IU 262.10315; internal usages 13 → 15 (`GitBranchesTreePopupOnBackend` class + `create`, both guarded; `IdeStatusBarImpl.setCentralWidget` is not flagged); 2 deprecated usages remain: `StatusBarWidget.getPresentation(PlatformType)` bridged by the Kotlin compiler for the `CustomStatusBarWidget` implementation. Log: first sandbox start on `agenstorm-demo` (22:47) clean, nothing blamed on the plugin; the by-eye part is Roman's |
+| Branch bottom-left | With the feature on, the current branch shows at the left end of the status bar where the breadcrumbs were; the toolbar has no VCS widget | ✅ | Roman, 2026-09-05 sandbox run on `agenstorm-demo` ("all good, it looks great", screenshot). Follow-up the same day: icon aligned to the tool window stripe's right edge (measured at runtime from the stripe buttons, 40 px fallback) |
+| Live | Checking out another branch (popup or terminal) updates the text within a second; switching editors between two repositories switches the branch shown | ✅ | Signed off with the same run (2026-09-05); wired to `GIT_REPO_CHANGE` and editor selection |
+| Popup | Clicking the branch opens the branches popup anchored to the widget (or centered, if the fallback path is in use — recorded) | ✅ | Signed off with the same run (2026-09-05); `GitBranchesTreePopupOnBackend` path, shown under the widget |
+| Recovery | Feature off → toolbar VCS widget and the bottom navigation bar are back without restart | ✅ | Signed off with the same run (2026-09-05) |
+| Log clean + verifier | No exceptions from the plugin; `verifyPlugin` Compatible, new internal usages listed in §2 | ✅ | Verifier 2026-09-05: Compatible on PS/IU 262.10315; internal usages 13 → 15 (`GitBranchesTreePopupOnBackend` class + `create`, both guarded); 2 deprecated usages remain: `StatusBarWidget.getPresentation(PlatformType)` bridged by the Kotlin compiler for the `CustomStatusBarWidget` implementation. Log: every sandbox session that day (22:47, 23:08–23:14) clean, nothing blamed on the plugin |
 
 **Exit guardrails — Epic E → Epic F**
 
