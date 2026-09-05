@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic 0 → Phase 01 → step 01.2 — `plugin.xml` with id, MIT vendor block, `since/until-build`, optional depends and per-feature config files.
+**Now on:** Epic 0 → Phase 01 → step 01.3 — `AgenstormSettings` + `AgenstormConfigurable` with a toggle per feature.
 
 ---
 
@@ -101,7 +101,7 @@ All epics are MVP. Recommended order: 0 → A → B → C → D → E → F (val
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | 01.1 | Gradle project with IntelliJ Platform Gradle Plugin 2.x targeting PhpStorm 2026.2 | ✅ | Template scaffold renamed and building against PhpStorm 2026.2 with plugin id `com.pronskiy.agenstorm` (commits c6437b3, 8b2c590) |
-| 01.2 | `plugin.xml` with id, MIT vendor block, `since/until-build`, optional depends and per-feature config files | 🔲 | |
+| 01.2 | `plugin.xml` with id, MIT vendor block, `since/until-build`, optional depends and per-feature config files | ✅ | `since-build=262`, `until-build=262.*` patched from `gradle.properties`; PHP/Markdown/Git4Idea optional with empty `agenstorm-*.xml` config files |
 | 01.3 | `AgenstormSettings` + `AgenstormConfigurable` with a toggle per feature | 🔲 | |
 | 01.4 | Test framework wired: one `BasePlatformTestCase` smoke test | 🔲 | |
 | 01.5 | GitHub Actions: build, test, `verifyPlugin` on push/PR; `LICENSE` (MIT), `README.md`, `CHANGELOG.md` | 🔲 | |
