@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D2 exit guardrails (**Three backends live**, **Cancellation**, **Error UX**) — waiting for Roman's confirmation from the sandbox run; D3 is complete. Then the Epic D exit guardrails (Size, Verifier automated; Daily-driver test is Roman's) and Epic E.
+**Now on:** Epic D wrap-up (session stopped here on 2026-09-05 before Epic E). All D1–D3 code is committed. Open: Phase D2 guardrails **Three backends live**, **Cancellation**, **Error UX** need Roman's confirmation in a sandbox run (a `runIde` with the demo repo, settings under Tools → Agenstorm → Commit messages); Epic D exit guardrail **Verifier** result is in the note below; **Daily-driver test** is Roman's over the coming commits. Next: Epic E → Phase E1 → step E1.1.
 
 ---
 
