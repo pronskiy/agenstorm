@@ -28,7 +28,8 @@ import javax.swing.JPanel
  * editor tabs, the × is always drawn on the active tab and only on hover on the others, and its slot is reserved
  * either way so the tab never changes width. The active tab is filled; a hovered tab gets the toolbar hover
  * colour. Colours come from named UI keys with the action-button colours as fallback, so every theme paints
- * something sensible.
+ * something sensible. In [isCompact] mode (E2.1 overflow) only the icon is shown, the × goes away and the name
+ * moves into the tooltip.
  */
 class ProjectTabLabel(
     val project: Project,
@@ -44,6 +45,18 @@ class ProjectTabLabel(
             field = value
             nameLabel.foreground = textColor()
             updateCloseIcon()
+            repaint()
+        }
+
+    /** Icon-only rendering for narrow toolbars; see [ProjectTabsPanel]. */
+    var isCompact: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            nameLabel.text = if (value) "" else project.name
+            closeLabel.isVisible = !value
+            toolTipText = tooltip()
+            revalidate()
             repaint()
         }
 
@@ -67,7 +80,7 @@ class ProjectTabLabel(
     init {
         isOpaque = false
         border = JBUI.Borders.empty(0, 8, 0, 6)
-        toolTipText = project.basePath ?: project.name
+        toolTipText = tooltip()
         nameLabel.foreground = textColor()
         nameLabel.iconTextGap = JBUI.scale(6)
         updateCloseIcon()
@@ -114,14 +127,28 @@ class ProjectTabLabel(
 
     private fun textColor() = if (isSelected) JBColor.namedColor("MainToolbar.Dropdown.foreground", UIUtil.getLabelForeground()) else NamedColorUtil.getInactiveTextColor()
 
-    override fun getPreferredSize(): Dimension {
-        val size = super.getPreferredSize()
-        size.width = size.width.coerceIn(JBUI.scale(MIN_WIDTH), JBUI.scale(MAX_WIDTH))
-        size.height = JBUI.scale(HEIGHT)
-        return size
+    private fun tooltip(): String {
+        val path = project.basePath
+        return when {
+            isCompact && path != null -> "${project.name} — $path"
+            path != null -> path
+            else -> project.name
+        }
     }
 
-    override fun getMinimumSize(): Dimension = Dimension(JBUI.scale(MIN_WIDTH), JBUI.scale(HEIGHT))
+    /** Width the tab wants in the given mode, independent of its current state (the panel plans with both). */
+    fun preferredWidth(compact: Boolean): Int {
+        if (compact) return JBUI.scale(COMPACT_WIDTH)
+        val icon = nameLabel.icon
+        val textWidth = getFontMetrics(nameLabel.font).stringWidth(project.name)
+        val iconWidth = if (icon != null) icon.iconWidth + nameLabel.iconTextGap else 0
+        val content = insets.left + iconWidth + textWidth + JBUI.scale(4) + AllIcons.Actions.Close.iconWidth + insets.right
+        return content.coerceIn(JBUI.scale(MIN_WIDTH), JBUI.scale(MAX_WIDTH))
+    }
+
+    override fun getPreferredSize(): Dimension = Dimension(preferredWidth(isCompact), JBUI.scale(HEIGHT))
+
+    override fun getMinimumSize(): Dimension = Dimension(JBUI.scale(if (isCompact) COMPACT_WIDTH else MIN_WIDTH), JBUI.scale(HEIGHT))
 
     override fun getMaximumSize(): Dimension = preferredSize
 
@@ -149,6 +176,7 @@ class ProjectTabLabel(
     companion object {
         const val MIN_WIDTH = 72
         const val MAX_WIDTH = 220
+        const val COMPACT_WIDTH = 32
         const val HEIGHT = 30
         private val LOG = logger<ProjectTabLabel>()
         /** Same size as the close icon, paints nothing: keeps the ×'s room when it is not shown. */

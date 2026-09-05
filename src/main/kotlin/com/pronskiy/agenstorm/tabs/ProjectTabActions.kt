@@ -19,6 +19,7 @@ import com.intellij.openapi.wm.impl.ProjectFrameHelper
 import com.intellij.ui.awt.RelativePoint
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.tabs.ui.ProjectTabLabel
 import com.pronskiy.agenstorm.tabs.ui.ProjectTabsPanel
 import java.awt.Component
 import java.awt.Point
@@ -43,6 +44,7 @@ object ProjectTabActions {
         panel.onClose = { target -> close(target, owner = panel.ownerProject, tabs = model.tabs()) }
         panel.onAdd = { anchor -> showAddPopup(anchor) }
         panel.onContextMenu = { target, component, point -> showContextMenu(target, component, point, owner = panel.ownerProject, tabs = model.tabs()) }
+        panel.onOverflow = { anchor, hidden -> showOverflowPopup(anchor, hidden, owner = panel.ownerProject) }
     }
 
     fun switchTo(target: Project, from: Project?) {
@@ -70,6 +72,21 @@ object ProjectTabActions {
             .createActionGroupPopup(null, contextMenuGroup(target, owner, tabs), DataManager.getInstance().getDataContext(component), JBPopupFactory.ActionSelectionAid.MNEMONICS, true)
             .show(RelativePoint(component, point))
     }
+
+    /** The chevron's list: one entry per tab that did not fit, switching to it. */
+    fun showOverflowPopup(anchor: Component, hidden: List<Project>, owner: Project?) {
+        JBPopupFactory.getInstance()
+            .createActionGroupPopup(null, overflowGroup(hidden, owner), DataManager.getInstance().getDataContext(anchor), JBPopupFactory.ActionSelectionAid.SPEEDSEARCH, true)
+            .showUnderneathOf(anchor)
+    }
+
+    fun overflowGroup(hidden: List<Project>, owner: Project?): DefaultActionGroup = DefaultActionGroup(
+        hidden.map { target ->
+            object : DumbAwareAction(target.name, target.basePath, ProjectTabLabel.projectIcon(target)) {
+                override fun actionPerformed(e: AnActionEvent) = switchTo(target, from = owner)
+            }
+        },
+    )
 
     /** The tab that takes over when [target] closes: the one after it, else the one before it, else none. */
     fun neighbourOf(target: Project, tabs: List<Project>): Project? {
