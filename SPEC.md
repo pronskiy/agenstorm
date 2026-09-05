@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A2 → step A2.1 — `CommentLocationReferenceProvider` (`PsiReferenceProvider`) under `referenceProviderType key="commentsReferenceProvider"`, with `FileLocationPsiReference` (A2.2) as its reference type. Phase A1 guardrails all passed on 2026-09-05.
+**Now on:** Epic A → Phase A2 → step A2.3 — `PhpStringLocationReferenceContributor` registering `CommentLocationReferenceProvider` on `StringLiteralExpression` in `agenstorm-php.xml`.
 
 ---
 
@@ -35,7 +35,7 @@ Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an a
 | Target IDE | PhpStorm 2026.2, `since-build="262"`, `until-build="262.*"` | Matches the platform branch the spec was researched against; every EP referenced exists there |
 | Plugin id / package | `com.pronskiy.agenstorm` | Author's namespace |
 | Module layout | One Gradle module, one plugin, feature packages `links`, `scratch`, `frame`, `commit`, `tabs`, `markdown`; optional dependencies wired through `<depends optional="true" config-file="…">` | Keeps a single artifact while letting the plugin load in IDEA/WebStorm without PHP/Markdown |
-| Dependencies | `com.intellij.modules.platform`, `com.intellij.modules.vcs`; optional: `com.jetbrains.php`, `org.intellij.plugins.markdown`, `Git4Idea` | Only what each feature needs; no third-party runtime libraries |
+| Dependencies | `com.intellij.modules.platform`, `com.intellij.modules.lang` (declares `referenceProviderType`), `com.intellij.modules.vcs`; optional: `com.jetbrains.php`, `org.intellij.plugins.markdown`, `Git4Idea` | Only what each feature needs; no third-party runtime libraries |
 | HTTP / JSON | `java.net.http.HttpClient` (SSE via `BodyHandlers.ofLines()`); JSON via `kotlinx.serialization.json` bundled with the platform (`compileOnly`), Gson as fallback if the bundled artifact is unavailable | Zero extra jars; this is the whole reason not to use langchain4j |
 | Secrets | `PasswordSafe` via `CredentialAttributes(generateServiceName("Agenstorm", backendId))` | Never put API keys into `PersistentStateComponent` XML |
 | Settings | One app-level `AgenstormSettings : PersistentStateComponent` (`agenstorm.xml`) + one `Configurable` under Tools → Agenstorm with a group per feature and an on/off switch per feature | One place to find everything; each feature can be disabled by users who hit a conflict |
@@ -266,7 +266,7 @@ Platform facts the implementation relies on (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| A2.1 | `CommentLocationReferenceProvider` (`PsiReferenceProvider`) under `referenceProviderType key="commentsReferenceProvider"` | 🔲 | |
+| A2.1 | `CommentLocationReferenceProvider` (`PsiReferenceProvider`) under `referenceProviderType key="commentsReferenceProvider"` | ✅ | Parse cached per element, bombed char sequence, 20 KB cap; references for every token, highlighted only when resolvable (A2.2). The EP lives in the lang module → `plugin.xml` also depends on `com.intellij.modules.lang`. **PHPDoc caveat:** `PhpDocCommentImpl.getReferences()` ignores the registry, so highlighting worked but Cmd+click did not; added `LocationGotoDeclarationHandler` (`gotoDeclarationHandler` EP) serving our references via `PsiReferenceService` only for hosts that do not expose them. `@see path:line` also carries PHP's own file reference (file top). `CommentLocationReferenceTest` (11 cases) incl. the real GotoDeclaration action |
 | A2.2 | `FileLocationPsiReference` (old API): `PsiReferenceBase` + `HighlightedReference`, resolves to a `Navigatable` fake element | ✅ | Done before A2.1 (the provider needs the type). `isHighlightedWhenSoft() = resolve() != null`, so unresolved tokens are neither errors nor links, and no resolution result is cached. Target navigates via `OpenFileDescriptor(project, file, toOffset(...))`. `FileLocationPsiReferenceTest`, 4 cases incl. caret position after `navigate()` |
 | A2.3 | `PhpStringLocationReferenceContributor` for `StringLiteralExpression` in `agenstorm-php.xml` | 🔲 | |
 | A2.4 | `CopyLocationLinkAction` (editor popup + gutter popup): copies `relpath:line[:col]`; with selection copies `relpath:line:col` of selection start | 🔲 | |
