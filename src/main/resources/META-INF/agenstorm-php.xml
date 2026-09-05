@@ -1,4 +1,8 @@
 <!-- Loaded only when the PHP plugin (com.jetbrains.php) is present.
      Epic A (path:line:col links in PHP string literals) registers its extensions here. -->
 <idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <psi.referenceContributor language="PHP"
+                                  implementation="com.pronskiy.agenstorm.links.php.PhpStringLocationReferenceContributor"/>
+    </extensions>
 </idea-plugin>
