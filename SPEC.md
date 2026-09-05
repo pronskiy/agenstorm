@@ -267,7 +267,7 @@ Platform facts the implementation relies on (verified against build 262):
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | A2.1 | `CommentLocationReferenceProvider` (`PsiReferenceProvider`) under `referenceProviderType key="commentsReferenceProvider"` | 🔲 | |
-| A2.2 | `FileLocationPsiReference` (old API): `PsiReferenceBase` + `HighlightedReference`, resolves to a `Navigatable` fake element | 🔲 | |
+| A2.2 | `FileLocationPsiReference` (old API): `PsiReferenceBase` + `HighlightedReference`, resolves to a `Navigatable` fake element | ✅ | Done before A2.1 (the provider needs the type). `isHighlightedWhenSoft() = resolve() != null`, so unresolved tokens are neither errors nor links, and no resolution result is cached. Target navigates via `OpenFileDescriptor(project, file, toOffset(...))`. `FileLocationPsiReferenceTest`, 4 cases incl. caret position after `navigate()` |
 | A2.3 | `PhpStringLocationReferenceContributor` for `StringLiteralExpression` in `agenstorm-php.xml` | 🔲 | |
 | A2.4 | `CopyLocationLinkAction` (editor popup + gutter popup): copies `relpath:line[:col]`; with selection copies `relpath:line:col` of selection start | 🔲 | |
 | A2.5 | Tests for comments (PHP `//`, `/* */`, PHPDoc; Kotlin/JS comment in a plain-text-like fixture) and PHP strings | 🔲 | |
