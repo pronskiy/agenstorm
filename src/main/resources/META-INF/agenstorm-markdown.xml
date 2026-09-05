@@ -11,5 +11,9 @@
                                      targetClass="com.pronskiy.agenstorm.links.FileLocationSymbol"/>
         <lang.inspectionSuppressor language="Markdown"
                                    implementationClass="com.pronskiy.agenstorm.links.markdown.LocationLinkInspectionSuppressor"/>
+
+        <!-- markdown (Epic F): live markup attaches to every main editor of a Markdown file. Public listener on purpose:
+             the platform's TextEditorCustomizer hook is @ApiStatus.Internal and not on the SPEC.md §2 list. -->
+        <editorFactoryListener implementation="com.pronskiy.agenstorm.markdown.LiveMarkupEditorListener"/>
     </extensions>
 </idea-plugin>
