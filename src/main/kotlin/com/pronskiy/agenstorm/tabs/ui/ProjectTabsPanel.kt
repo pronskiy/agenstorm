@@ -28,6 +28,9 @@ import javax.swing.SwingUtilities
  * Overflow: the strip may take at most half of the toolbar it sits in ([availableWidthProvider]). When the full
  * tabs do not fit, every tab becomes icon-only; when even that does not fit, the first N icon-only tabs are shown
  * (the frame's own project always among them) and the rest hide behind the chevron, which lists them in a popup.
+ *
+ * Reordering (E2.2): dragging a tab horizontally past the middle of a neighbour draws an insertion marker and,
+ * on release, reports the new index through [onReorder]; the model persists it and every frame follows.
  */
 class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.getInstance()) : JPanel(null) {
 
@@ -51,6 +54,8 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     var onContextMenu: (Project, Component, Point) -> Unit = { _, _, _ -> }
     /** The chevron; receives the button and the projects that do not fit, for a popup. */
     var onOverflow: (Component, List<Project>) -> Unit = { _, _ -> }
+    /** A tab was dragged to a new position: the project and its new index among the open tabs. */
+    var onReorder: (Project, Int) -> Unit = { _, _ -> }
 
     /** Pixels the strip may use; by default half of the enclosing toolbar, unlimited before the toolbar is sized. */
     var availableWidthProvider: () -> Int = { defaultAvailableWidth() }
@@ -61,6 +66,49 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
 
     private var subscription: Disposable? = null
     private val separators = mutableListOf<JComponent>()
+
+    private var dragSource: ProjectTabLabel? = null
+    private var dragStartX = 0
+    private var dragging = false
+    /** Index (in [tabLabels] order) the dragged tab would be inserted before; null when not dragging. */
+    internal var dropIndex: Int? = null
+        private set
+
+    private val dragHandler = object : MouseAdapter() {
+        override fun mousePressed(e: MouseEvent) {
+            if (e.button != MouseEvent.BUTTON1 || e.isPopupTrigger) return
+            dragSource = labelOf(e.component)
+            dragStartX = toPanel(e).x
+            dragging = false
+        }
+
+        override fun mouseDragged(e: MouseEvent) {
+            if (dragSource == null) return
+            val x = toPanel(e).x
+            if (!dragging && kotlin.math.abs(x - dragStartX) < DRAG_THRESHOLD) return
+            dragging = true
+            val index = insertionIndex(x)
+            if (index != dropIndex) {
+                dropIndex = index
+                repaint()
+            }
+        }
+
+        override fun mouseReleased(e: MouseEvent) {
+            val source = dragSource
+            val target = dropIndex
+            val wasDragging = dragging
+            dragSource = null
+            dragging = false
+            dropIndex = null
+            repaint()
+            if (source == null || !wasDragging || target == null) return
+            val labels = tabLabels()
+            val from = labels.indexOf(source)
+            val to = if (target > from) target - 1 else target
+            if (from >= 0 && to != from) onReorder(source.project, to)
+        }
+    }
 
     internal val addButton = JBLabel(AllIcons.General.Add).apply {
         toolTipText = AgenstormBundle.message("tabs.add.tooltip")
@@ -120,16 +168,18 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     internal fun showTabs(tabs: List<Project>) {
         removeAll()
         separators.clear()
+        dragSource = null
+        dropIndex = null
         for (project in tabs) {
-            add(
-                ProjectTabLabel(
-                    project,
-                    selected = project === ownerProject,
-                    onSelect = { onSelect(project) },
-                    onClose = { onClose(project) },
-                    onContextMenu = { component, point -> onContextMenu(project, component, point) },
-                ),
+            val label = ProjectTabLabel(
+                project,
+                selected = project === ownerProject,
+                onSelect = { onSelect(project) },
+                onClose = { onClose(project) },
+                onContextMenu = { component, point -> onContextMenu(project, component, point) },
             )
+            label.addDragListener(dragHandler)
+            add(label)
         }
         repeat((tabs.size - 1).coerceAtLeast(0)) { separators += separator().also(::add) }
         add(moreButton)
@@ -211,6 +261,33 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
         place(addButton, x)
     }
 
+    override fun paint(g: java.awt.Graphics) {
+        super.paint(g)
+        val index = dropIndex ?: return
+        val visible = tabLabels().filter { it.isVisible }
+        val x = when {
+            visible.isEmpty() -> 0
+            index >= tabLabels().size -> visible.last().let { it.x + it.width }
+            else -> (tabLabels()[index].takeIf { it.isVisible } ?: visible.last()).x
+        }
+        g.color = JBUI.CurrentTheme.Focus.focusColor()
+        g.fillRect((x - JBUI.scale(1)).coerceAtLeast(0), JBUI.scale(3), JBUI.scale(2), height - JBUI.scale(6))
+    }
+
+    /** Index the pointer at panel-x [x] points at: before the first visible tab whose centre lies right of it. */
+    internal fun insertionIndex(x: Int): Int {
+        val labels = tabLabels()
+        for ((index, label) in labels.withIndex()) {
+            if (label.isVisible && x < label.x + label.width / 2) return index
+        }
+        return labels.size
+    }
+
+    private fun labelOf(component: Component): ProjectTabLabel? =
+        generateSequence(component) { it.parent }.filterIsInstance<ProjectTabLabel>().firstOrNull()
+
+    private fun toPanel(e: MouseEvent): Point = SwingUtilities.convertPoint(e.component, e.point, this)
+
     private fun place(component: Component, x: Int) {
         val size = component.preferredSize
         component.setBounds(x, (height - size.height) / 2, size.width, size.height)
@@ -219,6 +296,10 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     private fun defaultAvailableWidth(): Int {
         val toolbar = SwingUtilities.getAncestorOfClass(ActionToolbar::class.java, this) as? JComponent ?: return Int.MAX_VALUE
         return if (toolbar.width > 0) toolbar.width / 2 else Int.MAX_VALUE
+    }
+
+    private companion object {
+        val DRAG_THRESHOLD = JBUI.scale(4)
     }
 
     private fun separator(): JComponent = JPanel().apply {

@@ -111,6 +111,14 @@ class ProjectTabLabel(
         nameLabel.addMouseListener(mouse)
     }
 
+    /** Lets the strip watch presses and drags on the tab surface (not on the ×) for reordering. */
+    fun addDragListener(listener: MouseAdapter) {
+        addMouseListener(listener)
+        addMouseMotionListener(listener)
+        nameLabel.addMouseListener(listener)
+        nameLabel.addMouseMotionListener(listener)
+    }
+
     private fun setHovered(value: Boolean) {
         if (hovered == value) return
         hovered = value

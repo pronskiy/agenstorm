@@ -45,6 +45,7 @@ object ProjectTabActions {
         panel.onAdd = { anchor -> showAddPopup(anchor) }
         panel.onContextMenu = { target, component, point -> showContextMenu(target, component, point, owner = panel.ownerProject, tabs = model.tabs()) }
         panel.onOverflow = { anchor, hidden -> showOverflowPopup(anchor, hidden, owner = panel.ownerProject) }
+        panel.onReorder = { target, index -> model.moveTab(target, index) }
     }
 
     fun switchTo(target: Project, from: Project?) {
