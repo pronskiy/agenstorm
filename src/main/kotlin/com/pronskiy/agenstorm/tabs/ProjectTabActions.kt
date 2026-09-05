@@ -41,7 +41,7 @@ object ProjectTabActions {
     fun wire(panel: ProjectTabsPanel, model: ProjectTabsModel = ProjectTabsModel.getInstance()) {
         panel.onSelect = { target -> switchTo(target, from = panel.ownerProject) }
         panel.onClose = { target -> close(target, owner = panel.ownerProject, tabs = model.tabs()) }
-        panel.onAdd = { anchor -> showAddPopup(anchor, panel.ownerProject) }
+        panel.onAdd = { anchor -> showAddPopup(anchor) }
         panel.onContextMenu = { target, component, point -> showContextMenu(target, component, point, owner = panel.ownerProject, tabs = model.tabs()) }
     }
 
@@ -59,9 +59,9 @@ object ProjectTabActions {
         }, { target.isDisposed })
     }
 
-    fun showAddPopup(anchor: Component, owner: Project?) {
+    fun showAddPopup(anchor: Component) {
         JBPopupFactory.getInstance()
-            .createActionGroupPopup(null, addPopupGroup(owner), DataManager.getInstance().getDataContext(anchor), JBPopupFactory.ActionSelectionAid.SPEEDSEARCH, true)
+            .createActionGroupPopup(null, addPopupGroup(), DataManager.getInstance().getDataContext(anchor), JBPopupFactory.ActionSelectionAid.SPEEDSEARCH, true)
             .showUnderneathOf(anchor)
     }
 
@@ -80,12 +80,13 @@ object ProjectTabActions {
         return tabs.drop(index + 1).firstOrNull { it in others } ?: tabs.take(index).lastOrNull { it in others }
     }
 
-    /** Recent projects (the stock widget's list, no "clear list" entry), then the stock widget's own actions. */
-    fun addPopupGroup(owner: Project?): DefaultActionGroup {
+    /**
+     * Recent projects (flat, no "clear list" entry), then the stock widget's own actions. The boolean overloads of
+     * `getActions` are the public ones; `getActions(Project)` is `@ApiStatus.Internal`.
+     */
+    fun addPopupGroup(): DefaultActionGroup {
         val group = DefaultActionGroup()
-        val provider = RecentProjectListActionProvider.getInstance()
-        val recent = if (owner != null) provider.getActions(owner) else provider.getActions(false, false, true)
-        group.addAll(recent)
+        group.addAll(RecentProjectListActionProvider.getInstance().getActions(addClearListItem = false, useGroups = false))
         (ActionManager.getInstance().getAction(STOCK_ACTIONS_GROUP) as? ActionGroup)?.let {
             group.addSeparator()
             group.add(it)

@@ -29,13 +29,13 @@ class ProjectTabActionsTest : BasePlatformTestCase() {
     }
 
     fun testAddPopupHoldsRecentProjectsAndTheStockWidgetActions() {
-        val group = ProjectTabActions.addPopupGroup(project)
+        val group = ProjectTabActions.addPopupGroup()
         val children = group.getChildren(null).toList()
         val stock = ActionManager.getInstance().getAction(ProjectTabActions.STOCK_ACTIONS_GROUP)
         assertTrue(stock is ActionGroup)
         assertTrue(children.last() === stock)
         assertTrue(children.any { it is Separator })
-        val recent = RecentProjectListActionProvider.getInstance().getActions(project)
+        val recent = RecentProjectListActionProvider.getInstance().getActions(addClearListItem = false, useGroups = false)
         assertEquals(recent.size, children.size - 2)
     }
 
