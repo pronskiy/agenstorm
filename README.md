@@ -93,8 +93,8 @@ Configure the backend under Settings → Tools → Agenstorm → Commit messages
 - **OpenAI-compatible API**: works for OpenAI (`https://api.openai.com/v1`), Ollama
   (`http://localhost:11434/v1`, no key), LM Studio, OpenRouter and Groq. A model id is required; the key
   is optional and sent as a bearer token only when set.
-- **Claude CLI**: runs `claude -p --output-format text` with the prompt on stdin, so it uses your Claude
-  Code login and needs no key. The default model is `haiku`; the Model field takes any alias the CLI
+- **Claude CLI**: runs `claude -p` with the prompt on stdin, so it uses your Claude Code login and needs no
+  key; the message streams into the field word by word, like the HTTP backends. The default model is `haiku`; the Model field takes any alias the CLI
   accepts (`sonnet`, `opus`, `sonnet[1m]`) or a full model id. Leave the executable empty to find `claude`
   on the PATH or in the usual install locations. The call runs with extended thinking off and in the CLI's
   safe mode, so your CLAUDE.md, plugins, skills, hooks and MCP servers stay out of it: about 3 s instead of

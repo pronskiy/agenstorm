@@ -144,7 +144,9 @@ class CommitSettingsPanelTest : BasePlatformTestCase() {
             PlatformTestUtil.waitWithEventsDispatching("Test Connection did not finish", { result.text.isNotEmpty() && result.text != running }, 20)
             assertEquals(AgenstormBundle.message("settings.commit.test.ok"), result.text)
             val recorded = args.readText().removeSuffix("\n").split("\n")
-            assertEquals(recorded.toString(), listOf("--model", "opus"), recorded.drop(3).take(2))
+            val modelIndex = recorded.indexOf("--model")
+            assertTrue(recorded.toString(), modelIndex >= 0)
+            assertEquals(recorded.toString(), "opus", recorded[modelIndex + 1])
         } finally {
             wrapper.delete()
             args.delete()

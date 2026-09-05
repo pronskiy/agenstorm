@@ -3,26 +3,41 @@ package com.pronskiy.agenstorm.commit.llm
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
-import com.intellij.execution.process.CapturingProcessHandler
-import com.intellij.execution.process.ProcessOutput
+import com.intellij.execution.process.OSProcessHandler
+import com.intellij.execution.process.ProcessEvent
+import com.intellij.execution.process.ProcessListener
+import com.intellij.execution.process.ProcessOutputType
+import com.intellij.openapi.util.Key
 import com.intellij.util.execution.ParametersListUtil
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import java.io.File
+import java.io.IOException
 
 /**
- * The local `claude` CLI: `claude -p --output-format text --model <model> [--system-prompt …] <extra args>` with
- * the user prompt on stdin. The model is the request's, else [defaultModel] ([DEFAULT_MODEL] unless configured).
- * Text mode does not stream, so stdout is emitted as one chunk on exit 0; a non-zero exit becomes an
- * [LlmException] carrying stderr. Cancelling the collector destroys the process. Flags that may drift between
- * CLI versions live in the "extra arguments" setting ([DEFAULT_EXTRA_ARGS]).
+ * The local `claude` CLI: `claude -p --output-format stream-json --verbose --include-partial-messages --model <model>
+ * [--system-prompt …] <extra args>` with the user prompt on stdin. The model is the request's, else [defaultModel]
+ * ([DEFAULT_MODEL] unless configured).
+ *
+ * Streaming: the CLI prints one JSON event per line; every `content_block_delta` with a `text_delta` is emitted as
+ * it arrives, so the message grows in the commit field the same way it does for the HTTP backends. A CLI that sends
+ * no partial messages still yields the final `result` text as one chunk. A `result` with `is_error` becomes an
+ * [LlmException] carrying its message; a non-zero exit without one carries stderr (or whatever non-JSON text the CLI
+ * printed, e.g. "Not logged in"). Cancelling the collector destroys the process. Flags that may drift between CLI
+ * versions live in the "extra arguments" setting ([DEFAULT_EXTRA_ARGS]).
  *
  * Speed: Claude Code enables extended thinking by default, which made a one-line commit message take 20–50 s
  * even on Haiku; [DEFAULT_ENVIRONMENT] switches it off (~3 s end to end). `--safe-mode` in the default extra
@@ -41,9 +56,9 @@ class ClaudeCliBackend(
 
     override val id: String = ID
 
-    override fun stream(request: LlmRequest): Flow<String> = flow {
+    override fun stream(request: LlmRequest): Flow<String> = channelFlow {
         val exe = executable() ?: throw LlmException(AgenstormBundle.message("commit.backend.cli.notFound"))
-        val command = GeneralCommandLine(exe, "-p", "--output-format", "text")
+        val command = GeneralCommandLine(exe, "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages")
         val model = request.model?.takeIf { it.isNotBlank() } ?: defaultModel
         if (model.isNotBlank()) command.addParameters("--model", model)
         if (request.system.isNotBlank()) command.addParameters("--system-prompt", request.system)
@@ -52,14 +67,35 @@ class ClaudeCliBackend(
         command.withEnvironment(DEFAULT_ENVIRONMENT + environment)
         command.withCharset(Charsets.UTF_8)
 
-        val output = run(command, request.user)
-        if (output.isTimeout) throw LlmException(AgenstormBundle.message("commit.backend.cli.timeout", timeoutMs / 1000.0))
-        if (output.exitCode != 0) {
-            throw LlmException(output.stderr.trim().ifEmpty { AgenstormBundle.message("commit.backend.cli.exit", output.exitCode) })
+        val handler = try {
+            OSProcessHandler(command)
+        } catch (e: ExecutionException) {
+            throw LlmException(e.message ?: AgenstormBundle.message("commit.backend.cli.notFound"), e)
         }
-        val text = output.stdout.trim()
-        if (text.isEmpty()) throw LlmException(AgenstormBundle.message("commit.backend.cli.noOutput"))
-        emit(text)
+        val output = LineCollector()
+        handler.addProcessListener(output)
+        handler.startNotify()
+        try {
+            withContext(Dispatchers.IO) {
+                try {
+                    handler.processInput.use { it.write(request.user.toByteArray(Charsets.UTF_8)) }
+                } catch (_: IOException) {
+                    // The process is already gone; its exit code and stderr tell the story below.
+                }
+            }
+            val parser = StreamJsonParser()
+            val completed = withTimeoutOrNull(timeoutMs.toLong()) {
+                for (line in output.lines) parser.accept(line)?.let { send(it) }
+                true
+            }
+            if (completed == null) {
+                handler.destroyProcess()
+                throw LlmException(AgenstormBundle.message("commit.backend.cli.timeout", timeoutMs / 1000.0))
+            }
+            parser.finish(exitCode = handler.exitCode ?: -1, stderr = output.stderr())?.let { send(it) }
+        } finally {
+            if (!handler.isProcessTerminated) handler.destroyProcess()
+        }
     }
 
     override suspend fun validate(): String? = try {
@@ -69,28 +105,92 @@ class ClaudeCliBackend(
         e.message
     }
 
-    private suspend fun run(command: GeneralCommandLine, input: String): ProcessOutput {
-        val handler = try {
-            CapturingProcessHandler(command)
-        } catch (e: ExecutionException) {
-            throw LlmException(e.message ?: AgenstormBundle.message("commit.backend.cli.notFound"), e)
+    /** Splits stdout into lines as it arrives (chunks are not line-aligned) and closes the channel on exit. */
+    private class LineCollector : ProcessListener {
+        val lines = Channel<String>(Channel.UNLIMITED)
+        private val pending = StringBuilder()
+        private val stderr = StringBuilder()
+
+        override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
+            when {
+                ProcessOutputType.isStdout(outputType) -> synchronized(pending) {
+                    pending.append(event.text)
+                    while (true) {
+                        val newline = pending.indexOf("\n")
+                        if (newline < 0) break
+                        lines.trySend(pending.substring(0, newline))
+                        pending.delete(0, newline + 1)
+                    }
+                }
+                ProcessOutputType.isStderr(outputType) -> synchronized(stderr) { stderr.append(event.text) }
+            }
         }
-        return coroutineScope {
-            // runProcess() swallows thread interruption, so cancellation has to kill the process explicitly.
-            val killer = launch {
-                try {
-                    awaitCancellation()
-                } finally {
-                    handler.destroyProcess()
+
+        override fun processTerminated(event: ProcessEvent) {
+            synchronized(pending) {
+                if (pending.isNotBlank()) lines.trySend(pending.toString())
+                pending.setLength(0)
+            }
+            lines.close()
+        }
+
+        fun stderr(): String = synchronized(stderr) { stderr.toString() }
+    }
+
+    /** Understands the `stream-json` events: text deltas while running, the `result` at the end, anything else ignored. */
+    private class StreamJsonParser {
+        private var streamedText = false
+        private var resultText: String? = null
+        private var resultErrors: List<String> = emptyList()
+        private var isError = false
+        private val rawOutput = StringBuilder()
+
+        /** Returns the text to emit for this line, if any. */
+        fun accept(line: String): String? {
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) return null
+            val event = parseObject(trimmed) ?: run { rawOutput.appendLine(trimmed); return null }
+            when (event.string("type")) {
+                "stream_event" -> {
+                    val inner = event["event"] as? JsonObject ?: return null
+                    if (inner.string("type") != "content_block_delta") return null
+                    val delta = inner["delta"] as? JsonObject ?: return null
+                    if (delta.string("type") != "text_delta") return null
+                    val text = delta.string("text")?.takeIf { it.isNotEmpty() } ?: return null
+                    streamedText = true
+                    return text
+                }
+                "result" -> {
+                    isError = (event["is_error"] as? JsonPrimitive)?.booleanOrNull == true
+                    resultText = event.string("result")
+                    resultErrors = (event["errors"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.orEmpty()
                 }
             }
-            val output = withContext(Dispatchers.IO) {
-                handler.processInput.use { it.write(input.toByteArray(Charsets.UTF_8)) }
-                handler.runProcess(timeoutMs)
-            }
-            killer.cancel()
-            output
+            return null
         }
+
+        /** Throws for failures; returns the fallback text when the CLI streamed nothing but produced a result. */
+        fun finish(exitCode: Int, stderr: String): String? {
+            val problem = listOfNotNull(resultText?.trim()?.takeIf { it.isNotEmpty() }).ifEmpty { resultErrors }.joinToString("\n")
+            if (isError) throw LlmException(problem.ifEmpty { failureMessage(exitCode, stderr) })
+            if (exitCode != 0) throw LlmException(failureMessage(exitCode, stderr))
+            if (streamedText) return null
+            return resultText?.trim()?.takeIf { it.isNotEmpty() } ?: throw LlmException(AgenstormBundle.message("commit.backend.cli.noOutput"))
+        }
+
+        private fun failureMessage(exitCode: Int, stderr: String): String =
+            stderr.trim().ifEmpty { rawOutput.toString().trim() }.ifEmpty { AgenstormBundle.message("commit.backend.cli.exit", exitCode) }
+
+        private fun parseObject(line: String): JsonObject? {
+            if (!line.startsWith("{")) return null
+            return try {
+                Json.parseToJsonElement(line) as? JsonObject
+            } catch (_: SerializationException) {
+                null
+            }
+        }
+
+        private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
     }
 
     companion object {

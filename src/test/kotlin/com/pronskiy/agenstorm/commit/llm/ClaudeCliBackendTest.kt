@@ -11,14 +11,14 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-/** Steps D2.3/D2.5: the `claude -p` subprocess backend against a shell script that records its invocation; default model `haiku`. */
+/** Steps D2.3/D2.5: the `claude -p --output-format stream-json` subprocess backend against a shell script that records its invocation and replays CLI events; default model `haiku`. */
 class ClaudeCliBackendTest {
 
     private val script = File("src/test/testData/commit/fake-claude.sh").absolutePath
     private val request = LlmRequest(system = "You write commit messages.", user = "Diff:\n+a", model = "claude-sonnet-5")
 
     @Test
-    fun runsTheCliWithPromptOnStdinAndEmitsStdoutAsOneChunk() = runBlocking {
+    fun runsTheCliWithPromptOnStdinAndStreamsEachTextDelta() = runBlocking {
         val args = Files.createTempFile("fake-claude-args", ".txt").toFile()
         val stdin = Files.createTempFile("fake-claude-stdin", ".txt").toFile()
         try {
@@ -30,10 +30,10 @@ class ClaudeCliBackendTest {
 
             val chunks = backend.stream(request).toList()
 
-            assertEquals(listOf("feat: add thing\n\nBody from fake claude."), chunks)
+            assertEquals(listOf("feat: add thing", "\n\nBody from fake claude."), chunks)
             assertEquals(
-                listOf("-p", "--output-format", "text", "--model", "claude-sonnet-5", "--system-prompt", "You write commit messages.", "--tools", "", "--no-session-persistence"),
-                args.readText().removeSuffix("\n").split("\n"),
+                STREAM_ARGS + listOf("--model", "claude-sonnet-5", "--system-prompt", "You write commit messages.", "--tools", "", "--no-session-persistence"),
+                recordedArgs(args),
             )
             assertEquals("Diff:\n+a", stdin.readText())
         } finally {
@@ -48,7 +48,7 @@ class ClaudeCliBackendTest {
         try {
             ClaudeCliBackend(executable = { script }, extraArgs = "", environment = mapOf("FAKE_CLAUDE_ARGS_FILE" to args.path))
                 .stream(request.copy(system = "", model = null)).toList()
-            assertEquals(listOf("-p", "--output-format", "text", "--model", "haiku"), recordedArgs(args))
+            assertEquals(STREAM_ARGS + listOf("--model", "haiku"), recordedArgs(args))
         } finally {
             args.delete()
         }
@@ -60,7 +60,7 @@ class ClaudeCliBackendTest {
         try {
             ClaudeCliBackend(executable = { script }, extraArgs = "", defaultModel = "", environment = mapOf("FAKE_CLAUDE_ARGS_FILE" to args.path))
                 .stream(request.copy(system = "", model = null)).toList()
-            assertEquals(listOf("-p", "--output-format", "text"), recordedArgs(args))
+            assertEquals(STREAM_ARGS, recordedArgs(args))
         } finally {
             args.delete()
         }
@@ -72,7 +72,7 @@ class ClaudeCliBackendTest {
         try {
             val backend = ClaudeCliBackend(executable = { script }, extraArgs = "", defaultModel = "opus", environment = mapOf("FAKE_CLAUDE_ARGS_FILE" to args.path))
             assertNull(backend.validate())
-            assertEquals(listOf("-p", "--output-format", "text", "--model", "opus"), recordedArgs(args))
+            assertEquals(STREAM_ARGS + listOf("--model", "opus"), recordedArgs(args))
         } finally {
             args.delete()
         }
@@ -98,6 +98,34 @@ class ClaudeCliBackendTest {
     }
 
     private fun recordedArgs(file: File): List<String> = file.readText().removeSuffix("\n").split("\n")
+
+    private companion object {
+        val STREAM_ARGS = listOf("-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages")
+    }
+
+    @Test
+    fun chunksArriveWhileTheProcessIsStillRunning() = runBlocking {
+        val arrivals = mutableListOf<Long>()
+        ClaudeCliBackend(executable = { script }, environment = mapOf("FAKE_CLAUDE_DELTA_SLEEP" to "1"))
+            .stream(request).collect { arrivals += System.currentTimeMillis() }
+        assertEquals(2, arrivals.size)
+        val gap = arrivals[1] - arrivals[0]
+        assertTrue("second chunk came only $gap ms after the first; the first should not wait for the process to end", gap >= 500)
+    }
+
+    @Test
+    fun emitsTheResultTextWhenTheCliSendsNoPartialMessages() = runBlocking {
+        val chunks = ClaudeCliBackend(executable = { script }, environment = mapOf("FAKE_CLAUDE_MODE" to "no-deltas")).stream(request).toList()
+        assertEquals(listOf("feat: add thing\n\nBody from fake claude."), chunks)
+    }
+
+    @Test
+    fun anErrorResultBecomesAnLlmExceptionWithItsMessage() {
+        val error = assertThrows(LlmException::class.java) {
+            runBlocking { ClaudeCliBackend(executable = { script }, environment = mapOf("FAKE_CLAUDE_MODE" to "error-result")).stream(request).toList() }
+        }
+        assertEquals("There is an issue with the selected model (bogus).", error.message)
+    }
 
     @Test
     fun nonZeroExitBecomesAnLlmExceptionWithStderr() {
