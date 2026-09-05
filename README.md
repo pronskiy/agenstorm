@@ -79,6 +79,32 @@ caret (or the selection start) on the clipboard, plus a Markdown-link flavor
 `Ctrl+Alt+Shift+L` is free in the default keymaps and works well (Settings → Keymap, search for
 "Copy Location Link").
 
+## AI commit messages
+
+The lightning button above the commit message field (commit tool window and commit dialog) streams a
+subject and body for the included changes into the field. Click it again to stop. Undo removes the whole
+generation in one step. Text already in the field is treated as a hint; a multi-line draft is improved
+rather than replaced, and it is saved to the commit message history before being overwritten.
+
+Configure the backend under Settings → Tools → Agenstorm → Commit messages:
+
+- **Anthropic API**: paste an API key (stored in the IDE password safe, never in `agenstorm.xml`). The
+  default model is `claude-sonnet-5`; any model id works in the Model field.
+- **OpenAI-compatible API**: works for OpenAI (`https://api.openai.com/v1`), Ollama
+  (`http://localhost:11434/v1`, no key), LM Studio, OpenRouter and Groq. A model id is required; the key
+  is optional and sent as a bearer token only when set.
+- **Claude CLI**: runs `claude -p --output-format text` with the prompt on stdin, so it uses your Claude
+  Code login and needs no key. Leave the executable empty to find `claude` on the PATH or in the usual
+  install locations. Flags that may change between CLI versions live in the "Extra arguments" field.
+
+**Test Connection** validates the values as typed. The prompt templates are editable: `{diff}`, `{stat}`,
+`{branch}`, `{hint}`, `{language}` and `{conventional}` are substituted, unknown placeholders are kept, and
+"Reset to Default" restores the built-in text. Lock files and generated output (`vendor/`, `node_modules/`,
+`dist/`, `build/`, `*.min.*`, `*.map`) never enter the diff; every file still appears in the stat.
+
+The action has no default shortcut; `Ctrl+Alt+Shift+G` is free in the default keymaps (Settings → Keymap,
+search for "Generate Commit Message").
+
 ## Development
 
 ```bash
