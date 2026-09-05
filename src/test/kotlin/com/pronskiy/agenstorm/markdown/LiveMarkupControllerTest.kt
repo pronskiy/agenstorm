@@ -5,13 +5,18 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.FoldRegion
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.openapi.editor.CaretState
+import com.intellij.openapi.editor.LogicalPosition
+import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.editor.ex.FoldingListener
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 
 /**
- * Steps F1.2 / F1.5: the listener attaches a controller to Markdown editors only, the controller mirrors the
- * collector into collapsed light fold regions, follows edits by keeping what still fits, leaves the Markdown
- * plugin's own regions alone and survives its folding pass.
+ * Steps F1.2 / F1.3 / F1.5: the listener attaches a controller to Markdown editors only, the controller mirrors the
+ * collector into light fold regions (collapsed except on caret lines and under selections), follows edits by keeping
+ * what still fits, leaves the Markdown plugin's own regions alone and survives its folding pass.
  */
 class LiveMarkupControllerTest : BasePlatformTestCase() {
 
@@ -27,6 +32,7 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
 
     fun testMarkdownEditorGetsOneCollapsedRegionPerMarker() {
         myFixture.configureByFile("collector.md")
+        caretToEnd()
         val controller = attachedController()
         controller.syncNow()
 
@@ -82,6 +88,7 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
 
     fun testMarkdownPluginRegionsSurviveRemoveAllAndOursSurviveItsFoldingPass() {
         myFixture.configureByFile("collector.md")
+        caretToEnd()
         val controller = attachedController()
         controller.syncNow()
         val ours = controller.regions()
@@ -100,6 +107,78 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         assertEquals(foreign, foreignRegions())
     }
 
+    fun testCaretLineIsRevealedAndFollowsTheCaret() {
+        myFixture.configureByText("a.md", "**a**\n*b*\n~~c~~\n")
+        val controller = attachedController()
+        controller.syncNow()
+        assertEquals(mapOf(0 to true, 1 to false, 2 to false), expandedByLine(controller))
+
+        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.getLineStartOffset(1) + 1)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(mapOf(0 to false, 1 to true, 2 to false), expandedByLine(controller))
+
+        controller.syncNow()
+        assertEquals("a sync keeps the caret line open", mapOf(0 to false, 1 to true, 2 to false), expandedByLine(controller))
+    }
+
+    fun testSelectionRevealsIntersectingRegionsOnly() {
+        myFixture.configureByText("a.md", "**a**\n*b*\n~~c~~\n")
+        val controller = attachedController()
+        val document = myFixture.editor.document
+        controller.syncNow()
+
+        // From inside the first line's closing marker to the middle of the last line: the opening ** of line 0 is
+        // neither on the caret line nor under the selection and stays hidden; everything else is revealed.
+        val start = 4
+        val end = document.getLineStartOffset(2) + 3
+        myFixture.editor.caretModel.moveToOffset(end)
+        myFixture.editor.selectionModel.setSelection(start, end)
+        UIUtil.dispatchAllInvocationEvents()
+        val byRange = controller.regions().associate { texts(listOf(it)).single() + "@" + it.startOffset to it.isExpanded }
+        assertEquals(mapOf("**@0" to false, "**@3" to true, "*@6" to true, "*@8" to true, "~~@10" to true, "~~@13" to true), byRange)
+
+        myFixture.editor.selectionModel.removeSelection()
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(mapOf(0 to false, 1 to false, 2 to true), expandedByLine(controller))
+    }
+
+    fun testEveryCaretLineIsRevealed() {
+        myFixture.configureByText("a.md", "**a**\n*b*\n~~c~~\n")
+        val controller = attachedController()
+        controller.syncNow()
+
+        myFixture.editor.caretModel.setCaretsAndSelections(listOf(CaretState(LogicalPosition(0, 0), null, null), CaretState(LogicalPosition(2, 0), null, null)))
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(mapOf(0 to true, 1 to false, 2 to true), expandedByLine(controller))
+
+        myFixture.editor.caretModel.setCaretsAndSelections(listOf(CaretState(LogicalPosition(1, 0), null, null)))
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(mapOf(0 to false, 1 to true, 2 to false), expandedByLine(controller))
+    }
+
+    fun testMovingWithinTheLineCostsNoFoldOperation() {
+        myFixture.configureByText("a.md", "**a** and *b*\n~~c~~\n")
+        val controller = attachedController()
+        controller.syncNow()
+        var batches = 0
+        (myFixture.editor as EditorEx).foldingModel.addListener(object : FoldingListener {
+            override fun onFoldProcessingEnd() {
+                batches++
+            }
+        }, testRootDisposable)
+
+        for (offset in 1..6) {
+            myFixture.editor.caretModel.moveToOffset(offset)
+            UIUtil.dispatchAllInvocationEvents()
+        }
+        assertEquals(0, batches)
+
+        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.getLineStartOffset(1))
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(1, batches)
+        assertEquals(mapOf(0 to false, 1 to true), expandedByLine(controller))
+    }
+
     fun testDetachRemovesEveryRegion() {
         myFixture.configureByText("a.md", "# h\n**b** `c`\n")
         val controller = attachedController()
@@ -109,6 +188,16 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         LiveMarkupService.getInstance(project).detach(myFixture.editor)
         assertEmpty(myFixture.editor.foldingModel.allFoldRegions.filter { it.getUserData(LiveMarkupController.KIND) != null })
         assertNull(LiveMarkupService.getInstance(project).controllerFor(myFixture.editor))
+    }
+
+    private fun caretToEnd() = myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.textLength)
+
+    /** Line → whether the regions on it are expanded; a line with mixed states fails the test. */
+    private fun expandedByLine(controller: LiveMarkupController): Map<Int, Boolean> {
+        val document = myFixture.editor.document
+        return controller.regions().groupBy { document.getLineNumber(it.startOffset) }.mapValues { (line, regions) ->
+            regions.map { it.isExpanded }.distinct().singleOrNull() ?: error("mixed states on line $line")
+        }
     }
 
     private fun attachedController(): LiveMarkupController {
