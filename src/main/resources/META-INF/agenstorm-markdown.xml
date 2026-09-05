@@ -1,4 +1,15 @@
 <!-- Loaded only when the Markdown plugin (org.intellij.plugins.markdown) is present.
      Epic A (path:line:col links in Markdown link destinations) and Epic F (live markup) register their extensions here. -->
 <idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- referenceClass matters: the reference service only asks providers whose declared class fits the
+             caller's hint, and HyperlinkAnnotator asks for PsiHighlightedReference. -->
+        <psi.symbolReferenceProvider hostLanguage="Markdown"
+                                     hostElementClass="org.intellij.plugins.markdown.lang.psi.impl.MarkdownLinkDestination"
+                                     implementationClass="com.pronskiy.agenstorm.links.markdown.MarkdownLocationReferenceProvider"
+                                     referenceClass="com.pronskiy.agenstorm.links.FileLocationSymbolReference"
+                                     targetClass="com.pronskiy.agenstorm.links.FileLocationSymbol"/>
+        <lang.inspectionSuppressor language="Markdown"
+                                   implementationClass="com.pronskiy.agenstorm.links.markdown.LocationLinkInspectionSuppressor"/>
+    </extensions>
 </idea-plugin>

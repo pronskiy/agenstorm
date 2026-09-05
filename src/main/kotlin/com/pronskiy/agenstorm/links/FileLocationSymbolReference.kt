@@ -1,8 +1,10 @@
 package com.pronskiy.agenstorm.links
 
 import com.intellij.codeInsight.highlighting.PsiHighlightedReference
+import com.intellij.lang.annotation.AnnotationBuilder
 import com.intellij.model.Symbol
 import com.intellij.model.psi.PsiSymbolReference
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
@@ -25,6 +27,10 @@ class FileLocationSymbolReference private constructor(
 
     override fun resolveReference(): Collection<Symbol> =
         if (target.isValid) listOf(FileLocationSymbol(target, match.location)) else emptyList()
+
+    /** The default sets no attributes at all; use the same key the old-API HighlightedReference path uses. */
+    override fun highlightReference(builder: AnnotationBuilder): AnnotationBuilder =
+        builder.textAttributes(DefaultLanguageHighlighterColors.HIGHLIGHTED_REFERENCE)
 
     companion object {
         /** Requires read access. Null when the location does not resolve to a file. */
