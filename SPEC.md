@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D1 → step D1.4 — `GenerateCommitMessageAction` in `Vcs.MessageActionGroup`: run/stop toggle, streaming into `CommitMessage` on the EDT in one undo group, `CommitGenerationService` (project-level coroutine scope), error balloon; settings fields for backend/model/prompts.
+**Now on:** Epic D → Phase D1 → step D1.6 — remaining pipeline tests (most shipped with each step); then the Phase D1 exit guardrails (`FakeBackend` run in the sandbox).
 
 ---
 
@@ -416,7 +416,7 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 | D1.1 | `LlmBackend` interface + `LlmRequest`/`LlmChunk` model; `FakeBackend` for tests | ✅ | Chunks are plain `String` deltas (no `LlmChunk` type needed). `FakeBackend` lives in main (id `fake`) so the D1 guardrail can select it; configurable chunks, delay and failure. `FakeBackendTest` (plain JUnit, 4 cases) |
 | D1.2 | `DiffCollector`: changes → ranked, budgeted unified diff + stat | ✅ | Category by path/extension heuristics (not `FileType`); `VirtualFile.isTooLarge` does not exist in 262 → `FileSizeLimit.isTooLargeForContentLoading`. Per-file patch via `buildPatch(project, [change], basePath, false, true)` + `UnifiedDiffWriter.write`. `DiffCollectorTest` (7 cases incl. the 100 KB generated file budget case) |
 | D1.3 | `PromptBuilder` with templates and `{diff} {stat} {branch} {hint} {language}` variables | ✅ | Templates in `resources/prompts/{system,user}.txt`; `{conventional}` too; empty hint/branch → `(none)`/`(unknown)`; unknown placeholders kept. `PromptBuilderTest` (6 cases) |
-| D1.4 | `GenerateCommitMessageAction` in `Vcs.MessageActionGroup`: run/stop toggle, streaming into `CommitMessage`, single undo group | 🔲 | |
+| D1.4 | `GenerateCommitMessageAction` in `Vcs.MessageActionGroup`: run/stop toggle, streaming into `CommitMessage`, single undo group | ✅ | Included changes are read in `actionPerformed` (the commit tree is EDT-only), so `update()` checks UI presence + backend id only. Chunks go through `Document.insertString` under one `CommandProcessor` group id. **Platform gotcha:** `UnifiedDiffWriter.write` with default PatchEPs runs `CharsetEP`, which refreshes the VFS synchronously and is forbidden under a read lock → use the overload with an empty `PatchEP` list. Settings fields added: `commitBackendId` (default `anthropic`), `commitModel`, `commitMaxDiffChars`, `commitConventionalCommits`, `commitBodyEnabled`, `commitLanguage`, `commitSystemPrompt`, `commitUserPrompt`. `CommitGenerationServiceTest` (4 cases: stream+post-process, one undo step, failure restores hint, cancel keeps partial text) |
 | D1.5 | `MessagePostProcessor`: strip fences/prefixes, enforce subject length, wrap body at 72 | ✅ | Done before D1.2–D1.4 (the action depends on it). Subject length is *not* enforced (left to the platform inspection, as specified); also unquotes a single quoted line. `MessagePostProcessorTest` (9 cases) |
 | D1.6 | Tests for D1.2, D1.3, D1.5 with `FakeBackend` | 🔲 | |
 
