@@ -6,6 +6,8 @@ import com.intellij.ide.ui.UISettingsListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -26,20 +28,30 @@ import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryChangeListener
 import git4idea.repo.GitRepositoryManager
 import git4idea.ui.branch.popup.GitBranchesTreePopupOnBackend
+import com.intellij.openapi.application.ModalityState
+import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
+import javax.swing.JPanel
 
 /**
  * Step E3.2. The Git branch of the repository behind the focused file (else the project's first repository),
- * shown in the status bar. Owns its component so [BranchWidgetPlacement] can move it into the status bar's
- * left slot. Refreshes on repository changes and editor switches; a click opens the branches popup.
+ * shown in the status bar. The platform gets an invisible [host] as the widget's component (so its own layout
+ * bookkeeping never touches the visible part); the visible [label] is placed by [BranchWidgetPlacement] into the
+ * status bar's left panel, or into [host] where that is impossible. Refreshes on repository changes and editor
+ * switches; a click opens the branches popup.
  */
 class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidget {
 
     private var statusBar: StatusBar? = null
-    private val label = JBLabel(AllIcons.Vcs.Branch).apply {
+    private var placement: BranchWidgetPlacement.Attachment? = null
+    private val host = JPanel(BorderLayout()).apply {
+        isOpaque = false
+        isVisible = false
+    }
+    internal val label = JBLabel(AllIcons.Vcs.Branch).apply {
         border = JBUI.Borders.empty(0, 8)
         iconTextGap = JBUI.scale(4)
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
@@ -52,7 +64,7 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
 
     override fun ID(): String = BranchStatusBarWidgetFactory.ID
 
-    override fun getComponent(): JComponent = label
+    override fun getComponent(): JComponent = host
 
     override fun install(statusBar: StatusBar) {
         this.statusBar = statusBar
@@ -61,19 +73,25 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
             override fun selectionChanged(event: FileEditorManagerEvent) = refresh()
         })
-        // The status bar has just added the component to its ordinary widget area; move it into the left slot now,
-        // and again whenever the navigation bar setting changes (the platform re-takes the slot when it comes back).
-        BranchWidgetPlacement.placeCentrally(statusBar, label)
-        ApplicationManager.getApplication().messageBus.connect(this).subscribe(
-            UISettingsListener.TOPIC,
-            UISettingsListener { BranchWidgetPlacement.onUiSettingsChanged(project, statusBar, this) },
-        )
+        // The status bar adds the host to its ordinary widget area after install(); place the label once that is
+        // done, and again after UI settings changes in case the platform rebuilt its left panel.
+        place()
+        ApplicationManager.getApplication().messageBus.connect(this).subscribe(UISettingsListener.TOPIC, UISettingsListener { place() })
         refresh()
     }
 
     override fun dispose() {
-        statusBar?.let { BranchWidgetPlacement.clearCentral(it, label) }
+        placement?.let(BranchWidgetPlacement::detach)
+        placement = null
         statusBar = null
+    }
+
+    private fun place() {
+        ApplicationManager.getApplication().invokeLater({
+            val bar = statusBar ?: return@invokeLater
+            if (project.isDisposed) return@invokeLater
+            if (label.parent == null || placement == null) placement = BranchWidgetPlacement.attach(bar.component, host, label)
+        }, ModalityState.any())
     }
 
     /** The repository the widget describes right now. */
@@ -110,7 +128,8 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
             return
         }
         val action = ActionManager.getInstance().getAction(BRANCHES_ACTION) ?: return
-        ActionUtil.invokeAction(action, DataManager.getInstance().getDataContext(label), ActionPlaces.STATUS_BAR_PLACE, event, null)
+        val actionEvent = AnActionEvent.createEvent(action, DataManager.getInstance().getDataContext(label), null, ActionPlaces.STATUS_BAR_PLACE, ActionUiKind.NONE, event)
+        ActionUtil.performActionDumbAwareWithCallbacks(action, actionEvent)
     }
 
     companion object {

@@ -6,33 +6,35 @@ import com.intellij.ide.ui.NavBarLocation
 import com.intellij.ide.ui.UISettings
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.startup.ProjectActivity
-import com.intellij.openapi.wm.StatusBar
-import com.intellij.openapi.wm.impl.status.IdeStatusBarImpl
 import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
+import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.JBUI
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.AgenstormSettingsListener
+import java.awt.BorderLayout
+import java.awt.Container
+import javax.swing.BoxLayout
 import javax.swing.JComponent
+import javax.swing.JPanel
 
 /**
  * Step E3.3. Puts [BranchStatusBarWidget] where the breadcrumbs were: hides the bottom navigation bar (and
  * remembers that it was us, so turning the feature off restores it while a user's own choice is left alone),
- * and moves the widget's component into the status bar's central slot. The move happens when the status bar
- * installs the widget ([placeCentrally] from `install`), not from here, because the widgets manager creates
- * widgets asynchronously. `IdeStatusBarImpl.setCentralWidget` is internal API (SPEC.md §2): when it is missing
- * or the status bar is another implementation, the widget stays where the platform placed it (first of the
- * ordinary widgets) and a warning is logged once.
+ * and attaches the widget's label to the status bar's left panel. The status bar (`StatusBar.getComponent()`,
+ * public API) is a `BorderLayout` whose WEST slot holds the navigation bar's horizontal box; the label goes to
+ * the front of that box, or into a box of our own when the platform has not created one. No internal API is
+ * involved; if the layout is not what we expect, the label is shown inside the widget's own component among
+ * the ordinary widgets instead.
  */
 object BranchWidgetPlacement {
 
-    private val LOG = logger<BranchWidgetPlacement>()
-    const val CENTRAL_KEY = "agenstorm.branch.central"
-    private var centralPlacementBroken = false
-
     enum class NavBarChange { NONE, HIDDEN, RESTORED }
+
+    /** Where a label ended up, so [detach] can undo exactly that. */
+    class Attachment(val container: Container, val ownWestPanel: JComponent?, val leftCorner: Boolean)
 
     /** Re-applies the placement for every open project after the settings changed. */
     fun applyToAllProjects() {
@@ -47,50 +49,8 @@ object BranchWidgetPlacement {
     fun applyNow(project: Project) {
         val on = BranchStatusBarWidgetFactory.isFeatureOn()
         syncNavBar(on, AgenstormSettings.getInstance().state, UISettings.getInstance())
-        // Creates the widget when it became available, removes it when it did not; install()/dispose() do the placing.
+        // Creates the widget when it became available, removes it when it did not; the widget places itself.
         project.getService(StatusBarWidgetsManager::class.java).updateWidget(BranchStatusBarWidgetFactory::class.java)
-    }
-
-    /** Moves [component] into the left slot; a no-op on status bars without that slot. */
-    fun placeCentrally(statusBar: StatusBar, component: JComponent) {
-        if (centralPlacementBroken) return
-        try {
-            val impl = statusBar as? IdeStatusBarImpl ?: return
-            impl.setCentralWidget(CENTRAL_KEY, component)
-        } catch (e: LinkageError) {
-            centralPlacementBroken = true
-            LOG.warn("Cannot place the branch widget in the status bar's left slot; leaving it with the other widgets", e)
-        }
-    }
-
-    /** Frees the left slot and takes the component out of whatever container holds it. */
-    fun clearCentral(statusBar: StatusBar, component: JComponent) {
-        component.parent?.remove(component)
-        if (centralPlacementBroken) return
-        try {
-            (statusBar as? IdeStatusBarImpl)?.setCentralWidget(CENTRAL_KEY, null)
-        } catch (e: LinkageError) {
-            centralPlacementBroken = true
-        }
-    }
-
-    /**
-     * After a UI settings change: with the navigation bar hidden, make sure the widget still owns the left slot
-     * (the platform clears it when it removes its own bar); with the bar back, the platform has taken the slot,
-     * so recreate the widget among the ordinary ones.
-     */
-    fun onUiSettingsChanged(project: Project, statusBar: StatusBar, widget: BranchStatusBarWidget) {
-        ApplicationManager.getApplication().invokeLater({
-            if (project.isDisposed || statusBar.getWidget(BranchStatusBarWidgetFactory.ID) !== widget) return@invokeLater
-            val ui = UISettings.getInstance()
-            val navBarAtBottom = ui.showNavigationBar && ui.navBarLocation == NavBarLocation.BOTTOM
-            if (!navBarAtBottom) {
-                placeCentrally(statusBar, widget.component)
-            } else if (widget.component.parent == null) {
-                statusBar.removeWidget(BranchStatusBarWidgetFactory.ID)
-                project.getService(StatusBarWidgetsManager::class.java).updateWidget(BranchStatusBarWidgetFactory::class.java)
-            }
-        }, ModalityState.any())
     }
 
     /**
@@ -113,6 +73,50 @@ object BranchWidgetPlacement {
         return NavBarChange.RESTORED
     }
 
+    /**
+     * Moves [label] to the front of the status bar's WEST box (creating the box when the platform has none) and
+     * keeps [host] invisible; falls back to showing the label inside [host] when [bar] is not a `BorderLayout`.
+     */
+    fun attach(bar: JComponent?, host: JComponent, label: JComponent): Attachment {
+        val layout = bar?.layout as? BorderLayout
+        if (bar == null || layout == null) {
+            move(label, host, index = -1)
+            host.isVisible = true
+            host.revalidate()
+            return Attachment(host, ownWestPanel = null, leftCorner = false)
+        }
+        val existing = layout.getLayoutComponent(BorderLayout.WEST) as? JComponent
+        var own: JComponent? = null
+        val west = existing ?: JPanel().apply {
+            this.layout = BoxLayout(this, BoxLayout.X_AXIS)
+            isOpaque = false
+            border = JBUI.Borders.emptyLeft(4)
+            bar.add(this, BorderLayout.WEST)
+            own = this
+        }
+        move(label, west, index = 0)
+        west.isVisible = true
+        host.isVisible = false
+        bar.revalidate()
+        bar.repaint()
+        return Attachment(west, own, leftCorner = true)
+    }
+
+    /** Takes the label out again and removes a WEST box we created once it is empty. */
+    fun detach(attachment: Attachment) {
+        val container = attachment.container
+        for (child in container.components.toList()) if (child is JBLabel) container.remove(child)
+        val own = attachment.ownWestPanel
+        if (own != null && own.componentCount == 0) own.parent?.remove(own)
+        (container.parent ?: container).revalidate()
+        (container.parent ?: container).repaint()
+    }
+
+    private fun move(component: JComponent, target: Container, index: Int) {
+        if (component.parent === target) return
+        component.parent?.remove(component)
+        if (index < 0) target.add(component) else target.add(component, index)
+    }
 }
 
 /** Step E3.3: places the widget when a project opens, when its repositories appear, and when the settings change. */
