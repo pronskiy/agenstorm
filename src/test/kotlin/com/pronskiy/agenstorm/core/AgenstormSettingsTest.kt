@@ -85,7 +85,7 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
         val configurable = AgenstormConfigurable()
         try {
             val panel = configurable.createComponent()!!
-            val area = UIUtil.findComponentsOfType(panel, JBTextArea::class.java).single()
+            val area = UIUtil.findComponentsOfType(panel, JBTextArea::class.java).single { it.name == "scratch.allowList" }
             assertEquals("PLAIN_TEXT\nMarkdown\nPHP\nJavaScript", area.text)
             assertFalse(configurable.isModified)
 
@@ -108,7 +108,11 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
         try {
             // createComponent() is what the Settings dialog calls; it keeps the panel that isModified/apply/reset operate on.
             val panel = configurable.createComponent()!!
-            val checkBoxes = UIUtil.findComponentsOfType(panel, JBCheckBox::class.java)
+            val featureTexts = listOf(
+                "settings.links.enabled", "settings.scratch.enabled", "settings.frame.hideFileName",
+                "settings.commit.enabled", "settings.tabs.enabled", "settings.markdown.liveMarkup.enabled",
+            ).map(AgenstormBundle::message)
+            val checkBoxes = UIUtil.findComponentsOfType(panel, JBCheckBox::class.java).filter { it.text in featureTexts }
 
             assertEquals(6, checkBoxes.size)
             assertTrue(checkBoxes.all { it.isSelected })

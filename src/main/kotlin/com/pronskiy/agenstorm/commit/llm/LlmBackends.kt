@@ -11,7 +11,7 @@ object LlmBackends {
         state: AgenstormSettings.State = AgenstormSettings.getInstance().state,
         project: Project? = null,
     ): LlmBackend? = when (id.trim()) {
-        AnthropicBackend.ID -> AnthropicBackend(apiKey = { ApiKeyStore.get(AnthropicBackend.ID) })
+        AnthropicBackend.ID -> AnthropicBackend(apiKey = { ApiKeyStore.get(AnthropicBackend.ID) }, defaultModel = state.commitModel.ifBlank { AnthropicBackend.DEFAULT_MODEL })
         OpenAiCompatibleBackend.ID -> OpenAiCompatibleBackend(
             apiKey = { ApiKeyStore.get(OpenAiCompatibleBackend.ID) },
             baseUrl = state.commitOpenAiBaseUrl.ifBlank { OpenAiCompatibleBackend.DEFAULT_BASE_URL },

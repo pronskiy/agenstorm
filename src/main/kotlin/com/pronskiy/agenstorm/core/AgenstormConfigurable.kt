@@ -1,5 +1,6 @@
 package com.pronskiy.agenstorm.core
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
@@ -14,6 +15,7 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
+import com.pronskiy.agenstorm.commit.CommitSettingsPanel
 import com.pronskiy.agenstorm.frame.FrameTitleRefresher
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
@@ -23,6 +25,11 @@ import kotlin.reflect.KMutableProperty1
  * their feature-specific controls to the matching group.
  */
 class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("settings.display.name")) {
+
+    /** One entry of the commit backend selector; [toString] is what the combo box renders. */
+    data class BackendOption(val id: String, val label: String) {
+        override fun toString(): String = label
+    }
 
     private var allowListArea: JBTextArea? = null
 
@@ -41,6 +48,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                         { text -> applyAllowList(text) },
                     )
                     .comment(AgenstormBundle.message("settings.scratch.allowList.comment"))
+                    .applyToComponent { name = "scratch.allowList" }
                     .component
             }
             row {
@@ -53,7 +61,9 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
             }
         }
         featureGroup("settings.group.frame", "settings.frame.hideFileName", AgenstormSettings.State::hideFileNameInTitle, onApply = FrameTitleRefresher::refreshOpenFrames)
-        featureGroup("settings.group.commit", "settings.commit.enabled", AgenstormSettings.State::commitEnabled)
+        featureGroup("settings.group.commit", "settings.commit.enabled", AgenstormSettings.State::commitEnabled) {
+            CommitSettingsPanel(ApplicationManager.getApplication().getService(AgenstormAppScope::class.java).scope).render(this)
+        }
         featureGroup("settings.group.tabs", "settings.tabs.enabled", AgenstormSettings.State::projectTabsEnabled)
         featureGroup("settings.group.markdown", "settings.markdown.liveMarkup.enabled", AgenstormSettings.State::liveMarkupEnabled)
     }

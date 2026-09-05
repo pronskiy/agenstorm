@@ -25,6 +25,7 @@ import java.time.Duration
 class AnthropicBackend(
     private val apiKey: () -> String?,
     private val baseUrl: String = DEFAULT_BASE_URL,
+    private val defaultModel: String = DEFAULT_MODEL,
     private val http: HttpSseClient = HttpSseClient(),
 ) : LlmBackend {
 
@@ -34,7 +35,7 @@ class AnthropicBackend(
         val key = apiKey()?.trim()?.takeIf { it.isNotEmpty() }
             ?: throw LlmException(AgenstormBundle.message("commit.backend.noKey", "Anthropic"))
         val body = buildJsonObject {
-            put("model", request.model ?: DEFAULT_MODEL)
+            put("model", request.model?.takeIf { it.isNotBlank() } ?: defaultModel.ifBlank { DEFAULT_MODEL })
             put("max_tokens", request.maxTokens)
             put("stream", true)
             if (request.system.isNotBlank()) put("system", request.system)
