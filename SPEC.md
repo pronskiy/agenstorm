@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D1 → step D1.5 (taken before D1.2–D1.4 because the action depends on it) — `MessagePostProcessor`: strip prefixes/fences, wrap body at 72, one blank line, body toggle.
+**Now on:** Epic D → Phase D1 → step D1.3 — `PromptBuilder` with default templates in `resources/prompts/` and `{diff} {stat} {branch} {hint} {language} {conventional}` substitution (D1.2 follows, then D1.4).
 
 ---
 
@@ -417,7 +417,7 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 | D1.2 | `DiffCollector`: changes → ranked, budgeted unified diff + stat | 🔲 | |
 | D1.3 | `PromptBuilder` with templates and `{diff} {stat} {branch} {hint} {language}` variables | 🔲 | |
 | D1.4 | `GenerateCommitMessageAction` in `Vcs.MessageActionGroup`: run/stop toggle, streaming into `CommitMessage`, single undo group | 🔲 | |
-| D1.5 | `MessagePostProcessor`: strip fences/prefixes, enforce subject length, wrap body at 72 | 🔲 | |
+| D1.5 | `MessagePostProcessor`: strip fences/prefixes, enforce subject length, wrap body at 72 | ✅ | Done before D1.2–D1.4 (the action depends on it). Subject length is *not* enforced (left to the platform inspection, as specified); also unquotes a single quoted line. `MessagePostProcessorTest` (9 cases) |
 | D1.6 | Tests for D1.2, D1.3, D1.5 with `FakeBackend` | 🔲 | |
 
 **Steps (detail):**
