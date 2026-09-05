@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic D → Phase D1 exit guardrails — Budget honoured is verified; waiting for Roman to run the fake backend in the sandbox (**Streaming works end-to-end**, **Never blocks EDT**). Next: Phase D2 → step D2.4 (`SseReader`, done first per the spec).
+**Now on:** Epic D → Phase D2 → step D2.4 (first, per the spec) — `SseReader` (lines → `SseEvent`s) plus the HTTP line stream over `HttpClient.sendAsync(..., BodyHandlers.ofLines())` with cancellation and HTTP ≥ 400 → `LlmException`. Phase D1 guardrails passed on 2026-09-05.
 
 ---
 
@@ -453,8 +453,8 @@ Platform facts (verified against build 262; the same recipe the bundled AI Assis
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Streaming works end-to-end | With `FakeBackend` selected in `runIde`, clicking the action streams text into the field and Undo removes it in one step | 🔄 | Automated in `CommitGenerationServiceTest`/`GenerateCommitMessageActionTest`; the sandbox run uses `commitBackendId=fake` written into the sandbox `agenstorm.xml`. Awaiting Roman's check |
-| Never blocks EDT | No "UI freeze" report in `idea.log` during diff collection of a 50-file change set | 🔄 | Diff collection runs in `readAction` on the service's coroutine scope; the demo repo carries 50 modified files for the sandbox check |
+| Streaming works end-to-end | With `FakeBackend` selected in `runIde`, clicking the action streams text into the field and Undo removes it in one step | ✅ | Automated in `CommitGenerationServiceTest`/`GenerateCommitMessageActionTest`; Roman confirmed streaming + one-step Undo in the sandbox with `commitBackendId=fake` (2026-09-05) |
+| Never blocks EDT | No "UI freeze" report in `idea.log` during diff collection of a 50-file change set | ✅ | Diff collection runs in `readAction` on the service's coroutine scope; Roman ran it on the 51-file demo change set, no freeze; sandbox `idea.log` has no UI-freeze report (2026-09-05) |
 | Budget honoured | `DiffCollectorTest` proves output ≤ `maxDiffChars` with a lock file and a 100 KB generated file present | ✅ | `testBudgetIsHonouredWithALockFileAndAHugeGeneratedFilePresent` (2026-09-05) |
 
 #### Phase D2 — Backends
