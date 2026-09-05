@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A1 → step A1.1 — `FileLocation` model + `FileLocationParser` (regex, positive/negative corpus) with unit tests. Epic 0 is complete; all four Phase 01 guardrails passed on 2026-09-05.
+**Now on:** Epic A → Phase A1 → step A1.2 — `FileLocationResolver`: containing dir → project base → content roots → absolute → unique basename, plus `toOffset`.
 
 ---
 
@@ -180,7 +180,7 @@ Platform facts the implementation relies on (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| A1.1 | `FileLocation` model + `FileLocationParser` (regex, negative cases) with unit tests | 🔲 | |
+| A1.1 | `FileLocation` model + `FileLocationParser` (regex, negative cases) with unit tests | ✅ | Plain JUnit `FileLocationParserTest`, 12 cases (full corpus + `https://example.com/a/b.php:42`, punctuation, 7-digit lines). Lookbehind also rejects a preceding `.` so URL paths never match; line/column 0 are dropped |
 | A1.2 | `FileLocationResolver`: containing dir → project base → content roots → unique basename | 🔲 | |
 | A1.3 | `FileLocationSymbol` (`NavigatableSymbol`) + `FileLocationSymbolReference` (`PsiHighlightedReference`) | 🔲 | |
 | A1.4 | `MarkdownLocationReferenceProvider` registered for `MarkdownLinkDestination` in `agenstorm-markdown.xml` | 🔲 | |
