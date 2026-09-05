@@ -82,6 +82,16 @@ class ProjectTabsOverflowTest : BasePlatformTestCase() {
         assertTrue(panel.hiddenProjects().isEmpty())
     }
 
+    fun testTheCapIsHalfTheWindowAndAbsentWithoutOne() {
+        assertEquals(700, ProjectTabsPanel.availableWidthFor(1400))
+        assertEquals(Int.MAX_VALUE, ProjectTabsPanel.availableWidthFor(0))
+        // A panel outside any window is never capped, so a toolbar being laid out cannot shrink it.
+        val panel = panelWith(tabs(6))
+        panel.size = panel.preferredSize
+        panel.doLayout()
+        assertEquals(ProjectTabsPanel.Mode.FULL, panel.mode)
+    }
+
     fun testOverflowPopupListsTheHiddenProjects() {
         val hidden = tabs(3).drop(1)
         val group = ProjectTabActions.overflowGroup(hidden, project)

@@ -2,7 +2,6 @@ package com.pronskiy.agenstorm.tabs.ui
 
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
@@ -25,9 +24,11 @@ import javax.swing.SwingUtilities
  * is needed. Subscribes to the model while it is showing ([attach] from `addNotify`, [detach] from
  * `removeNotify`). What clicks do is decided by the callbacks (wired by `ProjectTabActions`); the panel renders.
  *
- * Overflow: the strip may take at most half of the toolbar it sits in ([availableWidthProvider]). When the full
- * tabs do not fit, every tab becomes icon-only; when even that does not fit, the first N icon-only tabs are shown
- * (the frame's own project always among them) and the rest hide behind the chevron, which lists them in a popup.
+ * Overflow: the strip may take at most half of the window it sits in ([availableWidthProvider]). The window is
+ * the reference on purpose: the left main-toolbar group is sized from its children, so measuring against it
+ * would shrink the cap together with the strip until only icons were left. When the full tabs do not fit, every
+ * tab becomes icon-only; when even that does not fit, the first N icon-only tabs are shown (the frame's own
+ * project always among them) and the rest hide behind the chevron, which lists them in a popup.
  *
  * Reordering (E2.2): dragging a tab horizontally past the middle of a neighbour draws an insertion marker and,
  * on release, reports the new index through [onReorder]; the model persists it and every frame follows.
@@ -57,8 +58,8 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     /** A tab was dragged to a new position: the project and its new index among the open tabs. */
     var onReorder: (Project, Int) -> Unit = { _, _ -> }
 
-    /** Pixels the strip may use; by default half of the enclosing toolbar, unlimited before the toolbar is sized. */
-    var availableWidthProvider: () -> Int = { defaultAvailableWidth() }
+    /** Pixels the strip may use; by default half of the enclosing window, unlimited before the window is sized. */
+    var availableWidthProvider: () -> Int = { availableWidthFor(SwingUtilities.getWindowAncestor(this)?.width ?: 0) }
 
     /** How the strip was laid out last time. */
     var mode: Mode = Mode.FULL
@@ -293,13 +294,11 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
         component.setBounds(x, (height - size.height) / 2, size.width, size.height)
     }
 
-    private fun defaultAvailableWidth(): Int {
-        val toolbar = SwingUtilities.getAncestorOfClass(ActionToolbar::class.java, this) as? JComponent ?: return Int.MAX_VALUE
-        return if (toolbar.width > 0) toolbar.width / 2 else Int.MAX_VALUE
-    }
+    companion object {
+        private val DRAG_THRESHOLD = JBUI.scale(4)
 
-    private companion object {
-        val DRAG_THRESHOLD = JBUI.scale(4)
+        /** Half of a sized window; no cap while the window has no size yet (or the panel is not in one). */
+        fun availableWidthFor(windowWidth: Int): Int = if (windowWidth > 0) windowWidth / 2 else Int.MAX_VALUE
     }
 
     private fun separator(): JComponent = JPanel().apply {
