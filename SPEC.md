@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic A → Phase A1 → step A1.4 — `MarkdownLocationReferenceProvider` for `MarkdownLinkDestination`, registered in `agenstorm-markdown.xml` (add `org.intellij.plugins.markdown` to `platformBundledPlugins`).
+**Now on:** Epic A → Phase A1 → step A1.5 — fixture-based tests in `testData/links/md/` (resolve, navigation offset, `../` path, missing file).
 
 ---
 
@@ -183,7 +183,7 @@ Platform facts the implementation relies on (verified against build 262):
 | A1.1 | `FileLocation` model + `FileLocationParser` (regex, negative cases) with unit tests | ✅ | Plain JUnit `FileLocationParserTest`, 12 cases (full corpus + `https://example.com/a/b.php:42`, punctuation, 7-digit lines). Lookbehind also rejects a preceding `.` so URL paths never match; line/column 0 are dropped |
 | A1.2 | `FileLocationResolver`: containing dir → project base → content roots → unique basename | ✅ | Absolute paths are tried first; directories never resolve; `toOffset` clamps. `FileLocationResolverTest` (9 cases) on the light fixture incl. basename fallback with three `Foo.php` candidates |
 | A1.3 | `FileLocationSymbol` (`NavigatableSymbol`) + `FileLocationSymbolReference` (`PsiHighlightedReference`) | ✅ | Reference is built by `create(host, match)` only when the location resolves and carries the file; separate `FileLocationNavigationTarget` exposes `offset`. `navigationRequest()` must run off the EDT (platform assertion). `FileLocationSymbolReferenceTest`, 5 cases |
-| A1.4 | `MarkdownLocationReferenceProvider` registered for `MarkdownLinkDestination` in `agenstorm-markdown.xml` | 🔲 | |
+| A1.4 | `MarkdownLocationReferenceProvider` registered for `MarkdownLinkDestination` in `agenstorm-markdown.xml` | ✅ | Registration needs `referenceClass=FileLocationSymbolReference` or `HyperlinkAnnotator` never sees the reference; `highlightReference` must set `HIGHLIGHTED_REFERENCE` (default sets nothing). Added `LocationLinkInspectionSuppressor` (`lang.inspectionSuppressor`) because `MarkdownUnresolvedFileReference` warns on `Foo.php:3:5`. The Markdown plugin's `LineNumberPathReferenceProvider` only handles `#L10` anchors, no conflict. 6 tests incl. highlighting + suppression |
 | A1.5 | Tests: resolve + navigation offset for `.md` fixtures | 🔲 | |
 
 **Steps (detail):**
