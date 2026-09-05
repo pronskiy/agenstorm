@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic 0 → Phase 01 → step 01.5 — GitHub Actions running build, test and `verifyPlugin` on push/PR; `LICENSE` (MIT), `README.md` with the "Links for agents" section, `CHANGELOG.md`.
+**Now on:** Epic 0 → Phase 01 exit guardrails — verify Builds clean / Verifier green / Loads without optional deps, then the human check of Settings visible in `runIde`; Epic A → Phase A1 → step A1.1 follows.
 
 ---
 
@@ -104,7 +104,7 @@ All epics are MVP. Recommended order: 0 → A → B → C → D → E → F (val
 | 01.2 | `plugin.xml` with id, MIT vendor block, `since/until-build`, optional depends and per-feature config files | ✅ | `since-build=262`, `until-build=262.*` patched from `gradle.properties`; PHP/Markdown/Git4Idea optional with empty `agenstorm-*.xml` config files |
 | 01.3 | `AgenstormSettings` + `AgenstormConfigurable` with a toggle per feature | ✅ | Settings is a light `@Service(APP)` (no `applicationService` XML entry); six toggles default to on; `AgenstormSettingsTest` covers defaults, `@State` storage, skip-defaults XML shape and configurable apply/reset |
 | 01.4 | Test framework wired: one `BasePlatformTestCase` smoke test | ✅ | `SettingsSmokeTest` checks descriptor + dependencies, service, configurable EP entry, bundle; template `MyPluginTest`/`rename/` removed; `testData/README.md` documents the per-feature layout |
-| 01.5 | GitHub Actions: build, test, `verifyPlugin` on push/PR; `LICENSE` (MIT), `README.md`, `CHANGELOG.md` | 🔲 | |
+| 01.5 | GitHub Actions: build, test, `verifyPlugin` on push/PR; `LICENSE` (MIT), `README.md`, `CHANGELOG.md` | ✅ | `build.yml`: buildPlugin → check + verifyPlugin → release draft (Qodana/Codecov jobs dropped, they need tokens); LICENSE already MIT © 2026; README has "Links for agents"; CHANGELOG Keep-a-Changelog with Epic 0 under Unreleased |
 
 **Steps (detail):**
 
