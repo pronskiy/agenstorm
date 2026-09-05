@@ -25,8 +25,10 @@ import java.io.File
  * CLI versions live in the "extra arguments" setting ([DEFAULT_EXTRA_ARGS]).
  *
  * Speed: Claude Code enables extended thinking by default, which made a one-line commit message take 20–50 s
- * even on Haiku; [DEFAULT_ENVIRONMENT] switches it off (~3 s end to end). `--strict-mcp-config` in the default
- * extra args skips connecting the user's MCP servers and keeps their tool definitions out of the prompt.
+ * even on Haiku; [DEFAULT_ENVIRONMENT] switches it off (~3 s end to end). `--safe-mode` in the default extra
+ * args starts the CLI without the user's customizations (CLAUDE.md, plugins, skills, hooks, MCP servers), which
+ * cut the prompt from ~6,000 to ~800 tokens and keeps the output independent of the machine's Claude Code setup;
+ * `--strict-mcp-config` additionally guards against MCP servers coming back through other flags.
  */
 class ClaudeCliBackend(
     private val executable: () -> String?,
@@ -95,8 +97,8 @@ class ClaudeCliBackend(
         const val ID = "claude-cli"
         /** Alias the CLI resolves to the current Haiku; cheap and quick for commit messages. Empty leaves the choice to the CLI. */
         const val DEFAULT_MODEL = "haiku"
-        /** No tools (the prompt already carries the diff), no session clutter, no MCP servers; editable in the settings. */
-        const val DEFAULT_EXTRA_ARGS = "--tools \"\" --no-session-persistence --strict-mcp-config"
+        /** No tools (the prompt already carries the diff), no session clutter, no MCP servers, no user customizations; editable in the settings. */
+        const val DEFAULT_EXTRA_ARGS = "--tools \"\" --no-session-persistence --strict-mcp-config --safe-mode"
         /** Disables extended thinking, which Claude Code turns on by default; the `environment` parameter can override it. */
         val DEFAULT_ENVIRONMENT: Map<String, String> = mapOf("MAX_THINKING_TOKENS" to "0")
         const val DEFAULT_TIMEOUT_MS = 120_000

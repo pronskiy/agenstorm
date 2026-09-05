@@ -93,8 +93,8 @@ class ClaudeCliBackendTest {
     }
 
     @Test
-    fun defaultExtraArgsSkipToolsSessionsAndMcpServers() {
-        assertEquals(listOf("--tools", "", "--no-session-persistence", "--strict-mcp-config"), com.intellij.util.execution.ParametersListUtil.parse(ClaudeCliBackend.DEFAULT_EXTRA_ARGS))
+    fun defaultExtraArgsSkipToolsSessionsMcpServersAndUserCustomizations() {
+        assertEquals(listOf("--tools", "", "--no-session-persistence", "--strict-mcp-config", "--safe-mode"), com.intellij.util.execution.ParametersListUtil.parse(ClaudeCliBackend.DEFAULT_EXTRA_ARGS))
     }
 
     private fun recordedArgs(file: File): List<String> = file.readText().removeSuffix("\n").split("\n")
