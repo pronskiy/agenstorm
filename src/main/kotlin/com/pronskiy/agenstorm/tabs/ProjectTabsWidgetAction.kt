@@ -26,7 +26,7 @@ class ProjectTabsWidgetAction : ProjectToolbarWidgetAction() {
     }
 
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent =
-        SwitchingPanel(stock = super.createCustomComponent(presentation, place), tabs = ProjectTabsPanel())
+        SwitchingPanel(stock = super.createCustomComponent(presentation, place), tabs = ProjectTabsPanel().also(ProjectTabActions::wire))
 
     override fun updateCustomComponent(component: JComponent, presentation: Presentation) {
         val panel = component as? SwitchingPanel

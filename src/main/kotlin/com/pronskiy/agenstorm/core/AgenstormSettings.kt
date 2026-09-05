@@ -53,6 +53,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var commitUserPrompt: String = "",
         /** Epic E: set when Agenstorm turned the native macOS project tabs off, so turning the feature off restores them; a user's own registry choice is left alone. */
         var nativeTabsDisabledByAgenstorm: Boolean = false,
+        /** Epic E: switching tabs moves the target window onto the current one's bounds (skipped in full screen). */
+        var tabsMirrorWindowBounds: Boolean = true,
     )
 
     private var currentState = State()

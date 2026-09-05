@@ -10,7 +10,9 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.NamedColorUtil
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
+import java.awt.Component
 import java.awt.Dimension
+import java.awt.Point
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
@@ -30,6 +32,7 @@ class ProjectTabLabel(
     selected: Boolean,
     private val onSelect: () -> Unit,
     private val onClose: () -> Unit,
+    private val onContextMenu: (Component, Point) -> Unit = { _, _ -> },
 ) : JPanel(BorderLayout(JBUI.scale(4), 0)) {
 
     var isSelected: Boolean = selected
@@ -69,10 +72,18 @@ class ProjectTabLabel(
             override fun mouseExited(e: MouseEvent) {
                 if (!contains(e.point)) setHovered(false)
             }
+            override fun mousePressed(e: MouseEvent) {
+                if (e.isPopupTrigger) onContextMenu(e.component, e.point)
+            }
+            override fun mouseReleased(e: MouseEvent) {
+                if (e.isPopupTrigger) onContextMenu(e.component, e.point)
+            }
             override fun mouseClicked(e: MouseEvent) {
-                when (e.button) {
-                    MouseEvent.BUTTON1 -> onSelect()
-                    MouseEvent.BUTTON2 -> onClose()
+                when {
+                    e.isPopupTrigger -> Unit
+                    e.button == MouseEvent.BUTTON1 -> onSelect()
+                    e.button == MouseEvent.BUTTON2 -> onClose()
+                    e.button == MouseEvent.BUTTON3 -> onContextMenu(e.component, e.point)
                 }
             }
         }

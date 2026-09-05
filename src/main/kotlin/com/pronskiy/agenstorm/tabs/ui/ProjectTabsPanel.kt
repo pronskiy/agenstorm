@@ -10,6 +10,7 @@ import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
 import java.awt.Component
 import java.awt.Dimension
+import java.awt.Point
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.Box
@@ -38,6 +39,8 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     var onClose: (Project) -> Unit = {}
     /** The "+" button; receives the button so a popup can anchor to it. */
     var onAdd: (Component) -> Unit = {}
+    /** Right click on a tab: the project, the component and the click point, for a popup. */
+    var onContextMenu: (Project, Component, Point) -> Unit = { _, _, _ -> }
 
     private var subscription: Disposable? = null
     internal val addButton = JBLabel(AllIcons.General.Add).apply {
@@ -87,7 +90,15 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
         removeAll()
         tabs.forEachIndexed { index, project ->
             if (index > 0) add(separator())
-            add(ProjectTabLabel(project, selected = project === ownerProject, onSelect = { onSelect(project) }, onClose = { onClose(project) }))
+            add(
+                ProjectTabLabel(
+                    project,
+                    selected = project === ownerProject,
+                    onSelect = { onSelect(project) },
+                    onClose = { onClose(project) },
+                    onContextMenu = { component, point -> onContextMenu(project, component, point) },
+                ),
+            )
         }
         add(Box.createHorizontalStrut(JBUI.scale(2)))
         add(addButton)
