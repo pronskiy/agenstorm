@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic F → Phase F1 → step **F1.2**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → Phase F1 → step **F1.3**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -645,7 +645,7 @@ Platform facts (verified against build 262):
 
 - The editor has one line height and no per-range font size in `TextAttributes` → hiding markers requires folding; styling uses the Markdown colour scheme keys (`MarkdownHighlighterColors.BOLD/ITALIC/STRIKE_THROUGH/CODE_SPAN/…`).
 - Fold regions created manually with `FoldingModelEx.createFoldRegion(start, end, placeholder, group, neverExpands)` inside `runBatchFoldingOperation` are "light" regions (no `SIGNATURE` user data): `UpdateFoldRegionsOperation.shouldRemoveRegion` keeps them across folding passes, they may be 1 character long, and an empty placeholder is accepted (`FoldingModelImpl.createFoldRegion` only rejects `start >= end`, character-pair splits and tree-invalid ranges). `FoldingBuilder`-created regions, by contrast, are removed when `range.length < 2` — this is why the live markup does **not** use a `FoldingBuilder`.
-- `com.intellij.textEditorCustomizer` (`TextEditorCustomizer.customize(textEditor, coroutineScope)`) is how the Markdown plugin itself attaches per-editor behaviour (`MarkdownCharacterGridCustomizer`).
+- `com.intellij.textEditorCustomizer` (`TextEditorCustomizer.customize(textEditor, coroutineScope)`) is how the Markdown plugin itself attaches per-editor behaviour (`MarkdownCharacterGridCustomizer`). The interface is `@ApiStatus.Internal` (checked in 262), so the plugin uses the public `editorFactoryListener` instead (decision 20); the Markdown plugin registers one of those too (`MarkdownCharacterGridEditorFactoryListener`).
 - PSI: `MarkdownElementTypes.STRONG / EMPH / STRIKETHROUGH / CODE_SPAN / INLINE_LINK / LINK_TEXT / LINK_DESTINATION / IMAGE / ATX_1…ATX_6`; tokens `MarkdownTokenTypes.EMPH` (marker chars), `ATX_HEADER`, `BACKTICK`, `CHECK_BOX`.
 - Toolbar groups for a toggle: `Markdown.Toolbar.Right` (editor-with-preview toolbar), `Markdown.EditorContextMenuGroup`.
 
@@ -654,9 +654,9 @@ Platform facts (verified against build 262):
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | F1.1 | `MarkupRangeCollector`: PSI → `List<MarkupRange(kind, range, placeholder)>`, skipping code fences/blocks/HTML | ✅ | PSI shape verified with a tree dump: heading space sits inside `ATX_CONTENT` (taken from the document text), `CHECK_BOX` token is `[ ] ` with a trailing space (only `[ ]` folded), `~~` is two `TILDE` tokens, nested `***x***` keeps markers as direct children so ranges never overlap. Closing `##` of a heading is hidden too. Empty headings and empty link text stay raw |
-| F1.2 | `LiveMarkupController` per `TextEditor` (via `textEditorCustomizer`): create/refresh light fold regions, debounce on document change, dispose with editor | 🔲 | |
+| F1.2 | `LiveMarkupController` per `TextEditor` (via `textEditorCustomizer`): create/refresh light fold regions, debounce on document change, dispose with editor | ✅ | Attached through the public `editorFactoryListener` (`LiveMarkupEditorListener` + project service `LiveMarkupService`) instead of `textEditorCustomizer`, which is `@ApiStatus.Internal` in 262 — decision 20. Regions start expanded when created, so the controller collapses them; `UNTYPED` editors are accepted next to `MAIN_EDITOR` (plain `EditorFactory.createEditor` over a file, test fixtures) |
 | F1.3 | Caret policy: regions intersecting caret line(s)/selection expanded, all others collapsed; applied on caret/selection change and after re-sync | 🔲 | |
-| F1.4 | Spike result recorded: regions survive Markdown plugin's own folding pass, `Fold All`/`Expand All`, and typing at region borders | 🔲 | |
+| F1.4 | Spike result recorded: regions survive Markdown plugin's own folding pass, `Fold All`/`Expand All`, and typing at region borders | 🔲 | Folding pass half already covered by `LiveMarkupControllerTest`: 36 light regions survive `CodeFoldingManager.updateFoldRegions` and `doHighlighting` while the Markdown plugin's heading/list/fence/table regions appear around them |
 | F1.5 | Tests: collector on fixtures; controller in `BasePlatformTestCase` with `EditorTestUtil` (regions exist, caret line expanded) | 🔲 | |
 
 **Steps (detail):**
@@ -794,6 +794,7 @@ Platform facts (verified against build 262):
 | 17 | 2026-09-05 | The Claude CLI backend runs with `--safe-mode` by default, so the user's CLAUDE.md, plugins, skills, hooks and MCP servers stay out of commit-message generation | Measured per call with the plugin's prompt: ~6,000 prompt tokens (CLAUDE.md files, a plugin's session hook, 66 skills) versus 775 in safe mode, $0.012 versus $0.003 on Haiku, same ~3 s. Message style now comes only from the plugin's prompt and settings, which makes output identical across machines; users who want their CLAUDE.md rules applied remove the flag in the Extra arguments field. `--bare` was rejected because it refuses OAuth logins; `--disable-slash-commands` and `--setting-sources local` remove only part of the context | Roman |
 | 18 | 2026-09-05 | Project tabs keep extending the internal `ProjectToolbarWidgetAction` (no standalone fallback) | The verifier reports the subclassing as internal-API usage but stays Compatible on PhpStorm and IntelliJ IDEA 2026.2; Marketplace tolerates warnings of that kind, and `failureLevel` excludes them on purpose. Extending the stock action is what makes feature-off identical to stock. The E1.5 fallback (own `CustomComponentAction` + minimal dropdown) stays documented for the day the class becomes final or the usage becomes an error | Claude (proposed), confirmed by Roman 2026-09-05 |
 | 19 | 2026-09-05 | With project tabs on, the Git branch leaves the main toolbar and takes the bottom-left of the status bar, replacing the navigation bar (breadcrumbs) | Roman, reviewing Epic E: the toolbar branch widget "does not make sense" next to project tabs, "where it does make sense is in the bottom toolbar, left corner, instead of breadcrumbs". The stock status-bar widget is unavailable while the new toolbar is shown, so the plugin ships its own (Phase E3); the toolbar VCS group is hidden by overriding it; both flips are reversible from the same toggle | Roman |
+| 20 | 2026-09-06 | Live markup attaches to editors through the public `EditorFactoryListener` (`com.intellij.editorFactoryListener`), not the `textEditorCustomizer` named in the Epic F plan | `TextEditorCustomizer` turned out to be `@ApiStatus.Internal` (and `@OverrideOnly`) in build 262 and is not on the §2 list. The listener gives the same per-editor lifecycle (`editorCreated`/`editorReleased`), the Markdown plugin itself uses one, and it keeps Epic F free of internal API. Eligibility: this project's editor, kind `MAIN_EDITOR` or `UNTYPED`, Markdown file type, feature on; consoles, diff viewers and previews are excluded by kind | Claude (proposed), Roman to confirm |
 
 ---
 
