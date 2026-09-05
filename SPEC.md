@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic F → Phase F1 → step **F1.1**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → Phase F1 → step **F1.2**. Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -653,7 +653,7 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| F1.1 | `MarkupRangeCollector`: PSI → `List<MarkupRange(kind, range, placeholder)>`, skipping code fences/blocks/HTML | 🔲 | |
+| F1.1 | `MarkupRangeCollector`: PSI → `List<MarkupRange(kind, range, placeholder)>`, skipping code fences/blocks/HTML | ✅ | PSI shape verified with a tree dump: heading space sits inside `ATX_CONTENT` (taken from the document text), `CHECK_BOX` token is `[ ] ` with a trailing space (only `[ ]` folded), `~~` is two `TILDE` tokens, nested `***x***` keeps markers as direct children so ranges never overlap. Closing `##` of a heading is hidden too. Empty headings and empty link text stay raw |
 | F1.2 | `LiveMarkupController` per `TextEditor` (via `textEditorCustomizer`): create/refresh light fold regions, debounce on document change, dispose with editor | 🔲 | |
 | F1.3 | Caret policy: regions intersecting caret line(s)/selection expanded, all others collapsed; applied on caret/selection change and after re-sync | 🔲 | |
 | F1.4 | Spike result recorded: regions survive Markdown plugin's own folding pass, `Fold All`/`Expand All`, and typing at region borders | 🔲 | |
