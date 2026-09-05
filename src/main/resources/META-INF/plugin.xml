@@ -1,15 +1,11 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>com.github.pronskiy.phptypehintsextra</id>
-    <name>PHP Typehints Extra</name>
-    <vendor url="https://github.com/pronskiy" email="roman@pronskiy.com">Roman Pronskiy</vendor>
+    <id>com.pronskiy.agenstorm</id>
+    <name>Agenstorm</name>
+    <vendor url="https://pronskiy.com" email="roman@pronskiy.com">Roman Pronskiy</vendor>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.jetbrains.php</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
-
-    <extensions defaultExtensionNs="com.intellij">
-        <applicationService serviceImplementation="com.github.pronskiy.phptypehintsextra.services.MyApplicationService"/>
-    </extensions>
+    <resource-bundle>messages.AgenstormBundle</resource-bundle>
 </idea-plugin>

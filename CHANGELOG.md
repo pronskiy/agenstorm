@@ -1,6 +1,6 @@
 <!-- Keep a Changelog guide -> https://keepachangelog.com -->
 
-# PHP Typehints Extra Changelog
+# Agenstorm Changelog
 
 ## [Unreleased]
 
