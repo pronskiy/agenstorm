@@ -11,6 +11,7 @@ A PhpStorm plugin that makes the IDE friendlier for agent-driven development:
 - window titles and project tabs without file names
 - project tabs inside the main toolbar, so the window loses a row of chrome
 - an Obsidian-style live-markup mode for Markdown
+- `open src/Foo.php:42` in an IDE terminal opens that file, in that window, with the caret on line 42
 
 Every feature is toggleable on its own under Settings → Tools → Agenstorm.
 <!-- Plugin description end -->
@@ -157,6 +158,40 @@ Obsidian-style editing for Markdown files: the syntax hides itself until the car
   Expand All and Collapse All keep working
 
 Limitations: heading sizes stay at the editor's single line height; images and reference-style links stay raw.
+
+## Opening files from the terminal
+
+Inside an IDE terminal, `open` opens files in the window the terminal belongs to:
+
+```
+open src/Foo.php            # opens the file
+open src/Foo.php:42         # caret on line 42
+open src/Foo.php:42:7       # caret on line 42, column 7
+open src/Foo.php docs/a.md  # several files at once
+open ../other-project       # opens or focuses that project
+open .                      # shows the directory in the Project view
+```
+
+Paths resolve against the shell's working directory first, then the way location links resolve
+everywhere else: the project base, the content roots, and finally a unique file name anywhere in the
+project. A line past the end of the file lands on the last line.
+
+Everything the IDE does not claim reaches the real `open` untouched, with its own behaviour and its own
+error messages: flags (`open -a Preview doc.pdf`, `open -R file`), URLs, no arguments at all, paths that
+do not exist, files the IDE treats as binary, and any command line mixing files with directories. If a
+single argument cannot be claimed, the whole command is passed through — a half-claimed command would
+swallow the error for the rest of it.
+
+How it works: the IDE writes a small POSIX `sh` script and puts its directory at the front of the PATH of
+every terminal it starts, so `open` is shadowed **inside IDE terminals only** — every other shell on the
+machine is untouched. The script posts the working directory and the arguments to a loopback endpoint that
+is bound to `127.0.0.1` on a free port, with a token generated per IDE run; nothing outside the machine can
+reach it, and the token is never a command-line argument.
+
+Settings → Tools → Agenstorm → **Terminal** has the switch, the command names (comma-separated, so `e` or
+`edit` can shadow as well) and an option to let the IDE claim files it treats as binary. Terminals that are
+already running keep the environment they started with, so a change takes effect in the next terminal.
+Shells running over WSL or SSH are never shimmed; Windows is not supported yet.
 
 ## Development
 

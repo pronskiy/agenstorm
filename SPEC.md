@@ -18,7 +18,7 @@
 
 ### Current focus
 
-**Now on:** **Epic G** → step **G2.4** (first-run balloon and README section).
+**Now on:** **Epic G** → the **Epic G → Epic H exit guardrails** (all six need a `runIde` session).
 
 Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written.
 
@@ -889,7 +889,7 @@ Platform facts (verified against build 262):
 | G2.1 | Open files at `line:col` in this project window and focus it | ✅ | `terminalOpenUnknownFileTypes` lands here (the router needs it); tested end to end through the endpoint, off the EDT so the test does not deadlock with the navigation |
 | G2.2 | Open or focus a project for a directory argument | ✅ | `ProjectUtil` settled as public (§7); the existing-window search is `openProjects` + `isSameProject` + `focusProjectWindow` rather than `findAndFocusExistingProjectForPath`, which is the same search but focuses as a side effect, so the choice stays testable. `OpenProjectTask { … }` is an inline builder compiled for JVM 25 — unusable from this module's JVM 21 bytecode, so `OpenProjectTask.build().withForceOpenInNewFrame(true)` is used instead. The open is launched in the service scope without waiting: it takes far longer than the shim's 2 s budget |
 | G2.3 | Settings group "Terminal" and the three options | ✅ | The three `State` fields landed with the steps that needed them (G1.4, G2.1); this step is the UI, the settings topic and unbinding the endpoints when the feature is switched off |
-| G2.4 | First-run balloon and README section | 🔲 | |
+| G2.4 | First-run balloon and README section | ✅ | The flag is written before the balloon is shown, so two terminals opening at once cannot produce two balloons |
 
 **Steps (detail):**
 

@@ -75,6 +75,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */
         var terminalOpenUnknownFileTypes: Boolean = false,
+        /** Epic G: set once the first-run balloon explained that `open` is shadowed inside IDE terminals. */
+        var terminalOpenNoticeShown: Boolean = false,
     )
 
     private var currentState = State()

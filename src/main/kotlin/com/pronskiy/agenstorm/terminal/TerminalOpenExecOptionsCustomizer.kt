@@ -50,7 +50,9 @@ class TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer {
                 val binDir = service<OpenShimScriptHolder>().install(names) ?: return null
                 val server = project.service<OpenRequestServer>()
                 val port = server.start()
-                if (port <= 0) null else Shim(binDir, port, server.token)
+                if (port <= 0) return null
+                TerminalOpenNotice.showOnce(project)
+                Shim(binDir, port, server.token)
             } catch (e: Exception) {
                 // A terminal must open even when the shim cannot be installed.
                 LOG.warn("Agenstorm: not shimming `open` in this terminal", e)
