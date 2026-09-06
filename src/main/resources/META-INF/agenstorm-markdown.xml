@@ -17,5 +17,7 @@
         <editorFactoryListener implementation="com.pronskiy.agenstorm.markdown.LiveMarkupEditorListener"/>
         <!-- markdown (Epic F): bold/italic/strike/link styling for files in live markup, only where the scheme lacks it. -->
         <annotator language="Markdown" implementationClass="com.pronskiy.agenstorm.markdown.LiveMarkupAnnotator"/>
+        <!-- markdown (Epic F): Go to Declaration from the visible text of an inline link answers with the hidden destination. -->
+        <gotoDeclarationHandler implementation="com.pronskiy.agenstorm.markdown.LinkTextGotoDeclarationHandler"/>
     </extensions>
 </idea-plugin>
