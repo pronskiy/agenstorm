@@ -17,7 +17,7 @@
 
 ### Current focus
 
-**Now on:** Epic F → Phase F3 → step **F3.1** (post-MVP: inline markup revealed per element, decision 24). The MVP itself is complete: Epics 0–F closed 2026-09-06; still open are the week-long daily-driver tests of Epics D and E (Roman's) and release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → Phase F3 → step **F3.2** (post-MVP: inline markup revealed per element, decision 24). The MVP itself is complete: Epics 0–F closed 2026-09-06; still open are the week-long daily-driver tests of Epics D and E (Roman's) and release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -776,7 +776,7 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| F3.1 | Collector: every `MarkupRange` carries the span of its element (both markers of `**bold**` share one span; heading, bullet and checkbox spans are their line). Controller: one `FoldingGroup` per element; the caret policy reveals a group when a caret offset is inside or touching its span, or a selection overlaps it, and runs on every caret move over the regions near the old and new position only | 🔲 | |
+| F3.1 | Collector: every `MarkupRange` carries the span of its element (both markers of `**bold**` share one span; heading, bullet and checkbox spans are their line). Controller: one `FoldingGroup` per element; the caret policy reveals a group when a caret offset is inside or touching its span, or a selection overlaps it, and runs on every caret move over the regions near the old and new position only | ✅ | Two findings changed the plan. (1) A zero-width placeholder has no caret position of its own: `EditorRight` from the character before a collapsed `**` lands after it, so an inline element opens one character early on each side (within its line) — the arrow-key walk test needs it. (2) The full scan on every caret move costs 6 ms on 7,500 regions (`LiveMarkupPerformanceTest`), so the nearby-regions optimisation was not built. Keep rule: a region survives a sync only while every marker of its group is still wanted with the same span (single-marker elements included). Nested elements open together because the inner one is at most one step away |
 | F3.2 | Setting `liveMarkupRevealScope` (`element`, default, or `line` for the Phase F2 behaviour) in the Markdown group; applied through the settings topic like the other options | 🔲 | |
 | F3.3 | Tests: caret inside, touching either edge, outside on the same line; nested `***both***` and bold inside link text; selection across two elements; arrow-key walk across a collapsed element never skips a marker; the `line` scope reproduces the Phase F2 expectations | 🔲 | |
 
