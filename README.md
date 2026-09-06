@@ -144,8 +144,9 @@ previous.
 
 Obsidian-style editing for Markdown files: the syntax hides itself until the caret reaches the line.
 
-- `**bold**`, `*italic*`, `~~strike~~` and `` `code` `` show only their text; the markers come back on the caret
-  line and under a selection, so what you see is what you copy
+- `**bold**`, `*italic*`, `~~strike~~` and `` `code` `` show only their text; the markers come back for the element
+  the caret is in (or touches) and under a selection, so what you see is what you copy; a setting switches to
+  revealing the whole caret line instead
 - `#` heading marks are hidden; `- [ ]` / `- [x]` become ☐ / ☑ and toggle on click; `-`, `*` and `+` bullets show as •
 - `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B on it follows the destination: files,
   `path:line:col` locations, `#headings` and URLs
