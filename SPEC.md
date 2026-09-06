@@ -17,7 +17,7 @@
 
 ### Current focus
 
-**Now on:** **Release 1.0** → step **R1**. Epics 0–F closed 2026-09-06 (Phase F3 included). Still open: the week-long daily-driver tests of Epics D and E (Roman's) and Marketplace publishing (Roman's, R4) (post-MVP: inline markup revealed per element, decision 24). The MVP itself is complete: Epics 0–F closed 2026-09-06; still open are the week-long daily-driver tests of Epics D and E (Roman's) and release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** **Release 1.0** → step **R2**. Epics 0–F closed 2026-09-06 (Phase F3 included). Still open: the week-long daily-driver tests of Epics D and E (Roman's) and Marketplace publishing (Roman's, R4) (post-MVP: inline markup revealed per element, decision 24). The MVP itself is complete: Epics 0–F closed 2026-09-06; still open are the week-long daily-driver tests of Epics D and E (Roman's) and release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -802,7 +802,7 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| R1 | `pluginVersion = 1.0.0`; `CHANGELOG.md` `[Unreleased]` reviewed (it becomes the 1.0.0 section through `patchChangelog` at publish time); README plugin-description block reviewed against what shipped; CLAUDE.md inventory current | 🔲 | |
+| R1 | `pluginVersion = 1.0.0`; `CHANGELOG.md` `[Unreleased]` reviewed (it becomes the 1.0.0 section through `patchChangelog` at publish time); README plugin-description block reviewed against what shipped; CLAUDE.md inventory current | ✅ | 2026-09-06 |
 | R2 | `./gradlew verifyPlugin` against the recommended PhpStorm and IntelliJ IDEA 2026.2 builds: Compatible on both; internal-API usages limited to the §2 list | 🔲 | Sandbox IDE must be closed (the task rebuilds the plugin jar) |
 | R3 | `./gradlew buildPlugin`, install `build/distributions/Agenstorm-1.0.0.zip` into a real PhpStorm 2026.2 from disk, open a project with Markdown, Git and PHP: every feature toggle visible in Settings, no SEVERE in `idea.log` after a short tour | 🔲 | Roman's, by hand |
 | R4 | Marketplace: upload the ZIP (or `publishPlugin` with `PUBLISH_TOKEN`), release notes from the changelog, tag `v1.0.0` | 🔲 | Roman's |
