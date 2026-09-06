@@ -17,7 +17,7 @@
 
 ### Current focus
 
-**Now on:** Epic F → **Phase F3 exit guardrails** (F3.1–F3.3 ✅; automated halves filled, Roman's by-eye sign-off pending). After that: release 1.0 preparation (post-MVP: inline markup revealed per element, decision 24). The MVP itself is complete: Epics 0–F closed 2026-09-06; still open are the week-long daily-driver tests of Epics D and E (Roman's) and release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** **Release 1.0** → step **R1**. Epics 0–F closed 2026-09-06 (Phase F3 included). Still open: the week-long daily-driver tests of Epics D and E (Roman's) and Marketplace publishing (Roman's, R4) (post-MVP: inline markup revealed per element, decision 24). The MVP itself is complete: Epics 0–F closed 2026-09-06; still open are the week-long daily-driver tests of Epics D and E (Roman's) and release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -790,11 +790,30 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| One at a time | On a line with two bold spans and a link, the caret in the first bold shows only its `**`; the link keeps its text-only form | 🔄 | Automated (`testOnlyTheElementAtTheCaretIsRevealedOnItsLine`). By-eye run pending: sandbox on `agenstorm-demo/docs/parity.md` |
-| Keyboard walk | Arrow keys from plain text through `**bold**` and out again never skip a character; the markers appear when the caret touches the element | 🔄 | Automated with the real `EditorRight`/`EditorLeft` handlers; the element opens one character early. By-eye run pending |
-| Block markers | Heading hashes, bullets and checkboxes still reveal for the whole caret line | 🔄 | Automated (`isBlock` kinds use the line span). By-eye run pending |
-| Copy fidelity | A selection across two elements reveals both; copy yields raw Markdown | 🔄 | Automated (`testASelectionAcrossTwoElementsRevealsBoth`). By-eye run pending |
-| Scope setting | Switching to `line` restores the Phase F2 behaviour in open editors without reopening them | 🔄 | Automated (`testLineScopeRevealsTheWholeCaretLineAndAppliesToOpenEditors`). By-eye run pending |
+| One at a time | On a line with two bold spans and a link, the caret in the first bold shows only its `**`; the link keeps its text-only form | ✅ | Automated (`testOnlyTheElementAtTheCaretIsRevealedOnItsLine`). Roman signed off 2026-09-06 (13:35 sandbox session): "all good" |
+| Keyboard walk | Arrow keys from plain text through `**bold**` and out again never skip a character; the markers appear when the caret touches the element | ✅ | Automated with the real `EditorRight`/`EditorLeft` handlers; the element opens one character early. Roman signed off 2026-09-06 |
+| Block markers | Heading hashes, bullets and checkboxes still reveal for the whole caret line | ✅ | Automated (`isBlock` kinds use the line span). Roman signed off 2026-09-06 |
+| Copy fidelity | A selection across two elements reveals both; copy yields raw Markdown | ✅ | Automated (`testASelectionAcrossTwoElementsRevealsBoth`). Roman signed off 2026-09-06 |
+| Scope setting | Switching to `line` restores the Phase F2 behaviour in open editors without reopening them | ✅ | Automated (`testLineScopeRevealsTheWholeCaretLineAndAppliesToOpenEditors`). Roman signed off 2026-09-06. Review-round note: the one SEVERE of the day blamed on Agenstorm (`Cannot create listener TabsProjectCloseListener`, caused by a `ZipException`) came from a second `runIde` rewriting the sandbox jar under the instance the first one had started; not a plugin bug — one launcher per review from now on |
+
+### Release 1.0  ·  after the MVP
+
+**Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| R1 | `pluginVersion = 1.0.0`; `CHANGELOG.md` `[Unreleased]` reviewed (it becomes the 1.0.0 section through `patchChangelog` at publish time); README plugin-description block reviewed against what shipped; CLAUDE.md inventory current | 🔲 | |
+| R2 | `./gradlew verifyPlugin` against the recommended PhpStorm and IntelliJ IDEA 2026.2 builds: Compatible on both; internal-API usages limited to the §2 list | 🔲 | Sandbox IDE must be closed (the task rebuilds the plugin jar) |
+| R3 | `./gradlew buildPlugin`, install `build/distributions/Agenstorm-1.0.0.zip` into a real PhpStorm 2026.2 from disk, open a project with Markdown, Git and PHP: every feature toggle visible in Settings, no SEVERE in `idea.log` after a short tour | 🔲 | Roman's, by hand |
+| R4 | Marketplace: upload the ZIP (or `publishPlugin` with `PUBLISH_TOKEN`), release notes from the changelog, tag `v1.0.0` | 🔲 | Roman's |
+
+**Exit guardrails — Release 1.0**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Verifier | Compatible on PS-262 and IU-262; no new internal usages beyond §2 | 🔲 | |
+| Fresh install | R3 tour clean; the plugin loads in IntelliJ IDEA without the PHP plugin (no PHP-only features shown) | 🔲 | |
+| Daily driver | Epics D and E daily-driver guardrails closed by Roman | 🔲 | |
 
 ---
 
