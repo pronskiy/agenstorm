@@ -140,6 +140,23 @@ Three actions come without a shortcut so they never collide with your keymap: **
 by searching for "Project Tab"; `Ctrl+Alt+Shift+]` and `Ctrl+Alt+Shift+[` are a natural pair for next and
 previous.
 
+## Markdown live markup
+
+Obsidian-style editing for Markdown files: the syntax hides itself until the caret reaches the line.
+
+- `**bold**`, `*italic*`, `~~strike~~` and `` `code` `` show only their text; the markers come back on the caret
+  line and under a selection, so what you see is what you copy
+- `#` heading marks are hidden; `- [ ]` / `- [x]` become ☐ / ☑ and toggle on click; `-`, `*` and `+` bullets show as •
+- `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B on it follows the destination: files,
+  `path:line:col` locations, `#headings` and URLs
+- The **Live Markup** button in the Markdown editor toolbar (also in the editor context menu) turns it off or on for
+  one editor; Settings → Tools → Agenstorm → Markdown live markup has the global switch and the checkbox and bullet
+  options
+- Copying always copies raw Markdown; the file is never changed by the folding; the Markdown plugin's own folding,
+  Expand All and Collapse All keep working
+
+Limitations: heading sizes stay at the editor's single line height; images and reference-style links stay raw.
+
 ## Development
 
 ```bash

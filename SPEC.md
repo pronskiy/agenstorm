@@ -16,7 +16,7 @@
 
 ### Current focus
 
-**Now on:** Epic F → Phase F2 → step **F2.5**. Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → **exit guardrails** (every F1/F2 step ✅; the four guardrails are 🔄 with their automated halves done, Roman's by-eye sign-off in the sandbox remains; decision 22 awaits his confirmation). Epic F closes the MVP; after sign-off the next work is release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -733,7 +733,7 @@ Platform facts (verified against build 262):
 | F2.2 | Checkbox toggle: click on a ☐/☑ placeholder flips `[ ]`↔`[x]` in a write command | ✅ | `EditorMouseListener.mousePressed` + `EditorMouseEvent.collapsedFoldRegion`; only the middle character is replaced so the fold region (a range marker) survives, then placeholder and kind are swapped in place; the event is consumed (no caret move, no expand). One undo step; hand cursor on hover |
 | F2.3 | Link navigation from the visible link text: Cmd/Ctrl+click on `LINK_TEXT` navigates via the (hidden) destination's references; URLs open in browser | ✅ | Decision 22: a `gotoDeclarationHandler` instead of editor mouse listeners, so Ctrl+B and the hover underline come along and no internal navigation service is needed. Tests navigate through the real Go to Declaration action: file link, `path:line:col` (caret lands on line and column), heading anchor in the same and in another file, markup inside link text; URL yields a `WebReference` target; reference-style links, missing files and the feature toggle give nothing |
 | F2.4 | `ToggleLiveMarkupAction` in `Markdown.Toolbar.Right` and `Markdown.EditorContextMenuGroup`; per-editor state; settings default + group "Markdown live markup" | ✅ | Icon `AllIcons.Actions.ToggleVisibility`; the editor comes from `CommonDataKeys.EDITOR` or the split editor's `TextEditorWithPreview`. Per-editor override stored in editor user data (null = follow the setting). Settings: `liveMarkupCheckboxes`, `liveMarkupBullets`; the page (in `core/`) fires `AgenstormSettingsListener` and `LiveMarkupStartupActivity` applies it, so `core/` never references the optional Markdown plugin |
-| F2.5 | Bullets `- `/`* ` rendered as `• ` (placeholder), optional setting | 🔲 | |
+| F2.5 | Bullets `- `/`* ` rendered as `• ` (placeholder), optional setting | ✅ | Only the marker character of `LIST_BULLET` (`-`, `*`, `+`) is replaced; the space stays, ordered lists untouched; `liveMarkupBullets` (default on) |
 
 **Steps (detail):**
 
@@ -747,10 +747,10 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Obsidian parity (scoped) | Side-by-side with Obsidian on `testData/markdown/parity.md`: bold, italic, strike, code, headings (markers hidden), links (text only), checkboxes, bullets match in what is shown/hidden; heading size difference accepted | 🔲 | |
-| Editing safety | 30-minute editing session of a real plan file: no lost characters, no caret jumps, undo/redo correct | 🔲 | |
-| Off switch | Toggling off restores a plain Markdown editor instantly (no leftover folds) | 🔲 | |
-| Agent-written files | Opening a file while an agent rewrites it (external change → reload) keeps live markup consistent after reload | 🔲 | |
+| Obsidian parity (scoped) | Side-by-side with Obsidian on `testData/markdown/parity.md`: bold, italic, strike, code, headings (markers hidden), links (text only), checkboxes, bullets match in what is shown/hidden; heading size difference accepted | 🔄 | `parity.md` committed; the same constructs are rendered by `MarkupRangeCollectorTest` (fixture render equals the Obsidian-style text). By-eye run pending: sandbox session on `agenstorm-demo/docs/parity.md` |
+| Editing safety | 30-minute editing session of a real plan file: no lost characters, no caret jumps, undo/redo correct | 🔄 | Automated: typing at region borders, Reformat, Undo and checkbox toggles keep regions and text consistent (`LiveMarkupControllerTest`). The session itself is Roman's |
+| Off switch | Toggling off restores a plain Markdown editor instantly (no leftover folds) | 🔄 | Automated: `ToggleLiveMarkupActionTest` (no region of ours left after toggling off; back on restores them; settings apply reaches every editor). By-eye run pending |
+| Agent-written files | Opening a file while an agent rewrites it (external change → reload) keeps live markup consistent after reload | 🔄 | Automated: an outside document edit at a collapsed region's border re-syncs cleanly; a VFS reload is a document replace and goes through the same debounced sync. By-eye run pending (edit `docs/parity.md` from a terminal while it is open) |
 
 ---
 
