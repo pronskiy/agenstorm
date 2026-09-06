@@ -6,5 +6,6 @@
 .qodana
 build
 
-# Roman's working notes, kept out of the repo
+# Local to this machine, kept out of the repo
+.mcp.json
 phpstorm-agentic-plugin-brainstorm.md
