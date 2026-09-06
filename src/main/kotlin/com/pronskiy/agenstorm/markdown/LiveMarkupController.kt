@@ -213,7 +213,7 @@ class LiveMarkupController(
         val document = editor.document
         val file = PsiDocumentManager.getInstance(project).getPsiFile(document) ?: return null
         val started = System.nanoTime()
-        val ranges = MarkupRangeCollector.collect(file)
+        val ranges = MarkupRangeCollector.collect(file, MarkupRangeCollector.Options.fromSettings())
         if (LOG.isDebugEnabled) LOG.debug("live markup: ${ranges.size} ranges collected in ${(System.nanoTime() - started) / 1_000_000} ms")
         return Snapshot(ranges, document.modificationStamp)
     }

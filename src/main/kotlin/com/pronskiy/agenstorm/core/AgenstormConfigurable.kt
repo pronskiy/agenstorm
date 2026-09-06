@@ -96,7 +96,21 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .comment(AgenstormBundle.message("settings.tabs.maxWidth.comment"))
             }
         }
-        featureGroup("settings.group.markdown", "settings.markdown.liveMarkup.enabled", AgenstormSettings.State::liveMarkupEnabled)
+        featureGroup("settings.group.markdown", "settings.markdown.liveMarkup.enabled", AgenstormSettings.State::liveMarkupEnabled, onApply = AgenstormSettingsListener::fire) {
+            row {
+                checkBox(AgenstormBundle.message("settings.markdown.checkboxes"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.liveMarkupCheckboxes }, { AgenstormSettings.getInstance().state.liveMarkupCheckboxes = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "markdown.checkboxes" }
+            }
+            row {
+                checkBox(AgenstormBundle.message("settings.markdown.bullets"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.liveMarkupBullets }, { AgenstormSettings.getInstance().state.liveMarkupBullets = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "markdown.bullets" }
+                    .comment(AgenstormBundle.message("settings.markdown.bullets.comment"))
+            }
+        }
     }
 
     override fun disposeUIResources() {

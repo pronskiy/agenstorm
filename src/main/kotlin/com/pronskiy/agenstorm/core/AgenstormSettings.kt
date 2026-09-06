@@ -63,6 +63,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var branchInStatusBar: Boolean = true,
         /** Epic E (Phase E3): set when Agenstorm hid the bottom navigation bar, so turning the feature off restores it. */
         var navBarHiddenByAgenstorm: Boolean = false,
+        /** Epic F: task checkboxes render as ☐ / ☑ and toggle on click. */
+        var liveMarkupCheckboxes: Boolean = true,
+        /** Epic F: list bullets `-` / `*` / `+` render as •. */
+        var liveMarkupBullets: Boolean = true,
     )
 
     private var currentState = State()

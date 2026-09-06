@@ -9,6 +9,7 @@ import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
+import com.pronskiy.agenstorm.core.AgenstormSettings
 import org.intellij.plugins.markdown.lang.MarkdownElementTypes
 import org.intellij.plugins.markdown.lang.MarkdownTokenTypes
 
@@ -50,8 +51,15 @@ object MarkupRangeCollector {
     const val CHECKBOX_OFF_PLACEHOLDER = "☐"
     const val CHECKBOX_ON_PLACEHOLDER = "☑"
 
+    /** The optional parts (settings of Phase F2); [fromSettings] reads the current values. */
+    data class Options(val checkboxes: Boolean = true, val bullets: Boolean = true) {
+        companion object {
+            fun fromSettings(): Options = AgenstormSettings.getInstance().state.let { Options(checkboxes = it.liveMarkupCheckboxes, bullets = it.liveMarkupBullets) }
+        }
+    }
+
     /** Requires read access. Deterministic: sorted by start offset, disjoint ranges. */
-    fun collect(file: PsiFile): List<MarkupRange> {
+    fun collect(file: PsiFile, options: Options = Options.fromSettings()): List<MarkupRange> {
         ApplicationManager.getApplication().assertReadAccessAllowed()
         val text = file.viewProvider.contents
         val out = ArrayList<MarkupRange>()
@@ -65,7 +73,7 @@ object MarkupRangeCollector {
                     MarkdownElementTypes.STRIKETHROUGH -> markers(element.node, MarkdownTokenTypes.TILDE, MarkupKind.STRIKE, out)
                     MarkdownElementTypes.CODE_SPAN -> codeSpan(element.node, out)
                     MarkdownElementTypes.INLINE_LINK -> inlineLink(element.node, out)
-                    MarkdownTokenTypes.CHECK_BOX -> checkbox(element.node, out)
+                    MarkdownTokenTypes.CHECK_BOX -> if (options.checkboxes) checkbox(element.node, out)
                     in HEADINGS -> heading(element.node, text, out)
                 }
                 super.visitElement(element)

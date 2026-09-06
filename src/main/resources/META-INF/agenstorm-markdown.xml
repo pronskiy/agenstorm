@@ -19,5 +19,17 @@
         <annotator language="Markdown" implementationClass="com.pronskiy.agenstorm.markdown.LiveMarkupAnnotator"/>
         <!-- markdown (Epic F): Go to Declaration from the visible text of an inline link answers with the hidden destination. -->
         <gotoDeclarationHandler implementation="com.pronskiy.agenstorm.markdown.LinkTextGotoDeclarationHandler"/>
+        <!-- markdown (Epic F): applies the settings page to open editors; core/ cannot call this feature directly. -->
+        <postStartupActivity implementation="com.pronskiy.agenstorm.markdown.LiveMarkupStartupActivity"/>
     </extensions>
+
+    <actions resource-bundle="messages.AgenstormBundle">
+        <!-- markdown (Epic F): per-editor on/off in the Markdown editor toolbar and the editor context menu. -->
+        <action id="Agenstorm.ToggleLiveMarkup"
+                class="com.pronskiy.agenstorm.markdown.ToggleLiveMarkupAction"
+                icon="AllIcons.Actions.ToggleVisibility">
+            <add-to-group group-id="Markdown.Toolbar.Right" anchor="last"/>
+            <add-to-group group-id="Markdown.EditorContextMenuGroup" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>
