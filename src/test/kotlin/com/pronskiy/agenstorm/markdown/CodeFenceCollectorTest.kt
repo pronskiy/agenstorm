@@ -19,22 +19,28 @@ class CodeFenceCollectorTest : BasePlatformTestCase() {
         val expected = listOf(
             "",                             // ```php  -> the card's header row, its EOL kept
             "echo **not** markup;",
-            "",                             // the blank line after the fence; its ``` went with its newline
+            "",                             // the closing ``` -> the card's footer row, its line number kept
+            "",                             // the blank line between the fences
             "",                             // ``` with no info string
             "no info string",
+            "",
             "",
             "",                             // ```mystery-lang
             "unknown info string",
             "",
+            "",
             "",                             // ~~~js
             "tilde fence",
+            "",
             "",
             "\u2022 a list item",
             "  ",                           // ```sh indented in the list item keeps the indent
             "  indented in a list",
+            "",                             // the closing token carries the line's indent, so the row is empty
             "",
             "> ",                           // ```yaml inside the quote keeps the quote marker
             "> quoted: fence",
+            "",                             // and its `> ` likewise
             "",
             "",                             // ```php, never closed
             "unterminated at end of file",
@@ -64,14 +70,14 @@ class CodeFenceCollectorTest : BasePlatformTestCase() {
         assertEquals(listOf(MarkupKind.FENCE_OPEN), inLast.map { it.kind })
     }
 
-    fun testTheOpeningLineKeepsItsEolAndTheClosingLineDoesNot() {
+    fun testBothFenceLinesKeepTheirEol() {
         val text = myFixture.configureByText("a.md", "```php\nbody\n```\nafter\n").text
         val markup = MarkupRangeCollector.collectMarkup(myFixture.file)
 
         val (open, close) = markup.ranges.filter { it.kind.isFence }
         assertEquals("```php", open.range.substring(text))
-        assertEquals("\n```", close.range.substring(text))
-        assertEquals("\nbody\nafter\n", render(text, markup.ranges))
+        assertEquals("```", close.range.substring(text))
+        assertEquals("both lines keep their EOL, so neither loses its number", "\nbody\n\nafter\n", render(text, markup.ranges))
     }
 
     fun testBothMarkersShareTheWholeFenceAsTheirSpan() {

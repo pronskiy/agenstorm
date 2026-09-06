@@ -26,6 +26,7 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
 
             **not** `here`
 
+
                 **indented** code
 
             <div>**html**</div>
@@ -62,7 +63,7 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         assertEquals(listOf("[x]", "[X]"), byKind[MarkupKind.CHECKBOX_ON])
         assertEquals(listOf("-", "-", "*"), byKind[MarkupKind.BULLET])
         assertEquals(listOf("```php"), byKind[MarkupKind.FENCE_OPEN])
-        assertEquals(listOf("\n```"), byKind[MarkupKind.FENCE_CLOSE])
+        assertEquals(listOf("```"), byKind[MarkupKind.FENCE_CLOSE])
         assertEquals(MarkupKind.entries.toSet(), byKind.keys)
     }
 

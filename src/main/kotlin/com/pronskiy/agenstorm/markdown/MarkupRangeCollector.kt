@@ -97,7 +97,7 @@ object MarkupRangeCollector {
                 if (type in SKIPPED) return // not calling super skips the subtree
                 if (type == MarkdownElementTypes.CODE_FENCE) {
                     // Never walked into: the body is code, and the injected highlighting must be left alone.
-                    if (options.codeBlocks) codeFence(element.node, text, out, blocks)
+                    if (options.codeBlocks) codeFence(element.node, out, blocks)
                     return
                 }
                 when (type) {
@@ -119,12 +119,12 @@ object MarkupRangeCollector {
     }
 
     /**
-     * The opening line loses ` ``` ` and its info string **but keeps its EOL**, so the card has a header row
-     * for the language chip; the closing line is folded from the end of the last content line through the
-     * closing ` ``` `, newline included, so it disappears entirely. `CODE_FENCE_CONTENT` is never touched.
+     * Both fence lines lose their ` ``` ` — the opening one its info string too — but keep their EOL, so the
+     * card gets a header row for the language chip and a footer row, and neither line loses its number.
+     * `CODE_FENCE_CONTENT` is never touched.
      * A fence left unterminated at the end of the file has no closing token and emits only the opener.
      */
-    private fun codeFence(node: ASTNode, text: CharSequence, out: MutableList<MarkupRange>, blocks: MutableList<MarkdownBlock>) {
+    private fun codeFence(node: ASTNode, out: MutableList<MarkupRange>, blocks: MutableList<MarkdownBlock>) {
         val children = node.getChildren(null)
         val open = children.firstOrNull { it.elementType == MarkdownTokenTypes.CODE_FENCE_START } ?: return
         val language = children.firstOrNull { it.elementType == MarkdownTokenTypes.FENCE_LANG }
@@ -134,14 +134,11 @@ object MarkupRangeCollector {
         out += MarkupRange(MarkupKind.FENCE_OPEN, TextRange(open.startOffset, openEnd), "", span)
 
         val close = children.lastOrNull { it.elementType == MarkdownTokenTypes.CODE_FENCE_END }
-        if (close != null) {
-            // Back to the line break itself, from the text rather than the tokens: inside a fence the breaks
-            // are plain `WHITE_SPACE`, and an indented or quoted closing line carries its indent and its `>`
-            // in that same whitespace, all of which has to go with it.
-            val newline = text.lastIndexOf('\n', close.startOffset - 1)
-            val closeStart = if (newline >= span.startOffset) newline else close.startOffset
-            out += MarkupRange(MarkupKind.FENCE_CLOSE, TextRange(closeStart, close.textRange.endOffset), "", span)
-        }
+        // The closing ``` only, never the line break before it. Taking the break too would make the line
+        // vanish, and with it its number, and a fold region covering more than one line always gets a gutter
+        // arrow — `setGutterMarkEnabledForSingleLine` can only suppress the single-line ones. The line is left
+        // empty instead, which gives the card a footer row to match its header row.
+        if (close != null) out += MarkupRange(MarkupKind.FENCE_CLOSE, close.textRange, "", span)
         blocks += MarkdownBlock(MarkdownBlockKind.CODE_FENCE, span, language?.text?.trim()?.takeIf { it.isNotEmpty() })
     }
 

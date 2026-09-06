@@ -58,12 +58,10 @@ class CodeFenceFoldingTest : BasePlatformTestCase() {
         assertTrue("the header line reveals the fence", controller.regions().all { it.isExpanded })
         assertBackgroundIntact(controller)
 
-        // The closing fence is folded together with the line break that ends the last content line, so that
-        // line is where it is revealed from — its own line has no caret position while it is hidden.
         moveCaretTo(myFixture.editor.document.textLength)
         assertTrue(controller.regions().none { it.isExpanded })
-        moveCaretTo(10)
-        assertTrue("the last content line reveals it too", controller.regions().all { it.isExpanded })
+        moveCaretTo(16)
+        assertTrue("the closing line reveals it too", controller.regions().all { it.isExpanded })
         assertBackgroundIntact(controller)
     }
 
@@ -79,15 +77,19 @@ class CodeFenceFoldingTest : BasePlatformTestCase() {
         assertSize(1, controller.blockHighlighters())
     }
 
-    fun testTheCaretInsideTheRevealedClosingFenceKeepsItOpen() {
+    fun testNeitherRegionDrawsAGutterArrow() {
         val controller = configured()
-        moveCaretTo(10)
+        val document = myFixture.editor.document
 
-        moveCaretTo(16) // on the ``` line, only reachable now that it is revealed
-
-        assertEquals(16, myFixture.editor.caretModel.offset)
-        assertTrue(regionAt(controller, 14).isExpanded)
-        assertBackgroundIntact(controller)
+        for (region in controller.regions()) {
+            assertEquals(
+                "a region covering more than its own line always gets a gutter arrow: $region",
+                document.getLineNumber(region.startOffset),
+                document.getLineNumber(region.endOffset),
+            )
+            assertFalse(region.isGutterMarkEnabledForSingleLine)
+        }
+        assertEquals("every line keeps its number", 4, document.lineCount)
     }
 
     fun testAwayFromTheFenceEverythingHidesAgainAndTheCardStays() {
@@ -120,7 +122,7 @@ class CodeFenceFoldingTest : BasePlatformTestCase() {
         val controller = LiveMarkupService.getInstance(project).controllerFor(myFixture.editor)
             ?: error("no live markup controller on the Markdown editor")
         controller.syncNow()
-        assertEquals(listOf(0 to 6, 14 to 18), controller.regions().map { it.startOffset to it.endOffset })
+        assertEquals(listOf(0 to 6, 15 to 18), controller.regions().map { it.startOffset to it.endOffset })
         return controller
     }
 
@@ -128,9 +130,6 @@ class CodeFenceFoldingTest : BasePlatformTestCase() {
         myFixture.editor.caretModel.moveToOffset(offset)
         UIUtil.dispatchAllInvocationEvents()
     }
-
-    private fun regionAt(controller: LiveMarkupController, start: Int): FoldRegion =
-        controller.regions().single { it.startOffset == start }
 
     private fun assertBackgroundIntact(controller: LiveMarkupController) {
         val highlighter = controller.blockHighlighters().single()
