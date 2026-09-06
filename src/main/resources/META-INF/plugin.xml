@@ -16,6 +16,7 @@
     <depends optional="true" config-file="agenstorm-markdown.xml">org.intellij.plugins.markdown</depends>
     <depends optional="true" config-file="agenstorm-php.xml">com.jetbrains.php</depends>
     <depends optional="true" config-file="agenstorm-git.xml">Git4Idea</depends>
+    <depends optional="true" config-file="agenstorm-terminal.xml">org.jetbrains.plugins.terminal</depends>
 
     <resource-bundle>messages.AgenstormBundle</resource-bundle>
 

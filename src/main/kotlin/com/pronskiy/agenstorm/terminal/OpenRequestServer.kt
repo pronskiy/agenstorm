@@ -123,9 +123,14 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
     data class Request(val cwd: Path, val argv: List<String>)
 
     companion object {
-        /** Header carrying [token]; the shim reads it from `AGENSTORM_OPEN_TOKEN`. */
+        /** Header carrying [token]; the shim reads it from [TOKEN_ENV]. */
         const val TOKEN_HEADER: String = "X-Agenstorm-Token"
         const val CONTEXT_PATH: String = "/open"
+
+        /** The two variables [com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer] puts into a
+         *  terminal's environment; without [PORT_ENV] the shim claims nothing at all. */
+        const val PORT_ENV: String = "AGENSTORM_OPEN_PORT"
+        const val TOKEN_ENV: String = "AGENSTORM_OPEN_TOKEN"
 
         /** macOS `ARG_MAX` is 1 MiB, so a legitimate argv can never be larger than this. */
         const val MAX_BODY_BYTES: Int = 1 shl 20

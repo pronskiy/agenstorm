@@ -1,0 +1,9 @@
+<!-- Epic G (`open path` opens in this IDE) and Epic I (terminal output enhancers).
+     Loaded only when the bundled Terminal plugin is present; every other feature works without it. -->
+<idea-plugin>
+    <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
+        <!-- G1.4: the shim directory goes in front of a new terminal's PATH, with the endpoint's port and
+             token in the environment. The EP is @ApiStatus.Experimental (SPEC.md §2 accepts that). -->
+        <shellExecOptionsCustomizer implementation="com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer"/>
+    </extensions>
+</idea-plugin>

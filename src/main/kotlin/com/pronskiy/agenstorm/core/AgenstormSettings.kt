@@ -30,6 +30,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var projectTabsEnabled: Boolean = true,
         /** Epic F: Obsidian-style live markup for Markdown. */
         var liveMarkupEnabled: Boolean = true,
+        /** Epic G: `open path:line:col` in an IDE terminal opens the file in this window. */
+        var terminalOpenEnabled: Boolean = true,
         /** Epic B: internal `FileType.name`s that stay in the New Scratch File popup when the filter is on. */
         var scratchAllowedFileTypes: MutableList<String> = mutableListOf("PLAIN_TEXT", "Markdown", "PHP", "JavaScript"),
         /** Epic D: backend id (`anthropic`, `openai`, `claude-cli`, `fake`); an unknown id disables the action. */
@@ -69,6 +71,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupBullets: Boolean = true,
         /** Epic F (Phase F3): `element` reveals the inline element at the caret, `line` the whole caret line (Phase F2 behaviour). */
         var liveMarkupRevealScope: String = "element",
+        /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
+        var terminalOpenCommandNames: String = "open",
     )
 
     private var currentState = State()

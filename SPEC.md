@@ -18,7 +18,7 @@
 
 ### Current focus
 
-**Now on:** **Epic G** → step **G1.4** (`TerminalOpenExecOptionsCustomizer`: the PATH entry plus port and token).
+**Now on:** **Epic G** → the **Phase G1 → G2 exit guardrails** (three of the four need a `runIde` session; the router one is already green).
 
 Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written.
 
@@ -837,7 +837,7 @@ Platform facts (verified against build 262):
 | G1.1 | `OpenRequestServer`: per-project loopback `HttpServer`, token-checked `POST /open` | ✅ | `OpenRequestHandler` seam; G1.2 installs the router |
 | G1.2 | `OpenCommandRouter`: argv + cwd → open files / open project / fall back. Pure logic, all the tests | ✅ | Claiming is all-or-nothing per command line; a loose peel next to `FileLocationParser` covers paths with spaces |
 | G1.3 | `OpenShimScriptHolder`: generates the `open` script on disk, 0755, regenerated per plugin version | ✅ | Stamped with a hash of the script content + names, not the plugin version: every route to a plugin descriptor is `@ApiStatus.Internal` in 262, and content is what has to be fresh |
-| G1.4 | `TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer` — PATH entry plus port and token | 🔲 | |
+| G1.4 | `TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer` — PATH entry plus port and token | ✅ | `terminalOpenEnabled` and `terminalOpenCommandNames` land here, not in G2.3 — the customizer needs them; the decision lives in `shimFor(project, eelDescriptor)` because `MutableShellExecOptions` is a sealed interface a test cannot implement |
 
 **Steps (detail):**
 
@@ -889,7 +889,7 @@ Platform facts (verified against build 262):
 |------|-------------|--------|-------|
 | G2.1 | Open files at `line:col` in this project window and focus it | 🔲 | |
 | G2.2 | Open or focus a project for a directory argument | 🔲 | |
-| G2.3 | Settings group "Terminal" and the three options | 🔲 | |
+| G2.3 | Settings group "Terminal" and the three options | 🔲 | `terminalOpenEnabled` / `terminalOpenCommandNames` already on `State` since G1.4; this step adds `terminalOpenUnknownFileTypes`, the UI and the listener |
 | G2.4 | First-run balloon and README section | 🔲 | |
 
 **Steps (detail):**
