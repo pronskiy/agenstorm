@@ -305,6 +305,60 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         assertEquals(listOf(MarkupKind.BULLET, MarkupKind.CHECKBOX_OFF), controller.regions().map { it.getUserData(LiveMarkupController.KIND) })
     }
 
+    fun testRegionsRestoredFromAPreviousSessionAreReplacedAndOpenOnTheCaretLine() {
+        myFixture.configureByText("a.md", "**a**\n*b*\n~~c~~\n")
+        caretToEnd()
+        val service = LiveMarkupService.getInstance(project)
+        val first = attachedController()
+        first.syncNow()
+        assertEquals(6, first.regions().size)
+
+        // Closing the editor persists every collapsed region as a plain range + placeholder; reopening restores them.
+        // (The state is only saved once the folding pass has initialised the editor, which highlighting does.)
+        myFixture.doHighlighting()
+        val foldingManager = CodeFoldingManager.getInstance(project)
+        val state = foldingManager.saveFoldingState(myFixture.editor)
+        service.detach(myFixture.editor)
+        assertEmpty(orphans())
+        val paragraphFold = foreignRegions().single()
+        // The text editor restores its state inside a batch operation; the manager relies on that.
+        myFixture.editor.foldingModel.runBatchFoldingOperation { foldingManager.restoreFoldingState(myFixture.editor, state) }
+        val orphans = orphans()
+        assertEquals("the platform brings the collapsed regions back without our marker", 6, orphans.size)
+        assertTrue(orphans.none { it.isExpanded })
+
+        val again = service.attach(myFixture.editor)!!
+        again.syncNow()
+        assertEquals(6, again.regions().size)
+        assertEmpty("orphans on our ranges are replaced", orphans())
+        assertEquals("the Markdown plugin's own region is untouched", listOf(paragraphFold), foreignRegions())
+
+        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.getLineStartOffset(1))
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(mapOf(0 to false, 1 to true, 2 to false), expandedByLine(again))
+    }
+
+    fun testAStateRestoredOverOurRegionsIsCorrectedByThePolicy() {
+        myFixture.configureByText("a.md", "**a**\n*b*\n")
+        caretToEnd()
+        val controller = attachedController()
+        controller.syncNow()
+        myFixture.doHighlighting()
+        val foldingManager = CodeFoldingManager.getInstance(project)
+        val state = foldingManager.saveFoldingState(myFixture.editor)
+
+        myFixture.editor.caretModel.moveToOffset(0)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(mapOf(0 to true, 1 to false), expandedByLine(controller))
+
+        // The text editor restores its state inside a batch operation; the manager relies on that.
+        myFixture.editor.foldingModel.runBatchFoldingOperation { foldingManager.restoreFoldingState(myFixture.editor, state) }
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(4, controller.regions().size)
+        assertEmpty(orphans())
+        assertEquals("the caret line is open again after the foreign batch", mapOf(0 to true, 1 to false), expandedByLine(controller))
+    }
+
     fun testDetachRemovesEveryRegion() {
         myFixture.configureByText("a.md", "# h\n**b** `c`\n")
         val controller = attachedController()
@@ -353,6 +407,12 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
     }
 
     private fun foreignRegions(): List<FoldRegion> = myFixture.editor.foldingModel.allFoldRegions.filter { it.getUserData(LiveMarkupController.KIND) == null }
+
+    /** Foreign regions sitting exactly on a range the collector wants: leftovers of a persisted state. */
+    private fun orphans(): List<FoldRegion> {
+        val wanted = MarkupRangeCollector.collect(myFixture.file).map { it.range }.toSet()
+        return foreignRegions().filter { TextRange(it.startOffset, it.endOffset) in wanted }
+    }
 
     private fun texts(regions: List<FoldRegion>): List<String> = regions.map { myFixture.editor.document.getText(TextRange(it.startOffset, it.endOffset)) }
 

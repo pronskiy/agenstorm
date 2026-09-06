@@ -67,6 +67,12 @@ import kotlinx.coroutines.withContext
  *
  * Light regions are created with `FoldingModelEx.createFoldRegion` rather than through a `FoldingBuilder`: builder
  * regions shorter than two characters are dropped, ours are often one character long (SPEC.md decision 10).
+ *
+ * Persisted folding state: when an editor closes, the platform remembers every collapsed region as a plain range
+ * plus placeholder and recreates them on reopen (`DocumentFoldingInfo`), our regions included — as ordinary regions
+ * without [KIND] that nothing would ever expand, and which block ours (the fold tree rejects a second region on the
+ * same range). The sync therefore replaces any foreign region sitting exactly on a wanted range; a restore that
+ * lands on top of our regions only collapses them, and the policy reopens the caret line afterwards.
  */
 @OptIn(FlowPreview::class)
 class LiveMarkupController(
@@ -228,6 +234,7 @@ class LiveMarkupController(
         val model = editor.foldingModel
         var removed = 0
         var created = 0
+        var replaced = 0
         batch {
             for (region in model.allFoldRegions) {
                 val kind = region.getUserData(KIND) ?: continue
@@ -241,14 +248,21 @@ class LiveMarkupController(
                 removed++
             }
             for (range in wanted.values) {
-                val region = model.createFoldRegion(range.range.startOffset, range.range.endOffset, range.placeholder, null, false) ?: continue
+                val start = range.range.startOffset
+                val end = range.range.endOffset
+                val orphan = model.getFoldRegion(start, end)
+                if (orphan != null && orphan.getUserData(KIND) == null) {
+                    model.removeFoldRegion(orphan)
+                    replaced++
+                }
+                val region = model.createFoldRegion(start, end, range.placeholder, null, false) ?: continue
                 region.putUserData(KIND, range.kind)
                 region.setGutterMarkEnabledForSingleLine(false)
-                region.isExpanded = isRevealed(range.range.startOffset, range.range.endOffset, revealed)
+                region.isExpanded = isRevealed(start, end, revealed)
                 created++
             }
         }
-        if (LOG.isDebugEnabled) LOG.debug("live markup: $created regions created, $removed removed in ${(System.nanoTime() - started) / 1_000_000} ms")
+        if (LOG.isDebugEnabled) LOG.debug("live markup: $created regions created, $removed removed, $replaced foreign ones replaced in ${(System.nanoTime() - started) / 1_000_000} ms")
     }
 
     /** Caret lines (whole) and selections, for every caret. */
