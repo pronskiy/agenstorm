@@ -21,6 +21,7 @@ import com.intellij.openapi.editor.event.SelectionEvent
 import com.intellij.openapi.editor.event.SelectionListener
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.FoldingListener
+import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Condition
 import com.intellij.openapi.util.Key
@@ -58,7 +59,8 @@ import kotlinx.coroutines.withContext
  * a caret is inside it, touches either end or stands one character away on the same line (a zero-width placeholder
  * has no caret position of its own, so the element must open before the caret reaches it or arrow keys skip its
  * first marker), or a selection overlaps it; a block marker (heading, bullet, checkbox)
- * is revealed while a caret is on its line. Everything else stays collapsed, so the raw Markdown is there to edit and
+ * is revealed while a caret is on its line; any region a caret sits strictly inside is revealed whatever the policy
+ * says. Everything else stays collapsed, so the raw Markdown is there to edit and
  * what is selected is what gets copied. The two markers of one element share a `FoldingGroup`, and the element's span
  * is the group's current extent, so it follows edits without extra bookkeeping. The policy is part of every sync and
  * is re-applied, coalesced through `invokeLater`, on every caret or selection change; a keystroke that keeps the caret
@@ -66,7 +68,10 @@ import kotlinx.coroutines.withContext
  *
  * Coexistence (F1.4): a `FoldingListener` re-applies the policy after anyone else's batch (Expand All expands our
  * regions, Collapse All collapses the caret line's) and asks for a re-sync when a region of ours is removed by
- * someone else (the folding model's rebuild); our own batches are flagged so they trigger neither.
+ * someone else (the folding model's rebuild); our own batches are flagged so they trigger neither — nor a caret
+ * pass, because collapsing a region the caret sits in makes the folding model move the caret, and answering that
+ * with another pass is a loop that spins the EDT until the IDE is killed (found by H1.2, whose multi-line fence
+ * regions are the first ones a caret can sit inside without being on the line they start on).
  *
  * Checkboxes (F2.2): a left press on a ☐ / ☑ placeholder flips the box in one undoable command and swaps the
  * placeholder at once; the event is consumed so the editor neither moves the caret nor expands the region. The
@@ -90,6 +95,9 @@ class LiveMarkupController(
 ) : Disposable {
 
     private val resync = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    /** Epic H: the block backgrounds, updated from the same snapshot as the fold regions. */
+    private val blockRenderer = MarkdownBlockRenderer(editor)
     private val job: Job
     private var policyScheduled = false
     private var ownBatch = false
@@ -172,7 +180,7 @@ class LiveMarkupController(
         val changes = ArrayList<Pair<FoldRegion, Boolean>>()
         for (region in ours) {
             val kind = region.getUserData(KIND) ?: continue
-            val target = isRevealed(kind, region.startOffset, spans[region.group] ?: region.textRange, carets)
+            val target = isRevealed(kind, region.startOffset, region.endOffset, spans[region.group] ?: region.textRange, carets)
             if (region.isExpanded != target) changes += region to target
         }
         if (changes.isEmpty()) return
@@ -208,21 +216,26 @@ class LiveMarkupController(
         return true
     }
 
-    /** Removes every region of ours in one batch; the Markdown plugin's regions stay. */
+    /** Removes every region and block background of ours in one batch; the Markdown plugin's regions stay. */
     fun removeAll() {
         if (editor.isDisposed || !ApplicationManager.getApplication().isDispatchThread) return
+        blockRenderer.removeAll()
         val model = editor.foldingModel
         val ours = regions()
         if (ours.isEmpty()) return
         batch { ours.forEach(model::removeFoldRegion) }
     }
 
+    /** The block backgrounds this controller owns (Epic H). */
+    fun blockHighlighters(): List<RangeHighlighter> = blockRenderer.highlighters()
+
     override fun dispose() {
         job.cancel()
         removeAll()
+        blockRenderer.dispose()
     }
 
-    private class Snapshot(val ranges: List<MarkupRange>, val stamp: Long)
+    private class Snapshot(val ranges: List<MarkupRange>, val blocks: List<MarkdownBlock>, val stamp: Long)
 
     private data class RegionKey(val start: Int, val end: Int, val kind: MarkupKind, val placeholder: String)
 
@@ -232,9 +245,9 @@ class LiveMarkupController(
         val document = editor.document
         val file = PsiDocumentManager.getInstance(project).getPsiFile(document) ?: return null
         val started = System.nanoTime()
-        val ranges = MarkupRangeCollector.collect(file, MarkupRangeCollector.Options.fromSettings())
-        if (LOG.isDebugEnabled) LOG.debug("live markup: ${ranges.size} ranges collected in ${(System.nanoTime() - started) / 1_000_000} ms")
-        return Snapshot(ranges, document.modificationStamp)
+        val markup = MarkupRangeCollector.collectMarkup(file, MarkupRangeCollector.Options.fromSettings())
+        if (LOG.isDebugEnabled) LOG.debug("live markup: ${markup.ranges.size} ranges collected in ${(System.nanoTime() - started) / 1_000_000} ms")
+        return Snapshot(markup.ranges, markup.blocks, document.modificationStamp)
     }
 
     private fun apply(snapshot: Snapshot) {
@@ -270,7 +283,7 @@ class LiveMarkupController(
                 if (entry != null && intact(region, entry)) {
                     wanted.remove(key)
                     groups[entry.span] = region.group!!
-                    val expanded = isRevealed(kind, region.startOffset, entry.span, carets)
+                    val expanded = isRevealed(kind, region.startOffset, region.endOffset, entry.span, carets)
                     if (region.isExpanded != expanded) region.isExpanded = expanded
                     continue
                 }
@@ -289,10 +302,11 @@ class LiveMarkupController(
                 val region = model.createFoldRegion(start, end, range.placeholder, group, false) ?: continue
                 region.putUserData(KIND, range.kind)
                 region.setGutterMarkEnabledForSingleLine(false)
-                region.isExpanded = isRevealed(range.kind, start, range.span, carets)
+                region.isExpanded = isRevealed(range.kind, start, end, range.span, carets)
                 created++
             }
         }
+        blockRenderer.sync(snapshot.blocks)
         if (LOG.isDebugEnabled) LOG.debug("live markup: $created regions created, $removed removed, $replaced foreign ones replaced in ${(System.nanoTime() - started) / 1_000_000} ms")
     }
 
@@ -300,7 +314,13 @@ class LiveMarkupController(
      * Where a region should be revealed: around its element for inline markup, its whole line for block markers and,
      * with the `line` scope setting, for everything.
      */
-    private fun isRevealed(kind: MarkupKind, start: Int, span: TextRange, carets: Carets): Boolean {
+    private fun isRevealed(kind: MarkupKind, start: Int, end: Int, span: TextRange, carets: Carets): Boolean {
+        // A region holding a caret is always revealed, whatever the policy would say. Collapsing one makes the
+        // folding model move the caret out, our caret listener schedules another pass, and the two never agree:
+        // the editor hangs. It is reachable with any region that covers more than the line it starts on — the
+        // closing ``` of a fence is folded together with the line break before it, so a caret on that line sits
+        // inside a region whose start line is the one above.
+        if (carets.offsets.any { it > start && it < end }) return true
         val wholeLine = kind.isBlock || AgenstormSettings.getInstance().state.liveMarkupRevealScope == SCOPE_LINE
         val reveal = if (wholeLine) lineSpan(start) else approach(span, lineSpan(span.startOffset), lineSpan(span.endOffset))
         return isRevealed(reveal, carets)
@@ -334,7 +354,11 @@ class LiveMarkupController(
     }
 
     private fun scheduleCaretPolicy() {
-        if (policyScheduled || editor.isDisposed) return
+        // Not from inside our own batch. Collapsing a region the caret sits in makes the folding model move
+        // the caret, and answering that move with another policy pass is a loop the two never settle out of —
+        // it spins the EDT at 100 % until the IDE is killed. Our batches leave the display right on their own;
+        // the next real caret or selection change re-runs the policy anyway.
+        if (ownBatch || policyScheduled || editor.isDisposed) return
         policyScheduled = true
         ApplicationManager.getApplication().invokeLater({
             policyScheduled = false

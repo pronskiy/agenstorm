@@ -933,7 +933,7 @@ Platform facts (verified against build 262):
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | H1.1 | Collector emits `FENCE_OPEN` / `FENCE_CLOSE` ranges and a block list carrying the span and the language | ✅ | `collectMarkup` returns both lists; `collect` still returns just the ranges. `liveMarkupCodeBlocks` lands here because `Options` needs it. The closing line folds back to the line break found in the *text*, not to an `EOL` token — inside a fence the breaks are `WHITE_SPACE`, and an indented or quoted closing line carries its indent and its `>` in that same whitespace |
-| H1.2 | `MarkdownBlockRenderer`: one `LINES_IN_RANGE` highlighter per block, owned by the controller's sync | 🔲 | |
+| H1.2 | `MarkdownBlockRenderer`: one `LINES_IN_RANGE` highlighter per block, owned by the controller's sync | ✅ | Found and fixed a hang in the F1.3 caret policy: collapsing a region the caret sits in makes the folding model move the caret, our caret listener answered with another pass, and the two spun the EDT forever. A fence's closing region is the first that covers more than the line it starts on, so it is the first a caret can sit inside off that line |
 | H1.3 | Caret policy and coexistence with the Markdown plugin's own `CODE_FENCE` region | 🔲 | |
 | H1.4 | Tests: `fences.md` fixture and a controller test | 🔲 | |
 
