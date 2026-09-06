@@ -11,6 +11,7 @@
 | 2026-09-05 | Initial spec created from the brainstorm + code walk of the IntelliJ Platform (build 262) | Roman Pronskiy |
 | 2026-09-06 | Epic F: Phase F3 added (inline markup revealed per element, not per line) after the Epic F review; survey of other editors recorded there | Roman Pronskiy (decision), Claude (text) |
 | 2026-09-06 | Epics G, H and I added *before* Release 1.0: `open path` interception in the terminal, Markdown block rendering (code fences, quotes, rules), and extensible terminal-output enhancers | Roman Pronskiy (decisions), Claude (text) |
+| 2026-09-06 | 1.0 cut short after Epic G and Phase H1: the release goes next, and Epic H's Phases H2 and H3 and the whole of Epic I move to after it | Roman Pronskiy (decision), Claude (text) |
 
 ### Status legend
 
@@ -18,9 +19,9 @@
 
 ### Current focus
 
-**Now on:** **Epic I** → step **I1.1** (`EnhancerRule` + `RuleParser`), pending Roman's go-ahead.
+**Now on:** **Release 1.0** → step **R1** (version, changelog, README description and CLAUDE.md inventory reviewed against what actually shipped).
 
-Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**; Epic G closed 2026-09-06 and Epic H was stopped after Phase H1 the same day, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written; decisions 29 and 30 came out of the Epic G guardrail run.
+Epics 0–F closed 2026-09-06, Phase F3 included. Roman added three more features to 1.0 that day; **Epic G** closed and **Epic H** stopped after Phase H1, both on 2026-09-06. Roman then cut 1.0 short: **the release goes next**, and everything still open — Epic H's Phases H2 and H3, and the whole of Epic I — moves to **after 1.0**. So the order is **G ✅ → H1 ✅ → Release 1.0 → H2/H3 + I**. Release 1.0 was paused at R2 and picks up there: R1 and R2 are re-done against what actually shipped, then R3 (hand-install tour) and R4 (Marketplace), both Roman's. Decisions 25–28 were confirmed by Roman on 2026-09-06 and 29–31 came out of the Epic G and H guardrail runs.
 
 Carried over, all Roman's: the week-long **Daily-driver test** guardrails of Epic D (which also owes a live run of the Anthropic and OpenAI-compatible backends with real keys) and Epic E, and Marketplace publishing.
 
@@ -28,7 +29,7 @@ Carried over, all Roman's: the week-long **Daily-driver test** guardrails of Epi
 
 ## 1. Executive summary
 
-Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an agent-heavy workflow hits in the IDE every day: it makes `path/to/file.php:42:7` locations clickable everywhere (Markdown, comments, PHP strings), generates commit messages with a modern LLM (streaming, HTTP or `claude -p`, no SDK bloat), trims the New Scratch File popup to the four languages that matter, keeps file names out of the window title and project tabs, renders project tabs inside the main toolbar so the window loses a row of chrome, and gives Markdown an Obsidian-style "live markup" mode where the syntax hides itself until the caret lands on the line. Three more features close the loop between the terminal and the editor: `open src/Foo.php:42` typed in an IDE terminal opens that file in that window instead of handing it to macOS, fenced code blocks render as cards in the Markdown editor, and noisy output like `var_dump()` collapses into a foldable summary through rules users can extend with their own files. It is built for one opinionated user first (the author) but ships on JetBrains Marketplace, so every feature is independently toggleable and degrades gracefully when a platform hook is missing.
+Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an agent-heavy workflow hits in the IDE every day: it makes `path/to/file.php:42:7` locations clickable everywhere (Markdown, comments, PHP strings), generates commit messages with a modern LLM (streaming, HTTP or `claude -p`, no SDK bloat), trims the New Scratch File popup to the four languages that matter, keeps file names out of the window title and project tabs, renders project tabs inside the main toolbar so the window loses a row of chrome, and gives Markdown an Obsidian-style "live markup" mode where the syntax hides itself until the caret lands on the line. Two more features close the loop between the terminal and the editor: `open src/Foo.php:42` typed in an IDE terminal opens that file in that window instead of handing it to macOS, and fenced code blocks render as cards in the Markdown editor. A third — noisy output like `var_dump()` collapsing into a foldable summary through rules users can extend with their own files — is specified as Epic I and comes after 1.0. It is built for one opinionated user first (the author) but ships on JetBrains Marketplace, so every feature is independently toggleable and degrades gracefully when a platform hook is missing.
 
 ---
 
@@ -107,7 +108,7 @@ Every feature is a leaf: it registers its own extensions in its own optional `co
 
 ## 4. Epics
 
-Epics 0–F are the MVP; G, H and I were added on 2026-09-06 and ship in 1.0 as well. Recommended order: 0 → A → B → C → D → E → F → G → H → I (value per hour of work, riskiest last). G and I share the `terminal/` package and its optional dependency, so the knowledge carries over; H sits between them because it is independent of both and the cheapest of the three.
+Epics 0–F are the MVP; G, H and I were added on 2026-09-06. **1.0 ships 0–F, G and H's Phase H1**; H2, H3 and I are the first work after the release (2026-09-06 decision). Original order was 0 → A → B → C → D → E → F → G → H → I (value per hour of work, riskiest last). G and I share the `terminal/` package and its optional dependency, so the knowledge carries over; H sat between them because it is independent of both and the cheapest of the three.
 
 ### Epic 0 — Scaffold, settings, CI  ·  MVP
 
@@ -914,7 +915,7 @@ Platform facts (verified against build 262):
 
 ### Epic H — Markdown block rendering: code fences, quotes, rules  ·  1.0
 
-> **Stopped after Phase H1 on 2026-09-06.** Roman looked at the plain full-width card in `runIde` and called it good enough: fences hide their ``` lines and sit on a background, which is the whole of the daily value. The rounded card, the language chip and the copy action (H2), and block quotes and thematic breaks (H3) are cut, not deferred — reopen them as a new epic if the plain card ever starts to grate. What shipped: H1.1–H1.4 and decision 31.
+> **1.0 ships Phase H1 only.** Roman looked at the plain full-width card in `runIde` on 2026-09-06 and called it good enough for the release: fences hide their ``` lines and sit on a background, which is the whole of the daily value. The rounded card, the language chip and the copy action (H2), and block quotes and thematic breaks (H3) move to **after 1.0**, alongside Epic I. Shipped in 1.0: H1.1–H1.4, the `liveMarkupCodeBlocks` switch, and decision 31.
 
 **Goal:** In live-markup mode a fenced code block renders as a rounded card carrying its language and a copy action, with the ``` lines hidden and the syntax highlighting inside untouched; block quotes lose their `>` markers and gain a left rail; thematic breaks render as a drawn line. Epic F's caret policy still governs everything — putting the caret in a block reveals its raw markers. Indented code blocks and images stay out of scope (§7).
 **Success metrics:** a 3,000-line file with 200 fences re-syncs in < 50 ms after edits stop — the Epic F budget, unchanged; the card survives a theme switch, soft wrap, and the Markdown plugin's own `CODE_FENCE` fold region; a selection across a card still copies the raw fence, backticks included.
@@ -959,10 +960,10 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| H2.1 | `CodeBlockHighlighterRenderer : CustomHighlighterRenderer` — rounded rect, insets, hairline border | ❌ | Cut with the epic, 2026-09-06 |
-| H2.2 | Language chip and copy action as an after-line-end inlay on the header row | ❌ | Cut with the epic, 2026-09-06 — the header row is there for it if it ever comes back |
-| H2.3 | Settings: `liveMarkupCodeBlocks`, `liveMarkupCodeBlockCard`, `liveMarkupCodeBlockCopy` | ❌ | Cut; `liveMarkupCodeBlocks` already exists (H1.1) and needs its settings-page row before release |
-| H2.4 | Tests plus the soft-wrap and theme-switch check | ❌ | Cut with the epic, 2026-09-06 |
+| H2.1 | `CodeBlockHighlighterRenderer : CustomHighlighterRenderer` — rounded rect, insets, hairline border | 🔲 | After 1.0 |
+| H2.2 | Language chip and copy action as an after-line-end inlay on the header row | 🔲 | After 1.0; H1 already leaves the header row empty for it |
+| H2.3 | Settings: `liveMarkupCodeBlocks`, `liveMarkupCodeBlockCard`, `liveMarkupCodeBlockCopy` | 🔄 | `liveMarkupCodeBlocks` shipped in 1.0 with its settings row; the other two are after 1.0, with H2.1 and H2.2 |
+| H2.4 | Tests plus the soft-wrap and theme-switch check | 🔲 | After 1.0 |
 
 **Steps (detail):**
 
@@ -975,10 +976,10 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| H3.1 | Collector emits `QUOTE_MARKER` ranges for each `>` plus its space | ❌ | Cut with the epic, 2026-09-06 |
-| H3.2 | Left rail per quote, one per nesting level | ❌ | Cut with the epic, 2026-09-06 |
-| H3.3 | `HORIZONTAL_RULE` folded and drawn as a full-width line | ❌ | Cut with the epic, 2026-09-06 |
-| H3.4 | Settings `liveMarkupQuotes`, `liveMarkupRules`; tests | ❌ | Cut with the epic, 2026-09-06 |
+| H3.1 | Collector emits `QUOTE_MARKER` ranges for each `>` plus its space | 🔲 | After 1.0 |
+| H3.2 | Left rail per quote, one per nesting level | 🔲 | After 1.0 |
+| H3.3 | `HORIZONTAL_RULE` folded and drawn as a full-width line | 🔲 | After 1.0 |
+| H3.4 | Settings `liveMarkupQuotes`, `liveMarkupRules`; tests | 🔲 | After 1.0 |
 
 **Steps (detail):**
 
@@ -987,21 +988,21 @@ Platform facts (verified against build 262):
 - **H3.3 — Rules.** Deliverable: the `HORIZONTAL_RULE` token folded to an empty placeholder, with a `LINES_IN_RANGE` highlighter on its line whose renderer draws a full-width one-pixel line in `HRULE` colours. `---` directly under a paragraph is a setext heading, not a rule — the parser already distinguishes them, so keying off the token is enough.
 - **H3.4 — Settings and tests.** Deliverable: `liveMarkupQuotes` and `liveMarkupRules` (both on) and fixture coverage: nested quotes, a quote containing a fence, a quote containing a list, `---` / `***` / `___`, and a setext heading that must *not* be treated as a rule.
 
-**Exit guardrails — Epic H → Epic I** — none of these were run: the epic stopped after Phase H1, and every row below
-belongs to H2 or H3. What H1 does ship is signed off in the H1 → H2 table above and covered by `CodeFenceFoldingTest`.
+**Exit guardrails — Epic H → Epic I** — not run, and not due until H2 and H3 are built after 1.0: every row below belongs
+to one of them. What 1.0 ships is signed off in the H1 → H2 table above and covered by `CodeFenceFoldingTest`.
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Obsidian parity (scoped) | `testData/markdown/parity.md` grows a fences / quotes / rules section; side-by-side with Obsidian the same things are hidden and drawn; the heading-size difference stays accepted | ❌ | Not run — the epic stopped after Phase H1 |
-| Injection intact | A `php` fence highlights and navigates identically with the feature on and off | ❌ | Not run — the epic stopped after Phase H1 |
-| Coexistence | The Markdown plugin's fence and quote folding still work; `Fold All` / `Expand All` recover on the next caret move | ❌ | Not run — the epic stopped after Phase H1 |
-| Copy fidelity | Selecting across a card and copying yields the raw fence with its backticks; the copy glyph yields the body without them | ❌ | Not run — the epic stopped after Phase H1 |
-| Themes and wrap | Card, rails and rules render correctly in Light and Dark and with soft wrap on | ❌ | Not run — the epic stopped after Phase H1 |
-| Perf | 3,000-line file with 200 fences: sync after an edit < 50 ms, no visible lag while scrolling | ❌ | Not run — the epic stopped after Phase H1 |
+| Obsidian parity (scoped) | `testData/markdown/parity.md` grows a fences / quotes / rules section; side-by-side with Obsidian the same things are hidden and drawn; the heading-size difference stays accepted | 🔲 | After 1.0, with H2 and H3 |
+| Injection intact | A `php` fence highlights and navigates identically with the feature on and off | 🔲 | After 1.0, with H2 and H3 |
+| Coexistence | The Markdown plugin's fence and quote folding still work; `Fold All` / `Expand All` recover on the next caret move | 🔲 | After 1.0, with H2 and H3 |
+| Copy fidelity | Selecting across a card and copying yields the raw fence with its backticks; the copy glyph yields the body without them | 🔲 | After 1.0, with H2 and H3 |
+| Themes and wrap | Card, rails and rules render correctly in Light and Dark and with soft wrap on | 🔲 | After 1.0, with H2 and H3 |
+| Perf | 3,000-line file with 200 fences: sync after an edit < 50 ms, no visible lag while scrolling | 🔲 | After 1.0, with H2 and H3 |
 
 ---
 
-### Epic I — Terminal output enhancers  ·  1.0
+### Epic I — Terminal output enhancers  ·  after 1.0
 
 **Goal:** Output worth reading — `var_dump`, `print_r`, `var_export`, JSON, PHP stack traces — collapses to a one-line summary that expands on click, with a structured tree viewer for the nested ones, and users add their own enhancements as JSON rule files from the settings page. The engine is generic; the five built-ins are just the rules that ship with it.
 **Success metrics:** a 10,000-line output scrolls with no visible lag; a malformed or catastrophic user regex can never hang the EDT nor corrupt plain output; turning the feature off restores a terminal indistinguishable from stock.
@@ -1087,14 +1088,14 @@ Platform facts (verified against build 262):
 
 ---
 
-### Release 1.0  ·  after Epics G, H and I
+### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| R1 | `pluginVersion = 1.0.0`; `CHANGELOG.md` `[Unreleased]` reviewed (it becomes the 1.0.0 section through `patchChangelog` at publish time); README plugin-description block reviewed against what shipped; CLAUDE.md inventory current | 🔄 | Done 2026-09-06 for the Epics 0–F build. To redo once G, H and I have landed: the changelog, the README description block and the CLAUDE.md inventory all gain the three new features |
-| R2 | `./gradlew verifyPlugin` against the recommended PhpStorm and IntelliJ IDEA 2026.2 builds: Compatible on both; internal-API usages limited to the §2 list | 🔄 | Done 2026-09-06 for the Epics 0–F build; must be re-run after G, H and I (new optional dependency on the Terminal plugin, three new `@Experimental` usages, no new internal ones expected). The 2026-09-06 result, plugin 1.0.0: Compatible on PS-262.10315.130 and IU-262.10315.125. 15 internal usages, all from the §2 list (`ProjectToolbarWidgetAction` subclassing and overrides, `IdeFrameEx.setFileTitle`, `ScratchFileTypeFilter`, `GitBranchesTreePopupOnBackend.create`); 28 experimental usages (Symbol API, `PsiHighlightedReference`, the Markdown plugin's `MarkdownInlineLink` / `MarkdownLinkText`); 2 deprecated usages, both the Kotlin bridge for `StatusBarWidget.getPresentation(PlatformType)`. A third deprecated usage, `DaemonCodeAnalyzer.restart(PsiFile)`, was replaced by the overload with a reason. Reports in `build/reports/pluginVerifier/`; the ZIP in `build/distributions/agenstorm-1.0.0.zip` |
+| R1 | `pluginVersion = 1.0.0`; `CHANGELOG.md` `[Unreleased]` reviewed (it becomes the 1.0.0 section through `patchChangelog` at publish time); README plugin-description block reviewed against what shipped; CLAUDE.md inventory current | 🔄 | Done 2026-09-06 for the Epics 0–F build. **To redo now** against Epic G and Phase H1: the changelog and README already gained both (the terminal `open` section and the code-block card), so what is left is the README plugin-description block between the `<!-- Plugin description -->` markers and the CLAUDE.md directory inventory, which still describes H2/H3 classes that were never written |
+| R2 | `./gradlew verifyPlugin` against the recommended PhpStorm and IntelliJ IDEA 2026.2 builds: Compatible on both; internal-API usages limited to the §2 list | 🔄 | Done 2026-09-06 for the Epics 0–F build; must be re-run now that G and H1 have landed (new optional dependency on the Terminal plugin, the `ShellExecOptionsCustomizer` and `LocalEelDescriptor` `@Experimental` usages, no new internal ones expected). The 2026-09-06 result, plugin 1.0.0: Compatible on PS-262.10315.130 and IU-262.10315.125. 15 internal usages, all from the §2 list (`ProjectToolbarWidgetAction` subclassing and overrides, `IdeFrameEx.setFileTitle`, `ScratchFileTypeFilter`, `GitBranchesTreePopupOnBackend.create`); 28 experimental usages (Symbol API, `PsiHighlightedReference`, the Markdown plugin's `MarkdownInlineLink` / `MarkdownLinkText`); 2 deprecated usages, both the Kotlin bridge for `StatusBarWidget.getPresentation(PlatformType)`. A third deprecated usage, `DaemonCodeAnalyzer.restart(PsiFile)`, was replaced by the overload with a reason. Reports in `build/reports/pluginVerifier/`; the ZIP in `build/distributions/agenstorm-1.0.0.zip` |
 | R3 | `./gradlew buildPlugin`, install `build/distributions/agenstorm-1.0.0.zip` into a real PhpStorm 2026.2 from disk, open a project with Markdown, Git and PHP: every feature toggle visible in Settings, no SEVERE in `idea.log` after a short tour | 🔲 | Roman's, by hand |
 | R4 | Marketplace: upload the ZIP (or `publishPlugin` with `PUBLISH_TOKEN`), release notes from the changelog, tag `v1.0.0` | 🔲 | Roman's |
 
