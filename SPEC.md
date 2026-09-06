@@ -932,7 +932,7 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| H1.1 | Collector emits `FENCE_OPEN` / `FENCE_CLOSE` ranges and a block list carrying the span and the language | 🔲 | |
+| H1.1 | Collector emits `FENCE_OPEN` / `FENCE_CLOSE` ranges and a block list carrying the span and the language | ✅ | `collectMarkup` returns both lists; `collect` still returns just the ranges. `liveMarkupCodeBlocks` lands here because `Options` needs it. The closing line folds back to the line break found in the *text*, not to an `EOL` token — inside a fence the breaks are `WHITE_SPACE`, and an indented or quoted closing line carries its indent and its `>` in that same whitespace |
 | H1.2 | `MarkdownBlockRenderer`: one `LINES_IN_RANGE` highlighter per block, owned by the controller's sync | 🔲 | |
 | H1.3 | Caret policy and coexistence with the Markdown plugin's own `CODE_FENCE` region | 🔲 | |
 | H1.4 | Tests: `fences.md` fixture and a controller test | 🔲 | |

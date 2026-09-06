@@ -23,9 +23,8 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
             • ☑ DONE
             1. numbered x
 
-            ```php
+
             **not** `here`
-            ```
 
                 **indented** code
 
@@ -62,6 +61,8 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         assertEquals(listOf("[ ]"), byKind[MarkupKind.CHECKBOX_OFF])
         assertEquals(listOf("[x]", "[X]"), byKind[MarkupKind.CHECKBOX_ON])
         assertEquals(listOf("-", "-", "*"), byKind[MarkupKind.BULLET])
+        assertEquals(listOf("```php"), byKind[MarkupKind.FENCE_OPEN])
+        assertEquals(listOf("\n```"), byKind[MarkupKind.FENCE_CLOSE])
         assertEquals(MarkupKind.entries.toSet(), byKind.keys)
     }
 
@@ -77,7 +78,8 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         }
     }
 
-    fun testCodeFencesBlocksHtmlAndImagesStayRaw() {
+    /** Only the fence *lines* are hidden (H1.1); its body, and the other raw blocks, stay untouched. */
+    fun testFenceBodiesIndentedBlocksHtmlAndImagesStayRaw() {
         val ranges = collectFixture()
         val text = myFixture.file.text
         for (raw in listOf("**not** `here`", "    **indented** code", "<div>**html**</div>", "![img](pic.png)", "<https://auto.link>")) {

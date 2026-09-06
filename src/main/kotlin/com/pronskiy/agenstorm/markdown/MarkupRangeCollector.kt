@@ -15,12 +15,14 @@ import org.intellij.plugins.markdown.lang.MarkdownTokenTypes
 
 /** What a hidden range stands for; the controller keys its fold regions by kind and range. */
 enum class MarkupKind {
-    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET;
+    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET, FENCE_OPEN, FENCE_CLOSE;
 
     val isCheckbox: Boolean get() = this == CHECKBOX_OFF || this == CHECKBOX_ON
 
+    val isFence: Boolean get() = this == FENCE_OPEN || this == FENCE_CLOSE
+
     /** Block-level markers are revealed for their whole line; inline ones only for their element (Phase F3). */
-    val isBlock: Boolean get() = this == HEADING || this == BULLET || isCheckbox
+    val isBlock: Boolean get() = this == HEADING || this == BULLET || isCheckbox || isFence
 }
 
 /**
@@ -29,11 +31,24 @@ enum class MarkupKind {
  */
 data class MarkupRange(val kind: MarkupKind, val range: TextRange, val placeholder: String, val span: TextRange)
 
+/** What a [MarkdownBlock] is; Phase H3 adds block quotes and thematic breaks. */
+enum class MarkdownBlockKind { CODE_FENCE }
+
+/**
+ * A block-level construct the renderer paints behind (Epic H): [span] is the whole element, [language] the
+ * fence's info string exactly as written, or null when it has none.
+ */
+data class MarkdownBlock(val kind: MarkdownBlockKind, val span: TextRange, val language: String?)
+
+/** Everything one walk of the file produced: the ranges to fold and the blocks to paint behind. */
+data class Markup(val ranges: List<MarkupRange>, val blocks: List<MarkdownBlock>)
+
 /**
  * Step F1.1. Walks a Markdown PSI tree and lists the marker characters the live-markup mode hides: emphasis and
  * strong markers, strikethrough tildes, the outer backticks of code spans, ATX heading hashes with their space,
- * the brackets and destination of inline links, and task-list checkboxes (replaced by ☐ / ☑) and, when asked, list bullets (replaced by •). Code fences, indented
- * code blocks, HTML blocks and images are left exactly as written, and so are link destinations and titles (they
+ * the brackets and destination of inline links, and task-list checkboxes (replaced by ☐ / ☑) and, when asked, list bullets (replaced by •). A fenced code block
+ * (Epic H) loses its ``` lines and yields a [MarkdownBlock], but its body is never touched; indented code
+ * blocks, HTML blocks and images are left exactly as written, and so are link destinations and titles (they
  * sit inside the folded link tail anyway).
  *
  * The ranges never overlap: each one covers only marker tokens, and nested constructs (`***both***`, bold inside
@@ -42,7 +57,6 @@ data class MarkupRange(val kind: MarkupKind, val range: TextRange, val placehold
 object MarkupRangeCollector {
 
     private val SKIPPED: TokenSet = TokenSet.create(
-        MarkdownElementTypes.CODE_FENCE,
         MarkdownElementTypes.CODE_BLOCK,
         MarkdownElementTypes.HTML_BLOCK,
         MarkdownElementTypes.IMAGE,
@@ -58,22 +72,34 @@ object MarkupRangeCollector {
     const val CHECKBOX_ON_PLACEHOLDER = "☑"
     const val BULLET_PLACEHOLDER = "•"
 
-    /** The optional parts (settings of Phase F2); [fromSettings] reads the current values. */
-    data class Options(val checkboxes: Boolean = true, val bullets: Boolean = true) {
+    /** The optional parts (settings of Phase F2 and H2); [fromSettings] reads the current values. */
+    data class Options(val checkboxes: Boolean = true, val bullets: Boolean = true, val codeBlocks: Boolean = true) {
         companion object {
-            fun fromSettings(): Options = AgenstormSettings.getInstance().state.let { Options(checkboxes = it.liveMarkupCheckboxes, bullets = it.liveMarkupBullets) }
+            fun fromSettings(): Options = AgenstormSettings.getInstance().state.let {
+                Options(checkboxes = it.liveMarkupCheckboxes, bullets = it.liveMarkupBullets, codeBlocks = it.liveMarkupCodeBlocks)
+            }
         }
     }
 
     /** Requires read access. Deterministic: sorted by start offset, disjoint ranges. */
-    fun collect(file: PsiFile, options: Options = Options.fromSettings()): List<MarkupRange> {
+    fun collect(file: PsiFile, options: Options = Options.fromSettings()): List<MarkupRange> =
+        collectMarkup(file, options).ranges
+
+    /** Requires read access. As [collect], plus the blocks Epic H paints behind. */
+    fun collectMarkup(file: PsiFile, options: Options = Options.fromSettings()): Markup {
         ApplicationManager.getApplication().assertReadAccessAllowed()
         val text = file.viewProvider.contents
         val out = ArrayList<MarkupRange>()
+        val blocks = ArrayList<MarkdownBlock>()
         file.accept(object : PsiRecursiveElementWalkingVisitor() {
             override fun visitElement(element: PsiElement) {
                 val type = PsiUtilCore.getElementType(element) ?: return
                 if (type in SKIPPED) return // not calling super skips the subtree
+                if (type == MarkdownElementTypes.CODE_FENCE) {
+                    // Never walked into: the body is code, and the injected highlighting must be left alone.
+                    if (options.codeBlocks) codeFence(element.node, text, out, blocks)
+                    return
+                }
                 when (type) {
                     MarkdownElementTypes.STRONG -> markers(element.node, MarkdownTokenTypes.EMPH, MarkupKind.STRONG, out)
                     MarkdownElementTypes.EMPH -> markers(element.node, MarkdownTokenTypes.EMPH, MarkupKind.EMPH, out)
@@ -88,7 +114,35 @@ object MarkupRangeCollector {
             }
         })
         out.sortBy { it.range.startOffset }
-        return out
+        blocks.sortBy { it.span.startOffset }
+        return Markup(out, blocks)
+    }
+
+    /**
+     * The opening line loses ` ``` ` and its info string **but keeps its EOL**, so the card has a header row
+     * for the language chip; the closing line is folded from the end of the last content line through the
+     * closing ` ``` `, newline included, so it disappears entirely. `CODE_FENCE_CONTENT` is never touched.
+     * A fence left unterminated at the end of the file has no closing token and emits only the opener.
+     */
+    private fun codeFence(node: ASTNode, text: CharSequence, out: MutableList<MarkupRange>, blocks: MutableList<MarkdownBlock>) {
+        val children = node.getChildren(null)
+        val open = children.firstOrNull { it.elementType == MarkdownTokenTypes.CODE_FENCE_START } ?: return
+        val language = children.firstOrNull { it.elementType == MarkdownTokenTypes.FENCE_LANG }
+        val span = node.textRange
+        // Through the info string when there is one, so the spaces between the two go as well.
+        val openEnd = language?.textRange?.endOffset ?: open.textRange.endOffset
+        out += MarkupRange(MarkupKind.FENCE_OPEN, TextRange(open.startOffset, openEnd), "", span)
+
+        val close = children.lastOrNull { it.elementType == MarkdownTokenTypes.CODE_FENCE_END }
+        if (close != null) {
+            // Back to the line break itself, from the text rather than the tokens: inside a fence the breaks
+            // are plain `WHITE_SPACE`, and an indented or quoted closing line carries its indent and its `>`
+            // in that same whitespace, all of which has to go with it.
+            val newline = text.lastIndexOf('\n', close.startOffset - 1)
+            val closeStart = if (newline >= span.startOffset) newline else close.startOffset
+            out += MarkupRange(MarkupKind.FENCE_CLOSE, TextRange(closeStart, close.textRange.endOffset), "", span)
+        }
+        blocks += MarkdownBlock(MarkdownBlockKind.CODE_FENCE, span, language?.text?.trim()?.takeIf { it.isNotEmpty() })
     }
 
     /** Leading and trailing runs of [marker] tokens among the node's direct children; both must exist and leave content between. */
