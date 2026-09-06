@@ -87,6 +87,16 @@ class OpenRequestNavigationTest : BasePlatformTestCase() {
         assertEquals("the last argument ends up in front", "notes.md", currentFileName())
     }
 
+    fun testAFileBelongingToNoOpenProjectStillOpensInThisWindow() {
+        Files.createDirectories(cwd.resolve("elsewhere"))
+        Files.writeString(cwd.resolve("elsewhere/Stray.php"), "<?php\n// two\n// three\n")
+
+        assertEquals(204, open("elsewhere/Stray.php:2").statusCode())
+
+        assertEquals("Stray.php", currentFileName())
+        assertEquals(1, caretOf(selectedEditor()).line)
+    }
+
     fun testTheFeatureToggleTurnsTheEndpointIntoAFallback() {
         AgenstormSettings.getInstance().state.terminalOpenEnabled = false
 

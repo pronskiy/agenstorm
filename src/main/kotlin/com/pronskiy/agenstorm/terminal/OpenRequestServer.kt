@@ -148,17 +148,47 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         }
     }
 
+    /**
+     * Each file opens in the project it belongs to, which is usually this one but may be another window that
+     * already has it — `open ../other-project/src/Bar.php` belongs in that project's window, not in a second
+     * copy here. Ownership is worked out off the EDT; navigation and the one focus happen on it.
+     */
     private suspend fun openFiles(targets: List<OpenCommandRouter.FileTarget>): Boolean {
         if (targets.isEmpty()) return false
+        val openProjects = ProjectManager.getInstance().openProjects.filter { !it.isDisposed }
+        val owned = targets.map { it to ownerOf(it.file, openProjects) }
         withContext(Dispatchers.EDT) {
             val resolver = FileLocationResolver(project)
-            for (target in targets) {
-                descriptorFor(resolver, target).navigate(true)
+            for ((target, owner) in owned) {
+                if (owner.isDisposed) continue
+                descriptorFor(resolver, target, owner).navigate(true)
             }
-            // Once, after the last file: the window the terminal lives in comes forward.
-            ProjectUtil.focusProjectWindow(project, true)
+            // Once, after the last file: its window comes forward.
+            owned.last().second.takeIf { !it.isDisposed }?.let { ProjectUtil.focusProjectWindow(it, true) }
         }
         return true
+    }
+
+    /**
+     * The project a file opens in: this one whenever it holds the file, so a command never jumps out of the
+     * window it was typed in; otherwise the first other open project that holds it; otherwise this one again,
+     * which is how a file belonging to no open project keeps opening where it was asked for.
+     */
+    private fun ownerOf(file: VirtualFile, openProjects: List<Project>): Project =
+        ReadAction.computeBlocking<Project, RuntimeException> {
+            when {
+                projectHolds(project, file) -> project
+                else -> openProjects.firstOrNull { it !== project && projectHolds(it, file) } ?: project
+            }
+        }
+
+    /** Requires read access. Content roots first; the base path catches a file the roots exclude. */
+    @VisibleForTesting
+    fun projectHolds(candidate: Project, file: VirtualFile): Boolean {
+        if (candidate.isDisposed) return false
+        if (ProjectRootManager.getInstance(candidate).fileIndex.isInContent(file)) return true
+        val base = candidate.basePath ?: return false
+        return file.path.startsWith(if (base.endsWith("/")) base else "$base/")
     }
 
     /**
@@ -239,10 +269,14 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
      * The caret position is computed the way Epic A computes it for a written location, so a line past the
      * end of the file lands on the last line instead of failing.
      */
-    private fun descriptorFor(resolver: FileLocationResolver, target: OpenCommandRouter.FileTarget): OpenFileDescriptor {
-        val line = target.line ?: return OpenFileDescriptor(project, target.file)
+    private fun descriptorFor(
+        resolver: FileLocationResolver,
+        target: OpenCommandRouter.FileTarget,
+        owner: Project,
+    ): OpenFileDescriptor {
+        val line = target.line ?: return OpenFileDescriptor(owner, target.file)
         val location = FileLocation(target.file.path, line, target.column)
-        return OpenFileDescriptor(project, target.file, resolver.toOffset(target.file, location))
+        return OpenFileDescriptor(owner, target.file, resolver.toOffset(target.file, location))
     }
 
     private fun isTokenValid(presented: String): Boolean {

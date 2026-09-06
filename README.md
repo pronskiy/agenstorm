@@ -176,6 +176,10 @@ Paths resolve against the shell's working directory first, then the way location
 everywhere else: the project base, the content roots, and finally a unique file name anywhere in the
 project. A line past the end of the file lands on the last line.
 
+A file opens in the project it belongs to. `open ../other-project/src/Bar.php` goes to that project's
+window when it is already open, focusing it; when it is not, the file opens here, in the window you typed
+in. A file the current project holds always stays here, so a command never jumps out of its own window.
+
 Everything the IDE does not claim reaches the real `open` untouched, with its own behaviour and its own
 error messages: flags (`open -a Preview doc.pdf`, `open -R file`), URLs, no arguments at all, paths that
 do not exist, files the IDE treats as binary, and any command line mixing files with directories. If a

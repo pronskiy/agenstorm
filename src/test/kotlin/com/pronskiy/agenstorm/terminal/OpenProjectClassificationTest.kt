@@ -61,6 +61,20 @@ class OpenProjectClassificationTest : BasePlatformTestCase() {
         assertEquals(outside, assertInstanceOf(action, OpenRequestServer.ProjectAction.OpenNew::class.java).path)
     }
 
+    fun testAFileUnderAContentRootBelongsToTheProject() {
+        val file = LocalFileSystem.getInstance()
+            .refreshAndFindFileByNioFile(Files.writeString(contentRoot.resolve("src/deep/Owned.php"), "<?php\n"))!!
+
+        assertTrue(server.projectHolds(project, file))
+    }
+
+    fun testAFileOutsideEveryContentRootAndBasePathBelongsToNoProject() {
+        val file = LocalFileSystem.getInstance()
+            .refreshAndFindFileByNioFile(Files.writeString(outside.resolve("Stray.php"), "<?php\n"))!!
+
+        assertFalse(server.projectHolds(project, file))
+    }
+
     fun testAPathThatIsNotOnDiskAtAllStillBecomesAProjectToOpen() {
         // The router only ever hands over directories it saw on disk, so this is belt and braces.
         val action = server.classifyProject(outside.resolve("gone"))
