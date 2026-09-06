@@ -1,6 +1,7 @@
 package com.pronskiy.agenstorm.markdown
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.util.ui.UIUtil
@@ -44,6 +45,21 @@ class MarkdownSettingsPanelTest : BasePlatformTestCase() {
         assertFalse(AgenstormSettings.getInstance().state.liveMarkupCheckboxes)
         assertFalse(AgenstormSettings.getInstance().state.liveMarkupBullets)
         assertFalse(configurable.isModified)
+    }
+
+    fun testRevealScopeSelectorOffersElementAndLine() {
+        val combo = named<ComboBox<*>>("markdown.revealScope")
+        assertEquals(listOf("element", "line"), (0 until combo.itemCount).map { (combo.getItemAt(it) as AgenstormConfigurable.RevealScopeOption).id })
+        assertEquals("element", (combo.selectedItem as AgenstormConfigurable.RevealScopeOption).id)
+        assertFalse(configurable.isModified)
+
+        var fired = 0
+        ApplicationManager.getApplication().messageBus.connect(testRootDisposable).subscribe(AgenstormSettingsListener.TOPIC, AgenstormSettingsListener { fired++ })
+        combo.selectedIndex = 1
+        assertTrue(configurable.isModified)
+        configurable.apply()
+        assertEquals("line", AgenstormSettings.getInstance().state.liveMarkupRevealScope)
+        assertEquals(1, fired)
     }
 
     fun testEveryChangedOptionFiresTheSettingsTopicOnce() {

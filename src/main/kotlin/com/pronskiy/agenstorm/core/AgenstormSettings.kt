@@ -67,6 +67,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupCheckboxes: Boolean = true,
         /** Epic F: list bullets `-` / `*` / `+` render as •. */
         var liveMarkupBullets: Boolean = true,
+        /** Epic F (Phase F3): `element` reveals the inline element at the caret, `line` the whole caret line (Phase F2 behaviour). */
+        var liveMarkupRevealScope: String = "element",
     )
 
     private var currentState = State()

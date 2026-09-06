@@ -13,6 +13,7 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.MutableProperty
 import com.intellij.ui.dsl.builder.Panel
 import com.intellij.ui.dsl.builder.bindIntText
+import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
@@ -32,6 +33,11 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
 
     /** One entry of the commit backend selector; [toString] is what the combo box renders. */
     data class BackendOption(val id: String, val label: String) {
+        override fun toString(): String = label
+    }
+
+    /** One entry of the live-markup reveal scope selector (ids as stored in the state; the feature reads them). */
+    data class RevealScopeOption(val id: String, val label: String) {
         override fun toString(): String = label
     }
 
@@ -110,7 +116,25 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .applyToComponent { name = "markdown.bullets" }
                     .comment(AgenstormBundle.message("settings.markdown.bullets.comment"))
             }
+            row(AgenstormBundle.message("settings.markdown.revealScope")) {
+                comboBox(REVEAL_SCOPES)
+                    .bindItem(
+                        { REVEAL_SCOPES.firstOrNull { it.id == AgenstormSettings.getInstance().state.liveMarkupRevealScope } ?: REVEAL_SCOPES.first() },
+                        { AgenstormSettings.getInstance().state.liveMarkupRevealScope = (it ?: REVEAL_SCOPES.first()).id },
+                    )
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "markdown.revealScope" }
+                    .comment(AgenstormBundle.message("settings.markdown.revealScope.comment"))
+            }
         }
+    }
+
+    private companion object {
+        /** Ids match `LiveMarkupController.SCOPE_*`; spelled out here because core/ must not load the Markdown feature. */
+        val REVEAL_SCOPES = listOf(
+            RevealScopeOption("element", AgenstormBundle.message("settings.markdown.revealScope.element")),
+            RevealScopeOption("line", AgenstormBundle.message("settings.markdown.revealScope.line")),
+        )
     }
 
     override fun disposeUIResources() {

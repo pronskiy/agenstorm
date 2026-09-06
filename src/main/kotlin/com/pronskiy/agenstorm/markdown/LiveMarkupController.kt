@@ -28,6 +28,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.ThreadingAssertions
 import com.pronskiy.agenstorm.core.AgenstormBundle
+import com.pronskiy.agenstorm.core.AgenstormSettings
 import java.awt.Cursor
 import java.awt.event.MouseEvent
 import kotlinx.coroutines.CoroutineName
@@ -295,9 +296,13 @@ class LiveMarkupController(
         if (LOG.isDebugEnabled) LOG.debug("live markup: $created regions created, $removed removed, $replaced foreign ones replaced in ${(System.nanoTime() - started) / 1_000_000} ms")
     }
 
-    /** Where a region should be revealed: around its element for inline markup, its whole line for block markers. */
+    /**
+     * Where a region should be revealed: around its element for inline markup, its whole line for block markers and,
+     * with the `line` scope setting, for everything.
+     */
     private fun isRevealed(kind: MarkupKind, start: Int, span: TextRange, carets: Carets): Boolean {
-        val reveal = if (kind.isBlock) lineSpan(start) else approach(span, lineSpan(span.startOffset), lineSpan(span.endOffset))
+        val wholeLine = kind.isBlock || AgenstormSettings.getInstance().state.liveMarkupRevealScope == SCOPE_LINE
+        val reveal = if (wholeLine) lineSpan(start) else approach(span, lineSpan(span.startOffset), lineSpan(span.endOffset))
         return isRevealed(reveal, carets)
     }
 
@@ -350,6 +355,9 @@ class LiveMarkupController(
     companion object {
         private val LOG = logger<LiveMarkupController>()
         private const val GROUP_NAME = "agenstorm.liveMarkup"
+        /** Values of `AgenstormSettings.State.liveMarkupRevealScope`. */
+        const val SCOPE_ELEMENT = "element"
+        const val SCOPE_LINE = "line"
         const val DEBOUNCE_MS = 200L
         /** Marks a fold region as ours and says what it hides. */
         val KIND: Key<MarkupKind> = Key.create("agenstorm.liveMarkup.kind")

@@ -194,6 +194,28 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         assertEquals(mapOf(0 to false, 1 to true), expandedByLine(controller))
     }
 
+    fun testLineScopeRevealsTheWholeCaretLineAndAppliesToOpenEditors() {
+        myFixture.configureByText("a.md", "**a** and *b* and [c](x.md)\n~~d~~\n")
+        val controller = attachedController()
+        controller.syncNow()
+        assertEquals(listOf(true, true, false, false, false, false, false, false), controller.regions().map { it.isExpanded })
+
+        AgenstormSettings.getInstance().state.liveMarkupRevealScope = LiveMarkupController.SCOPE_LINE
+        LiveMarkupService.getInstance(project).applySettings()
+        controller.syncNow()
+        assertEquals("Phase F2 behaviour: every element on the caret line", listOf(true, true, true, true, true, true, false, false), controller.regions().map { it.isExpanded })
+
+        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.getLineStartOffset(1) + 2)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(mapOf(0 to false, 1 to true), expandedByLine(controller))
+
+        AgenstormSettings.getInstance().state.liveMarkupRevealScope = LiveMarkupController.SCOPE_ELEMENT
+        LiveMarkupService.getInstance(project).applySettings()
+        myFixture.editor.caretModel.moveToOffset(11)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("back to one element", listOf(false, false, true, true, false, false, false, false), controller.regions().map { it.isExpanded })
+    }
+
     fun testOnlyTheElementAtTheCaretIsRevealedOnItsLine() {
         myFixture.configureByText("a.md", "**a** and *b* and [c](x.md)\n")
         val controller = attachedController()
