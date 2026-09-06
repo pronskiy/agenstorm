@@ -26,7 +26,7 @@ class OpenCommandRouterTest : BasePlatformTestCase() {
 
     override fun tearDown() {
         try {
-            NioFiles.deleteQuietly(cwd)
+            NioFiles.deleteRecursively(cwd)
         } finally {
             super.tearDown()
         }
