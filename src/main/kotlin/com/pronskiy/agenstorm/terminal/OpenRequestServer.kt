@@ -1,14 +1,22 @@
 package com.pronskiy.agenstorm.terminal
 
+import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
+import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.links.FileLocation
+import com.pronskiy.agenstorm.links.FileLocationResolver
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -37,9 +45,9 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
     /** Per-IDE-run secret the shim sends back as the first body field; a request without it is refused. */
     val token: String = randomHex(TOKEN_HEX_CHARS)
 
-    /** Decides one `open` invocation. Runs off the EDT, outside a read action. Installed by G1.2. */
+    /** Decides and performs one `open` invocation. Runs off the EDT, outside a read action; tests replace it. */
     @Volatile
-    var handler: OpenRequestHandler = OpenRequestHandler { _, _ -> false }
+    var handler: OpenRequestHandler = OpenRequestHandler { cwd, argv -> perform(cwd, argv) }
 
     @Volatile
     private var server: HttpServer? = null
@@ -111,6 +119,47 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         if (!isTokenValid(parsed.token)) return HTTP_FORBIDDEN
         val request = parsed.request
         return if (handler.handle(request.cwd, request.argv)) HTTP_NO_CONTENT else HTTP_CONFLICT
+    }
+
+    /**
+     * Step G2.1. Routes the invocation and, when the IDE claims it, opens every file it named.
+     * Returns false for anything the shim should hand to the real `open`.
+     */
+    private suspend fun perform(cwd: Path, argv: List<String>): Boolean {
+        val state = AgenstormSettings.getInstance().state
+        if (!state.terminalOpenEnabled || project.isDisposed) return false
+        return when (val decision = OpenCommandRouter(project, state.terminalOpenUnknownFileTypes).route(cwd, argv)) {
+            is OpenCommandRouter.Decision.OpenFiles -> openFiles(decision.targets)
+            // G2.2 takes the directory branch; until then a directory goes to the OS.
+            is OpenCommandRouter.Decision.OpenProject -> false
+            is OpenCommandRouter.Decision.Fallback -> {
+                LOG.debug("Agenstorm: leaving `open` to the OS (${decision.reason})")
+                false
+            }
+        }
+    }
+
+    private suspend fun openFiles(targets: List<OpenCommandRouter.FileTarget>): Boolean {
+        if (targets.isEmpty()) return false
+        withContext(Dispatchers.EDT) {
+            val resolver = FileLocationResolver(project)
+            for (target in targets) {
+                descriptorFor(resolver, target).navigate(true)
+            }
+            // Once, after the last file: the window the terminal lives in comes forward.
+            ProjectUtil.focusProjectWindow(project, true)
+        }
+        return true
+    }
+
+    /**
+     * The caret position is computed the way Epic A computes it for a written location, so a line past the
+     * end of the file lands on the last line instead of failing.
+     */
+    private fun descriptorFor(resolver: FileLocationResolver, target: OpenCommandRouter.FileTarget): OpenFileDescriptor {
+        val line = target.line ?: return OpenFileDescriptor(project, target.file)
+        val location = FileLocation(target.file.path, line, target.column)
+        return OpenFileDescriptor(project, target.file, resolver.toOffset(target.file, location))
     }
 
     private fun isTokenValid(presented: String): Boolean {

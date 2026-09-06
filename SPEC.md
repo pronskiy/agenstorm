@@ -18,7 +18,7 @@
 
 ### Current focus
 
-**Now on:** **Epic G** → step **G2.1** (open the claimed files at `line:col` in this project window and focus it).
+**Now on:** **Epic G** → step **G2.2** (open or focus a project for a directory argument).
 
 Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written.
 
@@ -886,7 +886,7 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| G2.1 | Open files at `line:col` in this project window and focus it | 🔲 | |
+| G2.1 | Open files at `line:col` in this project window and focus it | ✅ | `terminalOpenUnknownFileTypes` lands here (the router needs it); tested end to end through the endpoint, off the EDT so the test does not deadlock with the navigation |
 | G2.2 | Open or focus a project for a directory argument | 🔲 | |
 | G2.3 | Settings group "Terminal" and the three options | 🔲 | `terminalOpenEnabled` / `terminalOpenCommandNames` already on `State` since G1.4; this step adds `terminalOpenUnknownFileTypes`, the UI and the listener |
 | G2.4 | First-run balloon and README section | 🔲 | |
@@ -1169,7 +1169,7 @@ Platform facts (verified against build 262):
 - [ ] Should live markup also render images (`![alt](src)`) — as `🖼 alt` placeholder or as a block inlay? Deferred; not in 1.0. Epic H deliberately left this out when it took on fences, quotes and rules.
 - [ ] Should Epic H also give indented code blocks (`MarkdownElementTypes.CODE_BLOCK`) the card treatment? They need no markers hidden, so it is only the background — cheap once H1 exists. Left out of 1.0 on purpose; revisit after use.
 - [ ] **Epic I, external-command rules:** should a rule be allowed to name a command that the matched block is piped through, its output replacing the block? Rejected for 1.0 by decision 28 (arbitrary execution over terminal output). If it comes back, it needs an explicit opt-in toggle that is off by default, a per-rule confirmation on first use, and a note in the Marketplace description.
-- [ ] **Epic G, `ProjectUtil` API status:** `com.intellij.ide.impl.ProjectUtil` carries an `@ApiStatus.Internal` in its class file, but it appears to attach to `openExistingDir` / `FolderOpeningMode` rather than the class. G2.2 must settle this before using `openOrImportAsync`; if the class really is internal, the step is ⏸️ and the alternative (or dropping directory support) becomes a decision, not a guess.
+- [x] **Epic G, `ProjectUtil` API status — settled 2026-09-06, not internal.** The class-level `RuntimeVisibleAnnotations` of `com.intellij.ide.impl.ProjectUtil` is `kotlin.Metadata` alone; the `@ApiStatus.Internal` in the class file attaches to exactly two members, `openExistingDir(Path, FolderOpeningMode, Project, …)` and `isValidProjectPathAsync(Path, …)`. `focusProjectWindow`, `findAndFocusExistingProjectForPath`, `openOrImportAsync` and `isSameProject` carry no ApiStatus at all, so G2.1 and G2.2 use them as public API.
 - [ ] **Epic G on Windows:** the shim is POSIX `sh`, so `TerminalOpenExecOptionsCustomizer` no-ops on Windows. Worth an `open.cmd` / PowerShell function later? Default: no, macOS-first (same stance as Epic A's drive paths).
 - [ ] **Epic G outside the IDE:** should the plugin offer to install the shim into the user's own shell profile, so `open path:line` works in iTerm too? It would need a stable port or a discovery file, and it takes the "only inside IDE terminals" safety argument away. Default: no.
 - [ ] Epic E on Windows/Linux: the widget works, but is it wanted there (native tabs do not exist)? Default: available, off by default outside macOS.
