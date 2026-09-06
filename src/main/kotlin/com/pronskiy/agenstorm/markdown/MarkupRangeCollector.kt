@@ -18,10 +18,16 @@ enum class MarkupKind {
     STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET;
 
     val isCheckbox: Boolean get() = this == CHECKBOX_OFF || this == CHECKBOX_ON
+
+    /** Block-level markers are revealed for their whole line; inline ones only for their element (Phase F3). */
+    val isBlock: Boolean get() = this == HEADING || this == BULLET || isCheckbox
 }
 
-/** A stretch of Markdown syntax to fold away, and what to draw in its place (usually nothing). */
-data class MarkupRange(val kind: MarkupKind, val range: TextRange, val placeholder: String)
+/**
+ * A stretch of Markdown syntax to fold away, what to draw in its place (usually nothing), and the [span] of the
+ * element it belongs to: both markers of `**bold**` carry the same span, so the controller can pair them.
+ */
+data class MarkupRange(val kind: MarkupKind, val range: TextRange, val placeholder: String, val span: TextRange)
 
 /**
  * Step F1.1. Walks a Markdown PSI tree and lists the marker characters the live-markup mode hides: emphasis and
@@ -91,8 +97,9 @@ object MarkupRangeCollector {
         val lead = children.takeWhile { it.elementType == marker }
         val tail = children.takeLastWhile { it.elementType == marker }
         if (lead.isEmpty() || tail.isEmpty() || lead.size + tail.size >= children.size) return
-        out += MarkupRange(kind, TextRange(lead.first().startOffset, lead.last().textRange.endOffset), "")
-        out += MarkupRange(kind, TextRange(tail.first().startOffset, tail.last().textRange.endOffset), "")
+        val span = node.textRange
+        out += MarkupRange(kind, TextRange(lead.first().startOffset, lead.last().textRange.endOffset), "", span)
+        out += MarkupRange(kind, TextRange(tail.first().startOffset, tail.last().textRange.endOffset), "", span)
     }
 
     /** Only the outer backticks: a double-backtick span may legitimately contain a single backtick. */
@@ -102,8 +109,8 @@ object MarkupRangeCollector {
         val close = children.lastOrNull() ?: return
         if (open === close || open.elementType != MarkdownTokenTypes.BACKTICK || close.elementType != MarkdownTokenTypes.BACKTICK) return
         if (children.size < 3) return
-        out += MarkupRange(MarkupKind.CODE, open.textRange, "")
-        out += MarkupRange(MarkupKind.CODE, close.textRange, "")
+        out += MarkupRange(MarkupKind.CODE, open.textRange, "", node.textRange)
+        out += MarkupRange(MarkupKind.CODE, close.textRange, "", node.textRange)
     }
 
     /**
@@ -124,7 +131,7 @@ object MarkupRangeCollector {
             } else {
                 if (start > 0 && text[start - 1] == ' ') start--
             }
-            out += MarkupRange(MarkupKind.HEADING, TextRange(start, end), "")
+            out += MarkupRange(MarkupKind.HEADING, TextRange(start, end), "", node.textRange)
         }
     }
 
@@ -135,14 +142,14 @@ object MarkupRangeCollector {
         val open = textChildren.firstOrNull()?.takeIf { it.elementType == MarkdownTokenTypes.LBRACKET } ?: return
         val close = textChildren.lastOrNull()?.takeIf { it.elementType == MarkdownTokenTypes.RBRACKET } ?: return
         if (open === close || close.startOffset <= open.textRange.endOffset) return
-        out += MarkupRange(MarkupKind.LINK_OPEN, open.textRange, "")
-        out += MarkupRange(MarkupKind.LINK_TAIL, TextRange(close.startOffset, node.textRange.endOffset), "")
+        out += MarkupRange(MarkupKind.LINK_OPEN, open.textRange, "", node.textRange)
+        out += MarkupRange(MarkupKind.LINK_TAIL, TextRange(close.startOffset, node.textRange.endOffset), "", node.textRange)
     }
 
     /** The token is `- ` (or `* `, `+ `) with its trailing space; only the marker character becomes a •. */
     private fun bullet(node: ASTNode, out: MutableList<MarkupRange>) {
         if (node.text.firstOrNull() !in BULLET_CHARS) return
-        out += MarkupRange(MarkupKind.BULLET, TextRange.from(node.startOffset, 1), BULLET_PLACEHOLDER)
+        out += MarkupRange(MarkupKind.BULLET, TextRange.from(node.startOffset, 1), BULLET_PLACEHOLDER, node.textRange)
     }
 
     private val BULLET_CHARS = setOf('-', '*', '+')
@@ -154,6 +161,6 @@ object MarkupRangeCollector {
             "[x]", "[X]" -> MarkupKind.CHECKBOX_ON to CHECKBOX_ON_PLACEHOLDER
             else -> return
         }
-        out += MarkupRange(kind, TextRange.from(node.startOffset, 3), placeholder)
+        out += MarkupRange(kind, TextRange.from(node.startOffset, 3), placeholder, node.textRange)
     }
 }

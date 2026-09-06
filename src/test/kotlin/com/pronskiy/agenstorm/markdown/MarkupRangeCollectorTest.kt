@@ -110,6 +110,21 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         assertEquals(MarkupRangeCollector.Options(), MarkupRangeCollector.Options.fromSettings())
     }
 
+    fun testMarkersOfOneElementShareItsSpan() {
+        val text = myFixture.configureByText("a.md", "***both*** [**b**](x.md) `c`\n- [ ] t\n").text
+        val ranges = MarkupRangeCollector.collect(myFixture.file)
+        fun spansOf(kind: MarkupKind) = ranges.filter { it.kind == kind }.map { it.span.substring(text) }
+        assertEquals(listOf("***both***", "***both***"), spansOf(MarkupKind.EMPH))
+        assertEquals(listOf("**both**", "**both**", "**b**", "**b**"), spansOf(MarkupKind.STRONG))
+        assertEquals(listOf("[**b**](x.md)"), spansOf(MarkupKind.LINK_OPEN))
+        assertEquals(listOf("[**b**](x.md)"), spansOf(MarkupKind.LINK_TAIL))
+        assertEquals(listOf("`c`", "`c`"), spansOf(MarkupKind.CODE))
+        assertEquals(listOf("- "), spansOf(MarkupKind.BULLET))
+        assertEquals(listOf("[ ] "), spansOf(MarkupKind.CHECKBOX_OFF))
+        for (range in ranges) assertTrue("$range", range.span.contains(range.range))
+        assertTrue(MarkupKind.HEADING.isBlock && MarkupKind.BULLET.isBlock && MarkupKind.CHECKBOX_ON.isBlock && !MarkupKind.LINK_TAIL.isBlock)
+    }
+
     fun testPlainTextYieldsNothing() {
         myFixture.configureByText("a.md", "just words, 2 * 3 = 6, a_b_c\n")
         assertEmpty(MarkupRangeCollector.collect(myFixture.file))

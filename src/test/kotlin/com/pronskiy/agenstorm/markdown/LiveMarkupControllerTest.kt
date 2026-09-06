@@ -19,9 +19,10 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 
 /**
- * Steps F1.2 / F1.3 / F1.4 / F1.5 / F2.2: the listener attaches a controller to Markdown editors only, the controller mirrors the
- * collector into light fold regions (collapsed except on caret lines and under selections), follows edits by keeping
- * what still fits, leaves the Markdown plugin's own regions alone and survives its folding pass.
+ * Steps F1.2 / F1.3 / F1.4 / F1.5 / F2.2 / F3.1: the listener attaches a controller to Markdown editors only, the controller mirrors the
+ * collector into light fold regions (collapsed except for the element at a caret, the line of a block marker, and
+ * under selections), follows edits by keeping what still fits, leaves the Markdown plugin's own regions alone and
+ * survives its folding pass.
  */
 class LiveMarkupControllerTest : BasePlatformTestCase() {
 
@@ -126,21 +127,21 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         assertEquals("a sync keeps the caret line open", mapOf(0 to false, 1 to true, 2 to false), expandedByLine(controller))
     }
 
-    fun testSelectionRevealsIntersectingRegionsOnly() {
+    fun testSelectionRevealsOverlappingElementsOnly() {
         myFixture.configureByText("a.md", "**a**\n*b*\n~~c~~\n")
         val controller = attachedController()
         val document = myFixture.editor.document
         controller.syncNow()
 
-        // From inside the first line's closing marker to the middle of the last line: the opening ** of line 0 is
-        // neither on the caret line nor under the selection and stays hidden; everything else is revealed.
-        val start = 4
+        // From the end of the first element (touching, not overlapping) to the middle of the last line: `**a**` stays
+        // hidden, `*b*` is under the selection, `~~c~~` holds the caret.
+        val start = 5
         val end = document.getLineStartOffset(2) + 3
         myFixture.editor.caretModel.moveToOffset(end)
         myFixture.editor.selectionModel.setSelection(start, end)
         UIUtil.dispatchAllInvocationEvents()
         val byRange = controller.regions().associate { texts(listOf(it)).single() + "@" + it.startOffset to it.isExpanded }
-        assertEquals(mapOf("**@0" to false, "**@3" to true, "*@6" to true, "*@8" to true, "~~@10" to true, "~~@13" to true), byRange)
+        assertEquals(mapOf("**@0" to false, "**@3" to false, "*@6" to true, "*@8" to true, "~~@10" to true, "~~@13" to true), byRange)
 
         myFixture.editor.selectionModel.removeSelection()
         UIUtil.dispatchAllInvocationEvents()
@@ -161,7 +162,7 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         assertEquals(mapOf(0 to false, 1 to true, 2 to false), expandedByLine(controller))
     }
 
-    fun testMovingWithinTheLineCostsNoFoldOperation() {
+    fun testMovingWithinAnElementCostsNoFoldOperation() {
         myFixture.configureByText("a.md", "**a** and *b*\n~~c~~\n")
         val controller = attachedController()
         controller.syncNow()
@@ -176,12 +177,103 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
             myFixture.editor.caretModel.moveToOffset(offset)
             UIUtil.dispatchAllInvocationEvents()
         }
-        assertEquals(0, batches)
+        assertEquals("inside, touching or one step past `**a**` all along", 0, batches)
+
+        myFixture.editor.caretModel.moveToOffset(7)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("leaving the element hides it", 1, batches)
+        assertEquals(mapOf(0 to false), expandedByLine(controller).filterKeys { it == 0 })
+
+        myFixture.editor.caretModel.moveToOffset(9)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("approaching `*b*` reveals it", 2, batches)
 
         myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.getLineStartOffset(1))
         UIUtil.dispatchAllInvocationEvents()
-        assertEquals(1, batches)
+        assertEquals("one batch hides `*b*` and reveals `~~c~~`", 3, batches)
         assertEquals(mapOf(0 to false, 1 to true), expandedByLine(controller))
+    }
+
+    fun testOnlyTheElementAtTheCaretIsRevealedOnItsLine() {
+        myFixture.configureByText("a.md", "**a** and *b* and [c](x.md)\n")
+        val controller = attachedController()
+        controller.syncNow()
+        assertEquals(listOf(true, true, false, false, false, false), controller.regions().map { it.isExpanded })
+
+        myFixture.editor.caretModel.moveToOffset(11)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("only *b*", listOf(false, false, true, true, false, false), controller.regions().map { it.isExpanded })
+
+        myFixture.editor.caretModel.moveToOffset(19)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("only the link, both of its markers", listOf(false, false, false, false, true, true), controller.regions().map { it.isExpanded })
+    }
+
+    fun testApproachingEitherEndRevealsAndLeavingHides() {
+        myFixture.configureByText("a.md", "xx **b** yy\n")
+        val controller = attachedController()
+        // The element spans 3..8; it opens one character early on each side so arrow keys never skip a marker.
+        for ((offset, expected) in listOf(1 to false, 2 to true, 3 to true, 5 to true, 8 to true, 9 to true, 10 to false)) {
+            myFixture.editor.caretModel.moveToOffset(offset)
+            UIUtil.dispatchAllInvocationEvents()
+            if (offset == 1) controller.syncNow()
+            assertEquals("caret at $offset", listOf(expected, expected), controller.regions().map { it.isExpanded })
+        }
+    }
+
+    fun testNestedAndContainedElementsRevealTogether() {
+        myFixture.configureByText("a.md", "***both*** [**b**](x.md)\n")
+        val controller = attachedController()
+        caretToEnd()
+        controller.syncNow()
+        fun revealed() = controller.regions().filter { it.isExpanded }.map { texts(listOf(it)).single() + "@" + it.startOffset }
+
+        myFixture.editor.caretModel.moveToOffset(5)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("inside both: emphasis and strong", listOf("*@0", "**@1", "**@7", "*@9"), revealed())
+
+        myFixture.editor.caretModel.moveToOffset(0)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("touching the outer: the inner is one step away and opens early too", listOf("*@0", "**@1", "**@7", "*@9"), revealed())
+
+        caretToEnd()
+        UIUtil.dispatchAllInvocationEvents()
+        assertEmpty(revealed())
+
+        myFixture.editor.caretModel.moveToOffset(14)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals("bold inside link text reveals the link too", listOf("[@11", "**@12", "**@15", "](x.md)@17"), revealed())
+    }
+
+    fun testASelectionAcrossTwoElementsRevealsBoth() {
+        myFixture.configureByText("a.md", "**a** and *b* and ~~c~~\n")
+        val controller = attachedController()
+        caretToEnd()
+        controller.syncNow()
+        myFixture.editor.caretModel.moveToOffset(3)
+        myFixture.editor.selectionModel.setSelection(3, 11)
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(listOf(true, true, true, true, false, false), controller.regions().map { it.isExpanded })
+    }
+
+    fun testArrowKeysNeverSkipAMarker() {
+        myFixture.configureByText("a.md", "x **b** y\n")
+        val controller = attachedController()
+        controller.syncNow()
+        val forward = ArrayList<Int>()
+        repeat(9) {
+            runEditorAction("EditorRight")
+            UIUtil.dispatchAllInvocationEvents()
+            forward += myFixture.editor.caretModel.offset
+        }
+        assertEquals((1..9).toList(), forward)
+        val back = ArrayList<Int>()
+        repeat(9) {
+            runEditorAction("EditorLeft")
+            UIUtil.dispatchAllInvocationEvents()
+            back += myFixture.editor.caretModel.offset
+        }
+        assertEquals((8 downTo 0).toList(), back)
     }
 
     fun testExpandAllAndCollapseAllAreFollowedByTheCaretPolicy() {
@@ -381,15 +473,16 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         controller.syncNow()
     }
 
-    /** Regions equal the collector's output and every region's state follows the caret policy. */
+    /** Regions equal the collector's output and every region's state follows the caret policy (judged from the collector's spans). */
     private fun assertConsistent(controller: LiveMarkupController) {
         val document = myFixture.editor.document
         val wanted = MarkupRangeCollector.collect(myFixture.file)
         assertEquals(wanted.map { it.range to it.placeholder }, controller.regions().map { TextRange(it.startOffset, it.endOffset) to it.placeholderText })
-        val caretLines = myFixture.editor.caretModel.allCarets.map { document.getLineNumber(it.offset) }.toSet()
-        for (region in controller.regions()) {
-            val onCaretLine = document.getLineNumber(region.startOffset) in caretLines
-            assertEquals("${texts(listOf(region))}@${region.startOffset}", onCaretLine, region.isExpanded)
+        val carets = LiveMarkupController.Carets.of(myFixture.editor as EditorEx)
+        fun line(offset: Int) = document.getLineNumber(offset).let { TextRange(document.getLineStartOffset(it), document.getLineEndOffset(it)) }
+        for ((range, region) in wanted.zip(controller.regions())) {
+            val span = if (range.kind.isBlock) line(range.range.startOffset) else LiveMarkupController.approach(range.span, line(range.span.startOffset), line(range.span.endOffset))
+            assertEquals("${texts(listOf(region))}@${region.startOffset}", LiveMarkupController.isRevealed(span, carets), region.isExpanded)
         }
     }
 

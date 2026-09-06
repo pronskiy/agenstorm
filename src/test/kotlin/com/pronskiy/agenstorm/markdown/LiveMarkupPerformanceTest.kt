@@ -32,6 +32,16 @@ class LiveMarkupPerformanceTest : BasePlatformTestCase() {
         println("live markup: sync after an edit ${editMs} ms")
         assertEquals(regions, controller.regions().size)
 
+        // Phase F3: the caret policy scans every region on each caret move; it must stay far below a frame.
+        var policyTotal = 0L
+        for (line in 0 until 40) {
+            myFixture.editor.caretModel.moveToOffset(document.getLineStartOffset(line * 70 + 1))
+            policyTotal += measure { controller.applyCaretPolicy() }
+        }
+        val policyAvg = policyTotal / 40
+        println("live markup: caret policy ${policyAvg} ms on average over 40 line changes")
+        assertTrue("caret policy took $policyAvg ms", policyAvg < 20)
+
         assertTrue("first sync took $firstMs ms", firstMs < 1_000)
         assertTrue("no-op sync took $repeatMs ms", repeatMs < 500)
         assertTrue("sync after an edit took $editMs ms", editMs < 500)
