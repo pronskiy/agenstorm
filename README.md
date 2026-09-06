@@ -168,7 +168,7 @@ open src/Foo.php            # opens the file
 open src/Foo.php:42         # caret on line 42
 open src/Foo.php:42:7       # caret on line 42, column 7
 open src/Foo.php docs/a.md  # several files at once
-open ../other-project       # opens or focuses that project
+open ../other-project       # focuses that project's window, or opens it
 open .                      # shows the directory in the Project view
 ```
 
@@ -187,6 +187,11 @@ every terminal it starts, so `open` is shadowed **inside IDE terminals only** �
 machine is untouched. The script posts the working directory and the arguments to a loopback endpoint that
 is bound to `127.0.0.1` on a free port, with a token generated per IDE run; nothing outside the machine can
 reach it, and the token is never a command-line argument.
+
+A project that is already open is simply focused. One that is not follows the IDE's own
+<kbd>Settings</kbd> > <kbd>Appearance & Behavior</kbd> > <kbd>System Settings</kbd> > **Open project in**
+preference — new window, the current window, or ask — so `open` behaves like every other way of opening a
+project.
 
 Settings → Tools → Agenstorm → **Terminal** has the switch, the command names (comma-separated, so `e` or
 `edit` can shadow as well) and an option to let the IDE claim files it treats as binary. Terminals that are

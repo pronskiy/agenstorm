@@ -161,9 +161,12 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
 
     /**
      * Step G2.2. A directory inside this project is not another project — it is shown in the Project view.
-     * A directory that already has a window gets that window. Anything else opens as a new project, launched
-     * in the service scope without waiting for it: opening a project takes far longer than the shim's
-     * two-second budget, and a timeout there would hand the same directory to Finder as well.
+     * A directory that already has a window gets that window. Anything else opens as a project the way the
+     * IDE's own "Open project in" setting says — new window, the current window, or by asking — because a
+     * terminal command should not invent a window policy of its own (decision 29).
+     *
+     * The open is launched in the service scope without waiting for it: opening a project takes far longer
+     * than the shim's two-second budget, and a timeout there would hand the same directory to Finder as well.
      */
     private suspend fun openProject(path: Path): Boolean {
         when (val action = classifyProject(path)) {
@@ -176,9 +179,13 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
             }
             is ProjectAction.OpenNew -> scope.launch {
                 try {
-                    // `OpenProjectTask { … }` is an inline builder compiled for JVM 25 and cannot be inlined
-                    // into this module's JVM 21 bytecode; the `with…` copy methods are ordinary calls.
-                    val task = OpenProjectTask.build().withForceOpenInNewFrame(true)
+                    // No `forceOpenInNewFrame`: that flag is exactly what makes the platform skip
+                    // `checkExistingProjectOnOpen`, which is where "Open project in: New window / The current
+                    // window / Ask" is honoured. Passing this project as the one that would be closed makes
+                    // the terminal's own window the one the choice is about.
+                    // (`OpenProjectTask { … }` is an inline builder compiled for JVM 25 and cannot be inlined
+                    // into this module's JVM 21 bytecode; the `with…` copy methods are ordinary calls.)
+                    val task = OpenProjectTask.build().withProjectToClose(project)
                     ProjectUtil.openOrImportAsync(action.path, task)
                 } catch (e: CancellationException) {
                     throw e
