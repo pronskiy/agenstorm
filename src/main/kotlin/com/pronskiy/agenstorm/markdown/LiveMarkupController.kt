@@ -60,7 +60,9 @@ import kotlinx.coroutines.withContext
  * has no caret position of its own, so the element must open before the caret reaches it or arrow keys skip its
  * first marker), or a selection overlaps it; a block marker (heading, bullet, checkbox)
  * is revealed while a caret is on its line; any region a caret sits strictly inside is revealed whatever the policy
- * says. Everything else stays collapsed, so the raw Markdown is there to edit and
+ * says. The decision is taken per `FoldingGroup`, which the platform expands and collapses as one: a group is
+ * revealed when any of its markers should be, so the two ends of an element always agree instead of the outcome
+ * depending on the order the regions happen to be in. Everything else stays collapsed, so the raw Markdown is there to edit and
  * what is selected is what gets copied. The two markers of one element share a `FoldingGroup`, and the element's span
  * is the group's current extent, so it follows edits without extra bookkeeping. The policy is part of every sync and
  * is re-applied, coalesced through `invokeLater`, on every caret or selection change; a keystroke that keeps the caret
@@ -175,18 +177,37 @@ class LiveMarkupController(
         if (editor.isDisposed) return
         val ours = regions()
         if (ours.isEmpty()) return
-        val spans = groupSpans(ours)
         val carets = Carets.of(editor)
-        val changes = ArrayList<Pair<FoldRegion, Boolean>>()
-        for (region in ours) {
-            val kind = region.getUserData(KIND) ?: continue
-            val target = isRevealed(kind, region.startOffset, region.endOffset, spans[region.group] ?: region.textRange, carets)
-            if (region.isExpanded != target) changes += region to target
-        }
+        val targets = targetsFor(ours, carets)
+        val changes = targets.filter { (region, target) -> region.isExpanded != target }
         if (changes.isEmpty()) return
         batch {
             for ((region, target) in changes) region.isExpanded = target
         }
+    }
+
+    /**
+     * What every region should be, resolved per [FoldingGroup]: the platform expands and collapses a group as one,
+     * so asking for different things within a group leaves the outcome to the order the regions happen to be in.
+     * A group is revealed when any of its members should be — the two markers of one element belong together, and
+     * for a fence that is what lets the caret on either of its two lines bring both back.
+     */
+    private fun targetsFor(ours: List<FoldRegion>, carets: Carets): Map<FoldRegion, Boolean> {
+        val spans = groupSpans(ours)
+        val byGroup = HashMap<FoldingGroup, Boolean>()
+        val alone = HashMap<FoldRegion, Boolean>()
+        for (region in ours) {
+            val kind = region.getUserData(KIND) ?: continue
+            val want = isRevealed(kind, region.startOffset, region.endOffset, spans[region.group] ?: region.textRange, carets)
+            val group = region.group
+            if (group == null) alone[region] = want else byGroup.merge(group, want) { a, b -> a || b }
+        }
+        val targets = LinkedHashMap<FoldRegion, Boolean>()
+        for (region in ours) {
+            if (region.getUserData(KIND) == null) continue
+            targets[region] = region.group?.let { byGroup[it] } ?: alone[region] ?: continue
+        }
+        return targets
     }
 
     /**
@@ -283,8 +304,6 @@ class LiveMarkupController(
                 if (entry != null && intact(region, entry)) {
                     wanted.remove(key)
                     groups[entry.span] = region.group!!
-                    val expanded = isRevealed(kind, region.startOffset, region.endOffset, entry.span, carets)
-                    if (region.isExpanded != expanded) region.isExpanded = expanded
                     continue
                 }
                 model.removeFoldRegion(region)
@@ -302,8 +321,11 @@ class LiveMarkupController(
                 val region = model.createFoldRegion(start, end, range.placeholder, group, false) ?: continue
                 region.putUserData(KIND, range.kind)
                 region.setGutterMarkEnabledForSingleLine(false)
-                region.isExpanded = isRevealed(range.kind, start, end, range.span, carets)
                 created++
+            }
+            // After every region exists, so a group's members are decided together rather than one by one.
+            for ((region, target) in targetsFor(regions(), carets)) {
+                if (region.isExpanded != target) region.isExpanded = target
             }
         }
         blockRenderer.sync(snapshot.blocks)
