@@ -1,12 +1,19 @@
 package com.pronskiy.agenstorm.terminal
 
+import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.ide.impl.ProjectUtil
+import com.intellij.ide.projectView.ProjectView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.links.FileLocation
 import com.pronskiy.agenstorm.links.FileLocationResolver
@@ -25,6 +32,7 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.security.SecureRandom
+import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * Step G1.1. The endpoint the terminal `open` shim (G1.3) posts to: one loopback [HttpServer] per project,
@@ -130,8 +138,7 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         if (!state.terminalOpenEnabled || project.isDisposed) return false
         return when (val decision = OpenCommandRouter(project, state.terminalOpenUnknownFileTypes).route(cwd, argv)) {
             is OpenCommandRouter.Decision.OpenFiles -> openFiles(decision.targets)
-            // G2.2 takes the directory branch; until then a directory goes to the OS.
-            is OpenCommandRouter.Decision.OpenProject -> false
+            is OpenCommandRouter.Decision.OpenProject -> openProject(decision.path)
             is OpenCommandRouter.Decision.Fallback -> {
                 LOG.debug("Agenstorm: leaving `open` to the OS (${decision.reason})")
                 false
@@ -151,6 +158,65 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         }
         return true
     }
+
+    /**
+     * Step G2.2. A directory inside this project is not another project — it is shown in the Project view.
+     * A directory that already has a window gets that window. Anything else opens as a new project, launched
+     * in the service scope without waiting for it: opening a project takes far longer than the shim's
+     * two-second budget, and a timeout there would hand the same directory to Finder as well.
+     */
+    private suspend fun openProject(path: Path): Boolean {
+        when (val action = classifyProject(path)) {
+            is ProjectAction.SelectInside -> withContext(Dispatchers.EDT) {
+                ProjectView.getInstance(project).select(null, action.directory, true)
+                ProjectUtil.focusProjectWindow(project, true)
+            }
+            is ProjectAction.Focus -> withContext(Dispatchers.EDT) {
+                ProjectUtil.focusProjectWindow(action.target, true)
+            }
+            is ProjectAction.OpenNew -> scope.launch {
+                try {
+                    // `OpenProjectTask { … }` is an inline builder compiled for JVM 25 and cannot be inlined
+                    // into this module's JVM 21 bytecode; the `with…` copy methods are ordinary calls.
+                    val task = OpenProjectTask.build().withForceOpenInNewFrame(true)
+                    ProjectUtil.openOrImportAsync(action.path, task)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    LOG.warn("Agenstorm: could not open ${action.path} as a project", e)
+                }
+            }
+        }
+        return true
+    }
+
+    /** What a directory argument means. Split out of [openProject] so the choice can be tested on its own. */
+    sealed interface ProjectAction {
+        data class SelectInside(val directory: VirtualFile) : ProjectAction
+        data class Focus(val target: Project) : ProjectAction
+        data class OpenNew(val path: Path) : ProjectAction
+    }
+
+    /**
+     * The open projects are searched with `isSameProject` rather than through
+     * `ProjectUtil.findAndFocusExistingProjectForPath`, which is the same search but focuses as a side
+     * effect — this way the decision stays separate from the act.
+     */
+    @VisibleForTesting
+    fun classifyProject(path: Path): ProjectAction {
+        val directory = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
+        if (directory != null && isInsideThisProject(path, directory)) return ProjectAction.SelectInside(directory)
+        ProjectManager.getInstance().openProjects
+            .firstOrNull { !it.isDisposed && ProjectUtil.isSameProject(path, it) }
+            ?.let { return ProjectAction.Focus(it) }
+        return ProjectAction.OpenNew(path)
+    }
+
+    private fun isInsideThisProject(path: Path, directory: VirtualFile): Boolean =
+        ProjectUtil.isSameProject(path, project) ||
+            ReadAction.computeBlocking<Boolean, RuntimeException> {
+                ProjectRootManager.getInstance(project).fileIndex.isInContent(directory)
+            }
 
     /**
      * The caret position is computed the way Epic A computes it for a written location, so a line past the
