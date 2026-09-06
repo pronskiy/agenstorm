@@ -42,14 +42,17 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
   │   ├── frame/       ProjectOnlyFrameTitleBuilder
   │   ├── commit/      GenerateCommitMessageAction, DiffCollector, PromptBuilder, MessagePostProcessor, llm/ (backends), context/
   │   ├── tabs/        ProjectTabsModel, ProjectTabsWidgetAction, NativeTabsRegistryGuard, ui/
-  │   └── markdown/    MarkupRangeCollector, LiveMarkupController, LiveMarkupService (+ editor listener, startup activity), LiveMarkupAnnotator, LinkTextGotoDeclarationHandler, ToggleLiveMarkupAction
+  │   ├── markdown/    MarkupRangeCollector, LiveMarkupController, LiveMarkupService (+ editor listener, startup activity), LiveMarkupAnnotator, LinkTextGotoDeclarationHandler, ToggleLiveMarkupAction, MarkdownBlockRenderer + CodeBlockHighlighterRenderer (Epic H)
+  │   └── terminal/    Epic G: OpenRequestServer, OpenCommandRouter, OpenShimScriptHolder, TerminalOpenExecOptionsCustomizer · Epic I: enhance/ (EnhancerRule, RuleParser, BlockDetector, TerminalEnhancerController, TerminalEnhancerFilterProvider)
   ├── src/main/resources/
   │   ├── META-INF/plugin.xml            core + always-on extensions
   │   ├── META-INF/agenstorm-markdown.xml  (optional dep: org.intellij.plugins.markdown)
   │   ├── META-INF/agenstorm-php.xml       (optional dep: com.jetbrains.php)
   │   ├── META-INF/agenstorm-git.xml       (optional dep: Git4Idea)
+  │   ├── META-INF/agenstorm-terminal.xml  (optional dep: org.jetbrains.plugins.terminal; Epics G and I)
   │   ├── messages/AgenstormBundle.properties
-  │   └── prompts/                        default system/user prompt templates
+  │   ├── prompts/                        default system/user prompt templates
+  │   └── terminal/                       open.sh shim template, rules/*.json built-in enhancers
   ├── src/test/kotlin/com/pronskiy/agenstorm/…   mirrors main packages
   ├── src/test/testData/                          fixtures per feature (links/, commit/, markdown/, …)
   ├── .github/workflows/build.yml

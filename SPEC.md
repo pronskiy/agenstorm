@@ -10,6 +10,7 @@
 |------|--------|--------|
 | 2026-09-05 | Initial spec created from the brainstorm + code walk of the IntelliJ Platform (build 262) | Roman Pronskiy |
 | 2026-09-06 | Epic F: Phase F3 added (inline markup revealed per element, not per line) after the Epic F review; survey of other editors recorded there | Roman Pronskiy (decision), Claude (text) |
+| 2026-09-06 | Epics G, H and I added *before* Release 1.0: `open path` interception in the terminal, Markdown block rendering (code fences, quotes, rules), and extensible terminal-output enhancers | Roman Pronskiy (decisions), Claude (text) |
 
 ### Status legend
 
@@ -17,13 +18,17 @@
 
 ### Current focus
 
-**Now on:** **Release 1.0** → step **R3** (Roman's: install `build/distributions/agenstorm-1.0.0.zip` by hand and tour; then R4, Marketplace). Epics 0–F closed 2026-09-06 (Phase F3 included). Still open: the week-long daily-driver tests of Epics D and E (Roman's) and Marketplace publishing (Roman's, R4) (post-MVP: inline markup revealed per element, decision 24). The MVP itself is complete: Epics 0–F closed 2026-09-06; still open are the week-long daily-driver tests of Epics D and E (Roman's) and release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** **Epic G** → step **G1.1** (`OpenRequestServer`: the loopback endpoint the terminal `open` shim talks to).
+
+Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 are proposed and need Roman's confirmation before the steps they cover are built.
+
+Carried over, all Roman's: the week-long **Daily-driver test** guardrails of Epic D (which also owes a live run of the Anthropic and OpenAI-compatible backends with real keys) and Epic E, and Marketplace publishing.
 
 ---
 
 ## 1. Executive summary
 
-Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an agent-heavy workflow hits in the IDE every day: it makes `path/to/file.php:42:7` locations clickable everywhere (Markdown, comments, PHP strings), generates commit messages with a modern LLM (streaming, HTTP or `claude -p`, no SDK bloat), trims the New Scratch File popup to the four languages that matter, keeps file names out of the window title and project tabs, renders project tabs inside the main toolbar so the window loses a row of chrome, and gives Markdown an Obsidian-style "live markup" mode where the syntax hides itself until the caret lands on the line. It is built for one opinionated user first (the author) but ships on JetBrains Marketplace, so every feature is independently toggleable and degrades gracefully when a platform hook is missing.
+Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an agent-heavy workflow hits in the IDE every day: it makes `path/to/file.php:42:7` locations clickable everywhere (Markdown, comments, PHP strings), generates commit messages with a modern LLM (streaming, HTTP or `claude -p`, no SDK bloat), trims the New Scratch File popup to the four languages that matter, keeps file names out of the window title and project tabs, renders project tabs inside the main toolbar so the window loses a row of chrome, and gives Markdown an Obsidian-style "live markup" mode where the syntax hides itself until the caret lands on the line. Three more features close the loop between the terminal and the editor: `open src/Foo.php:42` typed in an IDE terminal opens that file in that window instead of handing it to macOS, fenced code blocks render as cards in the Markdown editor, and noisy output like `var_dump()` collapses into a foldable summary through rules users can extend with their own files. It is built for one opinionated user first (the author) but ships on JetBrains Marketplace, so every feature is independently toggleable and degrades gracefully when a platform hook is missing.
 
 ---
 
@@ -35,12 +40,15 @@ Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an a
 | Build | IntelliJ Platform Gradle Plugin 2.x, Gradle Kotlin DSL, `phpstorm("2026.2")` as the target | Standard toolchain; `verifyPlugin` and `runIde` come for free |
 | Target IDE | PhpStorm 2026.2, `since-build="262"`, `until-build="262.*"` | Matches the platform branch the spec was researched against; every EP referenced exists there |
 | Plugin id / package | `com.pronskiy.agenstorm` | Author's namespace |
-| Module layout | One Gradle module, one plugin, feature packages `links`, `scratch`, `frame`, `commit`, `tabs`, `markdown`; optional dependencies wired through `<depends optional="true" config-file="…">` | Keeps a single artifact while letting the plugin load in IDEA/WebStorm without PHP/Markdown |
-| Dependencies | `com.intellij.modules.platform`, `com.intellij.modules.lang` (declares `referenceProviderType`), `com.intellij.modules.vcs`; optional: `com.jetbrains.php`, `org.intellij.plugins.markdown`, `Git4Idea` | Only what each feature needs; no third-party runtime libraries |
+| Module layout | One Gradle module, one plugin, feature packages `links`, `scratch`, `frame`, `commit`, `tabs`, `markdown`, `terminal`; optional dependencies wired through `<depends optional="true" config-file="…">` | Keeps a single artifact while letting the plugin load in IDEA/WebStorm without PHP/Markdown/Terminal |
+| Dependencies | `com.intellij.modules.platform`, `com.intellij.modules.lang` (declares `referenceProviderType`), `com.intellij.modules.vcs`; optional: `com.jetbrains.php`, `org.intellij.plugins.markdown`, `Git4Idea`, `org.jetbrains.plugins.terminal` | Only what each feature needs; no third-party runtime libraries |
 | HTTP / JSON | `java.net.http.HttpClient` (SSE via `BodyHandlers.ofLines()`); JSON via `kotlinx.serialization.json` bundled with the platform (`compileOnly`), Gson as fallback if the bundled artifact is unavailable | Zero extra jars; this is the whole reason not to use langchain4j |
 | Secrets | `PasswordSafe` via `CredentialAttributes(generateServiceName("Agenstorm", backendId))` | Never put API keys into `PersistentStateComponent` XML |
 | Settings | One app-level `AgenstormSettings : PersistentStateComponent` (`agenstorm.xml`) + one `Configurable` under Tools → Agenstorm with a group per feature and an on/off switch per feature | One place to find everything; each feature can be disabled by users who hit a conflict |
-| Internal API usage | `FrameTitleBuilder` override (incl. the `IdeFrameEx.setFileTitle` refresh on toggle), `scratchLanguageFilter`, `commentsReferenceProvider`, registry write for macOS window tabs, subclassing `ProjectToolbarWidgetAction` for the `main.toolbar.Project` override, `GitBranchesTreePopupOnBackend.create` for the status-bar branch popup (Phase E3; the left-corner placement itself is plain Swing on the public status bar component) — all guarded by null checks / `Registry.is` / `LinkageError` catches and a feature toggle; `verifyPlugin` tolerates INTERNAL_API_USAGES on purpose | Public Marketplace plugin: a missing hook must log and no-op, never throw |
+| Internal API usage | `FrameTitleBuilder` override (incl. the `IdeFrameEx.setFileTitle` refresh on toggle), `scratchLanguageFilter`, `commentsReferenceProvider`, registry write for macOS window tabs, subclassing `ProjectToolbarWidgetAction` for the `main.toolbar.Project` override, `GitBranchesTreePopupOnBackend.create` for the status-bar branch popup (Phase E3; the left-corner placement itself is plain Swing on the public status bar component) — all guarded by null checks / `Registry.is` / `LinkageError` catches and a feature toggle; `verifyPlugin` tolerates INTERNAL_API_USAGES on purpose. **Epics G, H and I add nothing to this list**: their hooks are `@ApiStatus.Experimental` (`ShellExecOptionsCustomizer`, `TerminalDataContextUtils.isReworkedTerminalEditor`) or plain public API, and experimental usage is a category the plugin already carries (28 of them at R2) | Public Marketplace plugin: a missing hook must log and no-op, never throw |
+| Terminal command interception | A shell shim: a generated `open` script on a PATH entry prepended by a `ShellExecOptionsCustomizer`, talking back to a per-project loopback `com.sun.net.httpserver.HttpServer`. Not the IDE-side `TerminalShellCommandHandler` | The reworked terminal is the 2026.2 default and its only `TerminalShellCommandHandler` driver, `TerminalShellCommandHandlerHelper`, is constructed solely by the classic `ShellTerminalWidget` — the EP is dead under the default engine, and even in Classic it fires on the Run shortcut, not plain Enter. A shim works in every engine, on plain Enter, and for commands an agent runs. Decision 25 |
+| Terminal output enhancement | `consoleFilterProvider` for highlighting and hyperlinks (the guaranteed floor, every engine); light fold regions on the reworked output editor for collapsing, gated by the I1.3 spike | `ConsoleFilterProvider` is stable public API and all three engines funnel through `ConsoleViewUtil.computeConsoleFilters`. The terminal itself never folds (zero `FoldingModel` references in its jars and no EP), but its output is a real editor reachable through the `@Experimental` `TerminalDataContextUtils.isReworkedTerminalEditor`, so Epic F's proven light-region technique applies with otherwise-public API. Decision 27 |
+| Enhancer rule format | Declarative JSON files — regex plus a named built-in renderer. No user code is executed | A Marketplace plugin must not run arbitrary commands over terminal output by default. Rules stay hot-reloadable and safe; the external-command variant is an opt-in question in §7. Decision 28 |
 | Markdown live markup mechanism | "Light" fold regions created manually via `FoldingModelEx.createFoldRegion` (not a `FoldingBuilder`) + a per-editor controller | Manual regions survive folding passes (`UpdateFoldRegionsOperation` keeps regions without `SIGNATURE`), can be 1 char long (builder regions < 2 chars are removed), and we own their lifecycle |
 | Project tabs mechanism | Own toolbar widget in `MainToolbarLeft` replacing `main.toolbar.Project`; native macOS window tabs disabled via registry | Re-parenting the platform's `WindowTabsComponent` breaks `MacWinTabsHandlerV2` bookkeeping (`getTabsComponent` requires exactly one child) |
 | Location link syntax | Bare `path:line[:col]` (GitHub/compiler style), resolved relative to file → project base → content roots → unique basename | It is what agents and tools already emit; no URL scheme, no Toolbox dependency |
@@ -81,16 +89,25 @@ Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an a
                        │  markdown/  LiveMarkupController (per TextEditor)        │
                        │             MarkupRangeCollector (PSI → ranges)          │
                        │             FoldingModelEx light regions + CaretListener │
+                       │             MarkdownBlockRenderer (fences/quotes/rules)  │
+                       │                                                          │
+                       │  terminal/  TerminalOpenExecOptionsCustomizer ───────────│──▶ PATH + env of the shell
+                       │             OpenShimScriptHolder (generates `open`)      │
+                       │             OpenRequestServer ◀── loopback HTTP ─────────│◀── the shim (curl)
+                       │             OpenCommandRouter (argv → open / fallback)   │
+                       │             EnhancerRules + BlockDetector                │
+                       │             TerminalEnhancerController (fold regions)    │
+                       │             TerminalEnhancerFilterProvider ──────────────│──▶ consoleFilterProvider
                        └──────────────────────────────────────────────────────────┘
 ```
 
-Every feature is a leaf: it registers its own extensions in its own optional `config-file`, reads `AgenstormSettings`, and never depends on another feature. `core/` is the only shared code. The links feature is pure PSI/Symbol API; commit is an action plus a streaming pipeline; tabs is Swing; markdown is editor-model manipulation.
+Every feature is a leaf: it registers its own extensions in its own optional `config-file`, reads `AgenstormSettings`, and never depends on another feature. `core/` is the only shared code. The links feature is pure PSI/Symbol API; commit is an action plus a streaming pipeline; tabs is Swing; markdown is editor-model manipulation; terminal is process environment on the way in and editor-model manipulation on the way out. `terminal/` is the one package holding two epics (G and I) — they share the optional dependency and the settings group but no code beyond the settings object.
 
 ---
 
 ## 4. Epics
 
-All epics are MVP. Recommended order: 0 → A → B → C → D → E → F (value per hour of work, and the last two are the riskiest).
+Epics 0–F are the MVP; G, H and I were added on 2026-09-06 and ship in 1.0 as well. Recommended order: 0 → A → B → C → D → E → F → G → H → I (value per hour of work, riskiest last). G and I share the `terminal/` package and its optional dependency, so the knowledge carries over; H sits between them because it is independent of both and the cheapest of the three.
 
 ### Epic 0 — Scaffold, settings, CI  ·  MVP
 
@@ -796,14 +813,285 @@ Platform facts (verified against build 262):
 | Copy fidelity | A selection across two elements reveals both; copy yields raw Markdown | ✅ | Automated (`testASelectionAcrossTwoElementsRevealsBoth`). Roman signed off 2026-09-06 |
 | Scope setting | Switching to `line` restores the Phase F2 behaviour in open editors without reopening them | ✅ | Automated (`testLineScopeRevealsTheWholeCaretLineAndAppliesToOpenEditors`). Roman signed off 2026-09-06. Review-round note: the one SEVERE of the day blamed on Agenstorm (`Cannot create listener TabsProjectCloseListener`, caused by a `ZipException`) came from a second `runIde` rewriting the sandbox jar under the instance the first one had started; not a plugin bug — one launcher per review from now on |
 
-### Release 1.0  ·  after the MVP
+### Epic G — `open path` in the terminal opens in this IDE  ·  1.0
+
+**Goal:** In an IDE terminal, `open src/Foo.php:42:7` opens that file in *this* project window with the caret on line 42, column 7; `open ../other-project` opens or focuses that project; everything else `open` normally does — `-a`, `-R`, URLs, missing paths, no arguments — still reaches `/usr/bin/open` untouched. The point is that agents and tools already print `path:line:col` all day (Epic A made those clickable everywhere except where they are most often typed), and `open` is the verb everyone's fingers already know.
+**Success metrics:** round trip from Enter to caret < 150 ms; zero behaviour change for arguments the IDE does not claim; works in zsh, bash and fish under both the reworked and the classic engine; turning the feature off leaves a new terminal's PATH untouched.
+
+New package `terminal/` and a new optional descriptor `agenstorm-terminal.xml` (`<depends optional="true" config-file="agenstorm-terminal.xml">org.jetbrains.plugins.terminal</depends>`), shared with Epic I.
+
+Platform facts (verified against build 262):
+
+- **The reworked (Gen2) terminal is the default in 2026.2.** `TerminalOptionsProvider$State.<init>` assigns `TerminalEngine.REWORKED`; `CLASSIC` (JediTerm) and `NEW_TERMINAL` (the deprecated 2024 block terminal) are opt-in from Settings → Tools → Terminal → Terminal Engine. The registry keys `terminal.new.ui` and `terminal.new.ui.reworked` still exist but their own descriptions call them no-ops.
+- **`TerminalShellCommandHandler` is not usable for this.** The EP `com.intellij.terminal.shellCommandHandler` exists (interface `com.intellij.terminal.TerminalShellCommandHandler` in `lib/intellij.platform.execution.impl.jar`, gated by the `terminal.shell.command.handling` *experimental feature* at 100 %, not a registry key), and the platform registers `OpenFileShellCommandHandler` and `RunAnythingTerminalBridge` on it. But its only driver, `TerminalShellCommandHandlerHelper`, is constructed solely by `ShellTerminalWidget` and highlights through `com.jediterm.terminal.model.TerminalLineIntervalHighlighting` — so the EP is dead under the default engine, and in Classic it fires from `matchedExecutor(KeyEvent)`, i.e. the Run/Debug shortcut, not plain Enter. Decision 25.
+- **The hook that does work:** EP `org.jetbrains.plugins.terminal.shellExecOptionsCustomizer` → `org.jetbrains.plugins.terminal.startup.ShellExecOptionsCustomizer` (`@ApiStatus.Experimental`, `@RequiresBackgroundThread`, `@RequiresReadLockAbsence`), one method `customizeExecOptions(Project, MutableShellExecOptions)`. `MutableShellExecOptions` exposes exactly what is needed: `prependEntryToPATH(Path)`, `setEnvironmentVariable(String, String)`, `getEelDescriptor()`, `getEnvs()`. It supersedes `LocalTerminalCustomizer`, whose `customizeCommandAndEnvironment` overloads are `@Deprecated`.
+- **The PATH entry survives the user's rc files.** `MutableShellExecOptionsImpl` implements `prependEntryToPATH` through `_INTELLIJ_FORCE_PREPEND_PATH`, which `shell-integrations/{zsh,bash,fish,powershell}` apply *after* `.zshenv`/`.zprofile`/`.zshrc`/`.zlogin` have run — a plain `PATH=` in the env map would be clobbered by a user who rebuilds PATH in their rc file, this is not.
+- **Precedent for a generated script + env injection:** remote dev ships `com.jetbrains.rdserver.unattendedHost.browser.UnattendedHostOpenLinkScriptHolder`, which writes `remote-dev-browser.sh` to disk at runtime and points `BROWSER` at it, with `UnattendedHostOpenLinkTerminalEnvCustomizer` (a `LocalTerminalCustomizer`) doing the injection. Same shape as G1.3 + G1.4.
+- `com.sun.net.httpserver.HttpServer` is in the JBR (module `jdk.httpserver`) and already used by this project's tests, so the endpoint needs no third-party library — same rationale as decision 6.
+- `com.intellij.ide.impl.ProjectUtil` offers `findAndFocusExistingProjectForPath(Path)`, `openOrImportAsync(Path, OpenProjectTask)`, `focusProjectWindow(Project, Boolean)` and `isSameProject(Path, Project)`. **Its ApiStatus is not settled:** `@ApiStatus.Internal` appears in the class file but attaches to `openExistingDir`/`FolderOpeningMode`, and the class-level annotation is `kotlin.Metadata`. G2.2 re-checks this before using it — see the Open Question in §7.
+
+#### Phase G1 — The shim and the endpoint
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| G1.1 | `OpenRequestServer`: per-project loopback `HttpServer`, token-checked `POST /open` | 🔲 | |
+| G1.2 | `OpenCommandRouter`: argv + cwd → open files / open project / fall back. Pure logic, all the tests | 🔲 | |
+| G1.3 | `OpenShimScriptHolder`: generates the `open` script on disk, 0755, regenerated per plugin version | 🔲 | |
+| G1.4 | `TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer` — PATH entry plus port and token | 🔲 | |
+
+**Steps (detail):**
+
+- **G1.1 — Endpoint.** Deliverable: `terminal/OpenRequestServer.kt`, a project `@Service(PROJECT)` taking a `CoroutineScope`. Binds `HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)` so the port is free-chosen and unreachable from outside the machine; generates a 32-hex token per IDE run. One context, `POST /open`: the body is a NUL-separated UTF-8 list whose first field is the shell's `$PWD` and whose rest is the original argv. **A NUL-separated body, not a query string**, because paths may contain spaces, quotes and even newlines, and this way the shim needs no URL encoding at all. The token travels in an `X-Agenstorm-Token` header — never in argv, so it cannot be read out of `ps`. Compared with `MessageDigest.isEqual` (constant time). Replies `204` when the request was handled, `409` when the router decided the IDE should not claim it, `403` on a bad token. Disposed with the project; nothing is bound while the feature is off.
+  ```kotlin
+  @Service(Service.Level.PROJECT)
+  class OpenRequestServer(private val project: Project, private val scope: CoroutineScope) : Disposable {
+    val token: String = randomHex(32)
+    val port: Int get() = server?.address?.port ?: -1
+    // handler: read body -> split(' ') -> cwd + argv -> OpenCommandRouter.route(...)
+    //          Decision.Fallback -> 409; otherwise perform on the EDT and answer 204
+  }
+  ```
+- **G1.2 — Router.** Deliverable: `terminal/OpenCommandRouter.kt`, pure and IDE-free apart from a `Project` for path resolution, so it carries the whole test suite. `route(cwd: Path, argv: List<String>): Decision`, where `Decision` is `OpenFiles(List<FileTarget>)`, `OpenProject(Path)` or `Fallback(reason)`. Rules: empty argv, any argument starting with `-`, and any argument matching `scheme://` ⇒ `Fallback`; a trailing `:line[:col]` is peeled off with `FileLocationParser` and the remainder resolved against `cwd` first, then through `FileLocationResolver`; a path that resolves to nothing ⇒ `Fallback` (so `open nope.txt` still produces macOS's own error); a directory ⇒ `OpenProject`; a file whose type is binary ⇒ `Fallback` unless `terminalOpenUnknownFileTypes` says otherwise. Several paths in one command produce several `FileTarget`s.
+- **G1.3 — Shim.** Deliverable: `terminal/OpenShimScriptHolder.kt`, an app `@Service`, and the script template in `resources/terminal/open.sh`. Writes each configured command name into `PathManager.getSystemPath()/agenstorm/bin/`, `POSIX_FILE_PERMISSIONS` 0755, rewritten when `pluginVersion` changes so a stale script never survives an update. POSIX `sh` only — no bashisms, because the same file is on PATH for zsh, bash and fish.
+  ```sh
+  #!/bin/sh
+  # Generated by Agenstorm. Anything this script does not claim goes to the real `open`.
+  real=/usr/bin/open
+  [ -x "$real" ] || real=$(command -v xdg-open 2>/dev/null) || real=
+  fallback() { [ -n "$real" ] && exec "$real" "$@"; echo "open: command not found" >&2; exit 127; }
+
+  [ -n "$AGENSTORM_OPEN_PORT" ] || fallback "$@"      # not an Agenstorm terminal
+  [ $# -gt 0 ] || fallback "$@"                        # no arguments: macOS prints usage
+  case "$1" in -*|*://*) fallback "$@" ;; esac         # flags and URLs are macOS's job
+  command -v curl >/dev/null 2>&1 || fallback "$@"
+
+  printf '%s\0' "$PWD" "$@" |
+    curl -fsS -m 2 -X POST --data-binary @- \
+         -H "X-Agenstorm-Token: $AGENSTORM_OPEN_TOKEN" \
+         "http://127.0.0.1:$AGENSTORM_OPEN_PORT/open" >/dev/null 2>&1 && exit 0
+  fallback "$@"                                        # 409, 403, timeout, IDE gone
+  ```
+  `curl -f` makes any 4xx a non-zero exit, so a `409` from the router and a dead IDE take the same path. Scope: macOS first, Linux for free (`xdg-open`); **Windows is out of scope for 1.0** — the customizer no-ops there rather than generating an `open.cmd`, matching Epic A's macOS-first stance.
+- **G1.4 — Injection.** Deliverable: `terminal/TerminalOpenExecOptionsCustomizer.kt` registered as `<shellExecOptionsCustomizer implementation="…"/>` in `agenstorm-terminal.xml`. `customizeExecOptions` returns immediately when `terminalOpenEnabled` is off or `getEelDescriptor()` is not the local one (v1 does not shim shells running over Eel — a WSL or SSH shell cannot reach the IDE's loopback port). Otherwise: `prependEntryToPATH(binDir)`, `setEnvironmentVariable("AGENSTORM_OPEN_PORT", port)`, `setEnvironmentVariable("AGENSTORM_OPEN_TOKEN", token)`. The method is `@RequiresBackgroundThread` and `@RequiresReadLockAbsence`, so the script is written here, off the EDT, not in a startup activity.
+
+**Exit guardrails — Phase G1 → G2**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Shim reaches the IDE | In `runIde`, `echo $AGENSTORM_OPEN_PORT` is non-empty and `command -v open` resolves to the generated script in all three of zsh, bash and fish | 🔲 | |
+| PATH survives rc files | A `.zshrc` that does `export PATH=/usr/bin:/bin` still leaves the shim first (this is what `_INTELLIJ_FORCE_PREPEND_PATH` buys) | 🔲 | |
+| No token leak | `ps aux` during an `open` never shows the token; it is only ever a header | 🔲 | |
+| Router correctness | `OpenCommandRouterTest` green on the corpus: flags, URLs, no args, missing path, `path:42`, `path:42:7`, several paths, a directory, a path with spaces and one with a newline | 🔲 | |
+
+#### Phase G2 — Opening, settings, first run
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| G2.1 | Open files at `line:col` in this project window and focus it | 🔲 | |
+| G2.2 | Open or focus a project for a directory argument | 🔲 | |
+| G2.3 | Settings group "Terminal" and the three options | 🔲 | |
+| G2.4 | First-run balloon and README section | 🔲 | |
+
+**Steps (detail):**
+
+- **G2.1 — Files.** Deliverable: the `OpenFiles` branch of `OpenRequestServer`. On the EDT, for each target `OpenFileDescriptor(project, file, line - 1, column - 1).navigate(true)`, then `ProjectUtil.focusProjectWindow(project, true)` once. Offsets are computed the way Epic A already does it (`FileLocationResolver.toOffset` clamps a line beyond EOF), so `open Foo.php:99999` lands on the last line instead of failing.
+- **G2.2 — Projects.** Deliverable: the `OpenProject` branch. A directory that is inside the current project's content roots is not a project at all — select it in the Project view and focus the window. Otherwise `ProjectUtil.findAndFocusExistingProjectForPath(path)` first; if that returns nothing, `ProjectUtil.openOrImportAsync(path, OpenProjectTask { forceOpenInNewFrame = true })` from the service scope, which with Epic E on means the new window arrives as a new project tab. **Before writing this step, confirm `ProjectUtil`'s ApiStatus** (see the platform facts above): if the class turns out to be `@ApiStatus.Internal`, mark the step ⏸️, add the Open Question, and do not guess a replacement.
+- **G2.3 — Settings.** Deliverable: a "Terminal" group in `AgenstormConfigurable` and three fields on `AgenstormSettings.State`: `terminalOpenEnabled` (default on), `terminalOpenCommandNames` (default `open`; a comma-separated list, so a user can add `e` or `edit` without losing `open`), `terminalOpenUnknownFileTypes` (default off — a PDF or a PNG goes to macOS, not to the IDE). Changing any of them fires `AgenstormSettingsListener`; existing terminals keep their environment until they are restarted, and the settings page says so.
+- **G2.4 — First run.** Deliverable: a one-shot balloon in the `Agenstorm` notification group the first time the shim is installed, saying that `open` is shadowed *inside IDE terminals only* and linking to the setting; a `terminalOpenNoticeShown` flag on the settings state so it never repeats. README gains an "Opening files from the terminal" section covering the fallback rules and the `path:line:col` form.
+
+**Exit guardrails — Epic G → Epic H**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| The happy path | `open src/Foo.php:42:7` puts the caret at 42:7 in the window whose terminal it was typed in, in under 150 ms by feel | 🔲 | |
+| Fallback fidelity | `open -a Preview doc.pdf`, `open https://jetbrains.com`, `open nope.txt`, `open` with no arguments, and `open .` inside the project behave exactly as they did before the plugin | 🔲 | |
+| Both engines | Works with Terminal Engine set to Reworked **and** to Classic | 🔲 | |
+| Projects | `open ~/projects/other` opens that project; running it again focuses the existing window rather than opening a second one | 🔲 | |
+| Off switch | Turning `terminalOpenEnabled` off and opening a new terminal: `command -v open` is `/usr/bin/open` again, and no `AGENSTORM_OPEN_*` variables are set | 🔲 | |
+| Log clean | `idea.log` has no `com.pronskiy.agenstorm` frames after a session of use | 🔲 | |
+
+---
+
+### Epic H — Markdown block rendering: code fences, quotes, rules  ·  1.0
+
+**Goal:** In live-markup mode a fenced code block renders as a rounded card carrying its language and a copy action, with the ``` lines hidden and the syntax highlighting inside untouched; block quotes lose their `>` markers and gain a left rail; thematic breaks render as a drawn line. Epic F's caret policy still governs everything — putting the caret in a block reveals its raw markers. Indented code blocks and images stay out of scope (§7).
+**Success metrics:** a 3,000-line file with 200 fences re-syncs in < 50 ms after edits stop — the Epic F budget, unchanged; the card survives a theme switch, soft wrap, and the Markdown plugin's own `CODE_FENCE` fold region; a selection across a card still copies the raw fence, backticks included.
+
+Platform facts (verified against build 262):
+
+- PSI: `MarkdownElementTypes.CODE_FENCE` and `.BLOCK_QUOTE`; tokens `MarkdownTokenTypes.CODE_FENCE_START`, `.CODE_FENCE_END`, `.FENCE_LANG`, `.CODE_FENCE_CONTENT`, `.BLOCK_QUOTE` (the `>` marker) and `.HORIZONTAL_RULE`; the set `MarkdownTokenTypeSets.CODE_FENCE_ITEMS`. The PSI class is `org.intellij.plugins.markdown.lang.psi.impl.MarkdownCodeFence` (extends the abstract `MarkdownCodeFenceImpl`) with `getFenceLanguage()` returning the info string. None of these carry an ApiStatus annotation.
+- **Syntax highlighting inside a fence already works in the plain editor.** `org.intellij.plugins.markdown.fenceInjection.CodeFenceInjector` — a `MultiHostInjector` in the `intellij.markdown.fenceInjection` module — injects the language guessed by `CodeFenceLanguageGuesser` over the whole body with a single `addPlace`, so the ordinary injected-highlighting pass colours it. **Do not re-highlight it and do not fold the body**; the epic only hides the fence lines and paints around them.
+- **The Markdown plugin already folds fences and quotes.** `MarkdownFoldingBuilder` (a `CustomFoldingBuilder`, registered `lang.foldingBuilder language="Markdown"`) emits one `FoldingDescriptor` over the whole multi-line `CODE_FENCE`, and also folds `BLOCK_QUOTE`, lists, tables and link destinations. Collapsed by default only when `MarkdownCodeFoldingSettings.State.collapseCodeFences` is on (it defaults to off). Our light regions must nest strictly *inside* its range — the fold tree allows nesting, rejects crossing, and rejects a duplicate range (this is the same trap decision 23 records).
+- **A `LINES_IN_RANGE` highlighter paints to the right edge of the viewport.** `MarkupModel.addRangeHighlighter(start, end, layer, TextAttributes, HighlighterTargetArea.LINES_IN_RANGE)`: `RangeHighlighterImpl.getAffectedAreaStartOffset/EndOffset` expand such a highlighter to line bounds, `IterationState` deliberately skips `EXACT_RANGE` highlighters when computing the past-line-end attributes so only `LINES_IN_RANGE` survives there, and `EditorPainter.paintAfterLineEnd` fills from the text to `clip.x + clip.width`. `EXACT_RANGE` stops under the text. `HighlighterLayer` has `SYNTAX = 1000` … `ADDITIONAL_SYNTAX = 3000`, low enough that selection and the injected highlighting still win.
+- **Rounded corners are a custom renderer, not a different highlighter.** `RangeHighlighter.setCustomRenderer(CustomHighlighterRenderer)`; the interface and `paint(Editor, RangeHighlighter, Graphics)` are public and un-annotated in 262, and run after the background and before the text at the default order. `CustomHighlighterOrder` and `getOrder()` *are* `@ApiStatus.Experimental` — leave them unoverridden.
+- **Inlays for the chip.** `InlayModel.addAfterLineEndElement(offset, InlayProperties, EditorCustomElementRenderer)`; `InlayModel`, `InlayProperties`, `Inlay` and `EditorCustomElementRenderer` carry no ApiStatus in 262. `InlayProperties.showWhenFolded(true)` keeps the chip visible if the fence is folded by the Markdown plugin, and `EditorCustomElementRenderer.getContextMenuGroup(Inlay)` gives the copy action a home.
+- **Do not use `FoldingModel.addCustomLinesFolding` / `CustomFoldRegion`.** Both are `@Experimental`; the region is created already collapsed and its `CustomFoldRegionRenderer` replaces the text wholesale, which would throw away the injected highlighting the epic is trying to preserve; and `FoldingModelImpl.addCustomLinesFolding` returns `null` when the range intersects an existing region — which `MarkdownFoldingBuilder`'s `CODE_FENCE` descriptor always does. That mechanism is how "render documentation comments in the editor" works (`DocRenderItemImpl` + `DocRenderer` + `DocRenderPassFactory`); it is the closest platform analogue and the wrong fit here.
+- Colour keys to derive the palette from: `MarkdownHighlighterColors.CODE_FENCE`, `.CODE_FENCE_MARKER`, `.CODE_FENCE_LANGUAGE`, `.BLOCK_QUOTE`, `.BLOCK_QUOTE_MARKER`, `.HRULE`.
+
+#### Phase H1 — Fences: markers hidden, block background
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| H1.1 | Collector emits `FENCE_OPEN` / `FENCE_CLOSE` ranges and a block list carrying the span and the language | 🔲 | |
+| H1.2 | `MarkdownBlockRenderer`: one `LINES_IN_RANGE` highlighter per block, owned by the controller's sync | 🔲 | |
+| H1.3 | Caret policy and coexistence with the Markdown plugin's own `CODE_FENCE` region | 🔲 | |
+| H1.4 | Tests: `fences.md` fixture and a controller test | 🔲 | |
+
+**Steps (detail):**
+
+- **H1.1 — Collector.** Deliverable: `MarkdownElementTypes.CODE_FENCE` leaves `MarkupRangeCollector.SKIPPED`, and the walker gains a `codeFence` branch emitting two `MarkupRange`s plus a `MarkdownBlock(kind, span, language)` on a second output list. The opening line folds `CODE_FENCE_START` together with `FENCE_LANG` and the spaces between them **but not its EOL**, so the card keeps a header row for the chip. The closing line folds from the end of the last content line *through* `CODE_FENCE_END`, newline included, so the line disappears entirely. `CODE_FENCE_CONTENT` is never touched. New kinds `FENCE_OPEN` and `FENCE_CLOSE` are `isBlock` (whole-line reveal, decision 24). Cases to get right: no info string, an unknown info string, `~~~` fences, a fence indented inside a list item or a block quote, and an unterminated fence at end of file (no `CODE_FENCE_END` token — emit the opener only).
+- **H1.2 — Background.** Deliverable: `markdown/MarkdownBlockRenderer.kt`, created and disposed by `LiveMarkupController` alongside its fold regions and keyed the same way, so one sync updates both. Per block: `editor.markupModel.addRangeHighlighter(span.start, span.end, HighlighterLayer.ADDITIONAL_SYNTAX, attributes, HighlighterTargetArea.LINES_IN_RANGE)`. Attributes come from `MarkdownHighlighterColors.CODE_FENCE`; when the scheme defines no background there (many do not), fall back to `ColorUtil.mix(editor.colorsScheme.defaultBackground, …)` the way `DocRenderer` does, so the card is visible in both Light and Dark without hard-coding a colour.
+- **H1.3 — Caret and coexistence.** Deliverable: nothing new in the caret policy — `FENCE_OPEN`/`FENCE_CLOSE` being `isBlock` is enough — plus a test asserting that our two regions and `MarkdownFoldingBuilder`'s whole-fence region coexist, that ours are strictly nested, and that the background highlighter stays while the markers are revealed. The `FoldingListener` re-apply from F1.4 already covers `Expand All` and foreign batches.
+- **H1.4 — Tests.** Deliverable: `testData/markdown/fences.md` covering the six cases from H1.1, `MarkupRangeCollectorTest` additions, and a `LiveMarkupControllerTest` case asserting one highlighter per block, none left after toggling live markup off, and none created when `liveMarkupCodeBlocks` is off.
+
+**Exit guardrails — Phase H1 → H2**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Fences hidden | In `runIde`, a ```` ```php ```` block shows no backticks; the closing line is gone; the caret on either line brings them back | 🔲 | |
+| Injection intact | Syntax highlighting inside the fence is identical with live markup on and off, and Cmd+click inside it still navigates | 🔲 | |
+| Coexistence | The Markdown plugin's own fence folding still collapses the block; `Fold All` / `Expand All` recover on the next caret move | 🔲 | |
+| Background | The block background reaches the right edge of the editor, not just the end of each line | 🔲 | |
+
+#### Phase H2 — The card: rounded painting, language chip, copy
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| H2.1 | `CodeBlockHighlighterRenderer : CustomHighlighterRenderer` — rounded rect, insets, hairline border | 🔲 | |
+| H2.2 | Language chip and copy action as an after-line-end inlay on the header row | 🔲 | |
+| H2.3 | Settings: `liveMarkupCodeBlocks`, `liveMarkupCodeBlockCard`, `liveMarkupCodeBlockCopy` | 🔲 | |
+| H2.4 | Tests plus the soft-wrap and theme-switch check | 🔲 | |
+
+**Steps (detail):**
+
+- **H2.1 — Card.** Deliverable: `markdown/CodeBlockHighlighterRenderer.kt`, attached with `setCustomRenderer` on the H1.2 highlighter. Paints a `fillRoundRect` inset from the left gutter and stopping short of the right edge, plus a one-pixel border, with antialiasing on — the `DocRenderer.paint` shape. Colours are read from the scheme every paint (no caching across theme changes). `getOrder()` is deliberately not overridden so the plugin stays off the `@Experimental` `CustomHighlighterOrder`. When `liveMarkupCodeBlockCard` is off the renderer is simply not attached and H1's flat full-width background remains.
+- **H2.2 — Chip and copy.** Deliverable: an after-line-end inlay on the header row rendering the language name in `CODE_FENCE_LANGUAGE` colours and a copy glyph; `getContextMenuGroup` exposes a "Copy code block" action; a click on the glyph copies the fence body **without** the backticks in one command. The inlay is created and disposed with the block, carries `showWhenFolded(true)`, and is skipped when the fence has no info string and `liveMarkupCodeBlockCopy` is off (nothing to show).
+- **H2.3 — Settings.** Deliverable: three fields under the existing "Markdown live markup" group — `liveMarkupCodeBlocks` (on), `liveMarkupCodeBlockCard` (on), `liveMarkupCodeBlockCopy` (on) — applied to open editors through `AgenstormSettingsListener`, the way `liveMarkupBullets` already is. Remember the `compileTestKotlin --rerun-tasks` pitfall from CLAUDE.md after adding fields to `State`.
+- **H2.4 — Tests.** Deliverable: renderer geometry asserted headlessly where possible (inset arithmetic, colour resolution against a scheme with and without a `CODE_FENCE` background); the painting itself and the soft-wrap/theme behaviour go to the guardrail checklist.
+
+#### Phase H3 — Block quotes and thematic breaks
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| H3.1 | Collector emits `QUOTE_MARKER` ranges for each `>` plus its space | 🔲 | |
+| H3.2 | Left rail per quote, one per nesting level | 🔲 | |
+| H3.3 | `HORIZONTAL_RULE` folded and drawn as a full-width line | 🔲 | |
+| H3.4 | Settings `liveMarkupQuotes`, `liveMarkupRules`; tests | 🔲 | |
+
+**Steps (detail):**
+
+- **H3.1 — Quote markers.** Deliverable: a `MarkdownTokenTypes.BLOCK_QUOTE` branch emitting one `QUOTE_MARKER` range per marker token plus the single space after it, with the enclosing `MarkdownElementTypes.BLOCK_QUOTE` element as span. `isBlock`, so a caret anywhere on the line brings the `>` back and the quote stays editable.
+- **H3.2 — Rail.** Deliverable: a `LINES_IN_RANGE` highlighter over the quote element whose custom renderer draws a two-pixel rail at the text's left inset in `BLOCK_QUOTE_MARKER` colours. Nested quotes produce nested elements, hence one rail per level, offset by the indent the hidden markers used to occupy.
+- **H3.3 — Rules.** Deliverable: the `HORIZONTAL_RULE` token folded to an empty placeholder, with a `LINES_IN_RANGE` highlighter on its line whose renderer draws a full-width one-pixel line in `HRULE` colours. `---` directly under a paragraph is a setext heading, not a rule — the parser already distinguishes them, so keying off the token is enough.
+- **H3.4 — Settings and tests.** Deliverable: `liveMarkupQuotes` and `liveMarkupRules` (both on) and fixture coverage: nested quotes, a quote containing a fence, a quote containing a list, `---` / `***` / `___`, and a setext heading that must *not* be treated as a rule.
+
+**Exit guardrails — Epic H → Epic I**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Obsidian parity (scoped) | `testData/markdown/parity.md` grows a fences / quotes / rules section; side-by-side with Obsidian the same things are hidden and drawn; the heading-size difference stays accepted | 🔲 | |
+| Injection intact | A `php` fence highlights and navigates identically with the feature on and off | 🔲 | |
+| Coexistence | The Markdown plugin's fence and quote folding still work; `Fold All` / `Expand All` recover on the next caret move | 🔲 | |
+| Copy fidelity | Selecting across a card and copying yields the raw fence with its backticks; the copy glyph yields the body without them | 🔲 | |
+| Themes and wrap | Card, rails and rules render correctly in Light and Dark and with soft wrap on | 🔲 | |
+| Perf | 3,000-line file with 200 fences: sync after an edit < 50 ms, no visible lag while scrolling | 🔲 | |
+
+---
+
+### Epic I — Terminal output enhancers  ·  1.0
+
+**Goal:** Output worth reading — `var_dump`, `print_r`, `var_export`, JSON, PHP stack traces — collapses to a one-line summary that expands on click, with a structured tree viewer for the nested ones, and users add their own enhancements as JSON rule files from the settings page. The engine is generic; the five built-ins are just the rules that ship with it.
+**Success metrics:** a 10,000-line output scrolls with no visible lag; a malformed or catastrophic user regex can never hang the EDT nor corrupt plain output; turning the feature off restores a terminal indistinguishable from stock.
+
+Same `terminal/` package and `agenstorm-terminal.xml` as Epic G.
+
+Platform facts (verified against build 262):
+
+- **`consoleFilterProvider` is the supported way to decorate terminal output, in every engine.** The EP `com.intellij.consoleFilterProvider` → `com.intellij.execution.filters.ConsoleFilterProvider` is stable public API declared in `lib/intellij.platform.ide.impl.jar!/META-INF/LangExtensionPoints.xml`. All three terminals funnel through `ConsoleViewUtil.computeConsoleFilters`; the reworked one does it in `org.jetbrains.plugins.terminal.hyperlinks.filter.CompositeFilterWrapper`, which also calls `ExtensionPointName.addChangeListener`, so filters can appear and disappear at runtime. The terminal registers its own `TerminalGenericFileFilterProvider` this way. Two constraints: the `ConsoleView` passed to providers is **`null`** (so `ConsoleDependentFilterProvider` is useless — implement plain `ConsoleFilterProvider`), and in split/remote-dev the filter runs on the backend.
+- **A `Filter.ResultItem` can carry more than a link.** In the reworked terminal `HyperlinkProcessor` maps results to `TerminalHyperlinkInfo` (a `HyperlinkInfo` plus `TextAttributes` for normal, hovered and followed states), `TerminalHighlightingInfo` (attributes only, no click target) or `TerminalInlayInfo` (an `InlayProvider`).
+- **The terminal never folds anything.** A scan of `terminal.jar` and all six `lib/modules/*.jar` finds zero references to `com.intellij.openapi.editor.FoldingModel`, and there is no folding extension point. The one output-highlighting EP, `org.jetbrains.plugins.terminal.exp.commandBlockHighlighterProvider`, is `@ApiStatus.Internal` and only wired into the deprecated 2024 block terminal.
+- **But the reworked output is a real editor.** `com.intellij.terminal.frontend.view.impl.TerminalEditorFactory` (internal) creates an `EditorImpl` over a real `Document`, so it has a full `FoldingModel`, `MarkupModel` and `InlayModel`. The sanctioned way to recognise one is `org.jetbrains.plugins.terminal.block.util.TerminalDataContextUtils.isReworkedTerminalEditor(Editor)`. That class carries a class-level `@ApiStatus.Experimental` and **no** class-level `@ApiStatus.Internal`; several of its *other* members (`IS_PROMPT_EDITOR_KEY`, `IS_OUTPUT_MODEL_EDITOR_KEY`, `getOutputController`, `getPromptController`) are `@Internal`, but the `is*Editor` predicates are not — so using only those keeps Epic I off the §2 internal list. Reached from a plain `editorFactoryListener`, that gives Epic F's light-fold technique a target with no internal API at all. The risk is behavioural — the terminal trims its document as scrollback overflows (`new.terminal.output.capacity.kb`, default 1024) and runs its own `EditorTextDecorationApplier` — which is why I1.3 is a spike before anything is built on it.
+- **Command lifecycle, if the detector ever needs it.** `org.jetbrains.plugins.terminal.view.shellIntegration.TerminalCommandExecutionListener` (`@Experimental`) has `commandStarted` / `commandFinished`, whose `TerminalCommandBlock` carries `executedCommand`, `workingDirectory`, `exitCode`, `outputStartOffset` and `endOffset`. It is registered per session through `TerminalShellIntegration.addCommandExecutionListener`, reached via the topic `com.intellij.terminal.frontend.toolwindow.TerminalTabsManagerListener.TOPIC` on `TerminalView.getShellIntegrationDeferred()`. This needs `<module name="intellij.terminal.frontend"/>` in the descriptor's `<dependencies>`. Shipped precedent: `plugins/mcpserver/lib/modules/intellij.mcpserver.terminal.frontend.jar` registers a `projectListener` on exactly that topic. **Not used in v1** — the debounced document scan of I2.1 is enough, and this would add a second experimental surface; recorded here so the next reader does not have to find it again.
+- `ConsoleFolding` (`com.intellij.execution.ConsoleFolding`, EP `com.intellij.console.folding`) exists and is public, but it is keyed on `isEnabledForConsole(ConsoleView)` and consumed by `ConsoleViewImpl` — the terminal is not a `ConsoleView`, so it does not apply here.
+
+#### Phase I1 — Rules, detection, and the folding spike
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| I1.1 | `EnhancerRule` + `RuleParser`: JSON in, validated rules out, precise errors | 🔲 | |
+| I1.2 | `BlockDetector`: text + rules → blocks, off the EDT, with a per-rule time budget | 🔲 | |
+| I1.3 | **Spike** — can light fold regions live in a reworked-terminal output editor? Gates I2.1 | 🔲 | |
+
+**Steps (detail):**
+
+- **I1.1 — Rules.** Deliverable: `terminal/enhance/EnhancerRule.kt` and `RuleParser.kt`. A rule is `id`, `start` (regex matching the first line of a block), optional `end` (regex closing it; absent means the block is the single matched line), `render` (`fold` | `tree` | `json`), `summary` (a template over the `start` capture groups, e.g. `array({1}) …`), `enabled`, `maxLines` (hard cap, default 500). Parsed with the bundled `kotlinx.serialization.json` (decision 6). Every failure names the file, the field and what was expected — these are files humans hand-write.
+  ```json
+  { "id": "php-var-dump", "start": "^(array|object)\\((\\d+)\\)\\s*\\{$",
+    "end": "^\\}$", "render": "tree", "summary": "{1}({2}) …", "maxLines": 500 }
+  ```
+- **I1.2 — Detector.** Deliverable: `terminal/enhance/BlockDetector.kt`: `detect(text: CharSequence, rules: List<EnhancerRule>, from: Int): List<EnhancedBlock>` where `EnhancedBlock` is `(ruleId, range, summary, payload)`. Runs off the EDT. **Regex safety is a first-class requirement, not a polish item:** the rules are user-written, so matching runs against a `CharSequence` whose `charAt` checks a deadline and throws, giving every rule a per-invocation time budget (the standard `Pattern` interruption idiom); a rule that blows its budget is disabled for the session and reported once. `from` lets the controller rescan only appended text. Fixtures for all five built-ins plus a deliberate catastrophic-backtracking rule.
+- **I1.3 — Spike.** Deliverable: a §6 decision row, the way F1.4 produced decision 21. Attach to a reworked-terminal editor through `editorFactoryListener` filtered by `TerminalDataContextUtils.isReworkedTerminalEditor`, create a light fold region over a multi-line block, and record what happens on: further output appended below and inside, scrollback trimming past the region, `Clear` (Cmd+K), the terminal's own decoration pass, resizing the window, and switching to the alternate buffer (`less`, `vim`). Also record whether the placeholder is clickable and whether the region survives a `commandFinished`. If the answer is no, I2.1 is cut to ❌ and I2.3 becomes the whole rendering story — the epic still delivers, with a hyperlink instead of a fold.
+
+**Exit guardrails — Phase I1 → I2**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Detector correctness | `BlockDetectorTest` green on all five built-in fixtures, including nested `var_dump` and a truncated block at end of output | 🔲 | |
+| Regex safety | The catastrophic-backtracking fixture is cancelled inside its budget; the test asserts the detector returns and the rule is marked disabled | 🔲 | |
+| Spike recorded | A decision row in §6 states plainly whether fold regions survive in the reworked terminal, with the observed behaviour per case | 🔲 | |
+
+#### Phase I2 — Rendering
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| I2.1 | `TerminalEnhancerController`: light fold regions collapsed to the summary, per output editor | 🔲 | Gated by I1.3 |
+| I2.2 | Structured tree viewer for `tree` and `json` renders | 🔲 | |
+| I2.3 | `TerminalEnhancerFilterProvider : ConsoleFilterProvider` — the engine-independent floor | 🔲 | |
+| I2.4 | The five built-in rules as plugin resources | 🔲 | |
+
+**Steps (detail):**
+
+- **I2.1 — Controller.** Deliverable: `terminal/enhance/TerminalEnhancerController.kt`, deliberately shaped like `LiveMarkupController`: attached per editor, debounced document listener, scan of the appended tail only, one light fold region per block created collapsed with the rule's summary as placeholder, a gutter icon, and the same `FoldingListener` re-apply. Differences from Epic F that the terminal forces: the document is append-only and trimmed, so regions below the trim point are dropped rather than recreated; and there is no caret policy — a terminal caret is the shell prompt, so regions expand only on an explicit click.
+- **I2.2 — Viewer.** Deliverable: a tree popup rendering the parsed payload for `tree` and `json` rules — nested arrays and objects as expandable nodes, scalars with their type. Opened from the fold placeholder or the gutter icon, with copy-node and copy-subtree in its context menu.
+- **I2.3 — Filter.** Deliverable: `terminal/enhance/TerminalEnhancerFilterProvider.kt` registered `<consoleFilterProvider …/>` in `agenstorm-terminal.xml`, implementing plain `ConsoleFilterProvider` (the `ConsoleView` is null). Its `Filter` highlights the first line of a matched block and attaches a `HyperlinkInfo` opening the I2.2 viewer. **Always on, in every engine** — this is what makes the epic degrade rather than fail in the classic terminal or if I1.3 came back negative. Its per-line nature is a real constraint: the filter recognises a block *opener* and hands the offset to the viewer, which reads the surrounding text itself.
+- **I2.4 — Built-ins.** Deliverable: `resources/terminal/rules/*.json` — `php-var-dump`, `php-print-r`, `php-var-export`, `json-line`, `php-stack-trace` — loaded first and overridable by a user rule with the same `id`, so "edit a built-in" means "copy it and change it" without patching anything.
+
+#### Phase I3 — User rules from the settings
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| I3.1 | Rule directory and the settings list | 🔲 | |
+| I3.2 | Hot reload; a broken file is skipped, never fatal | 🔲 | |
+| I3.3 | README section documenting the format | 🔲 | |
+
+**Steps (detail):**
+
+- **I3.1 — Directory and UI.** Deliverable: rules read from `PathManager.getConfigPath()/agenstorm/terminal-rules/*.json`, created on first use. The "Terminal" settings group gains a table of rules — id, source (built-in or file), enabled — with "Open folder", "Reload" and "Copy a built-in rule…" buttons. Disabled ids persist in `terminalEnhancerDisabledRules`.
+- **I3.2 — Reload and failure.** Deliverable: a file watcher on the directory that reparses on change; a file that fails to parse produces exactly one balloon in the `Agenstorm` group naming the file and the error, is skipped, and leaves every other rule working. The bar is that no rule file can ever make the terminal worse than having the feature off.
+- **I3.3 — Docs.** Deliverable: a README section with the field reference and two worked examples, plus the note that rules are regex-only by design and cannot run commands (§7 tracks the opt-in variant).
+
+**Exit guardrails — Epic I → Release 1.0**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| It reads better | A real `var_dump()` of a nested array collapses to one line and expands to a readable tree | 🔲 | |
+| Perf | 10,000 lines of output containing 200 matches: scrolling and typing stay smooth; the tail scan after each chunk stays off the EDT | 🔲 | |
+| Hostile rule | A deliberately catastrophic regex dropped into the rules folder is cancelled, the rule disabled, one balloon shown, the terminal unaffected | 🔲 | |
+| Broken file | A rule file with a syntax error is skipped with one balloon; the other rules still work | 🔲 | |
+| Both engines | Classic engine degrades to the I2.3 filter path with no errors | 🔲 | |
+| Off switch | Feature off: no regions, no highlights, no gutter icons, and the filter is not registered | 🔲 | |
+| Log clean | `idea.log` has no `com.pronskiy.agenstorm` frames after a session of use | 🔲 | |
+
+---
+
+### Release 1.0  ·  after Epics G, H and I
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| R1 | `pluginVersion = 1.0.0`; `CHANGELOG.md` `[Unreleased]` reviewed (it becomes the 1.0.0 section through `patchChangelog` at publish time); README plugin-description block reviewed against what shipped; CLAUDE.md inventory current | ✅ | 2026-09-06 |
-| R2 | `./gradlew verifyPlugin` against the recommended PhpStorm and IntelliJ IDEA 2026.2 builds: Compatible on both; internal-API usages limited to the §2 list | ✅ | 2026-09-06, plugin 1.0.0: Compatible on PS-262.10315.130 and IU-262.10315.125. 15 internal usages, all from the §2 list (`ProjectToolbarWidgetAction` subclassing and overrides, `IdeFrameEx.setFileTitle`, `ScratchFileTypeFilter`, `GitBranchesTreePopupOnBackend.create`); 28 experimental usages (Symbol API, `PsiHighlightedReference`, the Markdown plugin's `MarkdownInlineLink` / `MarkdownLinkText`); 2 deprecated usages, both the Kotlin bridge for `StatusBarWidget.getPresentation(PlatformType)`. A third deprecated usage, `DaemonCodeAnalyzer.restart(PsiFile)`, was replaced by the overload with a reason. Reports in `build/reports/pluginVerifier/`; the ZIP in `build/distributions/agenstorm-1.0.0.zip` |
+| R1 | `pluginVersion = 1.0.0`; `CHANGELOG.md` `[Unreleased]` reviewed (it becomes the 1.0.0 section through `patchChangelog` at publish time); README plugin-description block reviewed against what shipped; CLAUDE.md inventory current | 🔄 | Done 2026-09-06 for the Epics 0–F build. To redo once G, H and I have landed: the changelog, the README description block and the CLAUDE.md inventory all gain the three new features |
+| R2 | `./gradlew verifyPlugin` against the recommended PhpStorm and IntelliJ IDEA 2026.2 builds: Compatible on both; internal-API usages limited to the §2 list | 🔄 | Done 2026-09-06 for the Epics 0–F build; must be re-run after G, H and I (new optional dependency on the Terminal plugin, three new `@Experimental` usages, no new internal ones expected). The 2026-09-06 result, plugin 1.0.0: Compatible on PS-262.10315.130 and IU-262.10315.125. 15 internal usages, all from the §2 list (`ProjectToolbarWidgetAction` subclassing and overrides, `IdeFrameEx.setFileTitle`, `ScratchFileTypeFilter`, `GitBranchesTreePopupOnBackend.create`); 28 experimental usages (Symbol API, `PsiHighlightedReference`, the Markdown plugin's `MarkdownInlineLink` / `MarkdownLinkText`); 2 deprecated usages, both the Kotlin bridge for `StatusBarWidget.getPresentation(PlatformType)`. A third deprecated usage, `DaemonCodeAnalyzer.restart(PsiFile)`, was replaced by the overload with a reason. Reports in `build/reports/pluginVerifier/`; the ZIP in `build/distributions/agenstorm-1.0.0.zip` |
 | R3 | `./gradlew buildPlugin`, install `build/distributions/agenstorm-1.0.0.zip` into a real PhpStorm 2026.2 from disk, open a project with Markdown, Git and PHP: every feature toggle visible in Settings, no SEVERE in `idea.log` after a short tour | 🔲 | Roman's, by hand |
 | R4 | Marketplace: upload the ZIP (or `publishPlugin` with `PUBLISH_TOKEN`), release notes from the changelog, tag `v1.0.0` | 🔲 | Roman's |
 
@@ -811,8 +1099,9 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Verifier | Compatible on PS-262 and IU-262; no new internal usages beyond §2 | ✅ | See R2, 2026-09-06 |
-| Fresh install | R3 tour clean; the plugin loads in IntelliJ IDEA without the PHP plugin (no PHP-only features shown) | 🔲 | |
+| Epics closed | Epics G, H and I closed, their exit guardrails filled in, decisions 25–28 confirmed by Roman | 🔲 | |
+| Verifier | Compatible on PS-262 and IU-262; no new internal usages beyond §2 | 🔄 | Was ✅ on 2026-09-06 for the Epics 0–F build (see R2); must be re-run once G, H and I have landed, since they add an optional dependency on `org.jetbrains.plugins.terminal` and three `@Experimental` usages |
+| Fresh install | R3 tour clean; the plugin loads in IntelliJ IDEA without the PHP plugin (no PHP-only features shown), and in an IDE where the Terminal plugin is disabled | 🔲 | |
 | Daily driver | Epics D and E daily-driver guardrails closed by Roman | 🔲 | |
 
 ---
@@ -831,6 +1120,9 @@ Platform facts (verified against build 262):
 | Diff too large / too slow to build on huge change sets | Med | Med | Budget + ranking in `DiffCollector`; background thread; cancellable progress |
 | False-positive location links (`10:20:30`, URLs with ports) | Med | Low | Parser corpus tests; soft references (no error highlighting) |
 | Marketplace rejection for internal API usage | Low | Med | Warnings are tolerated; keep the list in §2 short and each usage guarded |
+| The two `@Experimental` terminal hooks (`ShellExecOptionsCustomizer`, `TerminalDataContextUtils.isReworkedTerminalEditor`) change shape in 263 | High | Med | Both sit behind the Epic G / Epic I toggles and a `LinkageError` catch; Epic I already ships the `consoleFilterProvider` path (stable API) as its floor, so only the folding refinement is exposed. The reworked terminal is new and JetBrains is still moving it — expect to re-verify at every platform bump |
+| Shadowing `open` surprises a user whose script depends on macOS `open` | Med | Med | The shim claims only bare existing paths: flags, URLs, missing paths and no-argument calls exec the real binary, and the router can decline with `409` so the real binary still runs. Off by one toggle, and a first-run balloon says so. Only inside IDE terminals — the user's own shells are untouched |
+| A user's enhancer regex makes the terminal crawl | Med | Med | Matching runs off the EDT against a deadline-checking `CharSequence`, so a catastrophic pattern is cancelled rather than survived; the offending rule is disabled for the session with one balloon. Guardrail I2 covers it with a deliberately hostile fixture |
 
 ---
 
@@ -862,6 +1154,10 @@ Platform facts (verified against build 262):
 | 22 | 2026-09-06 | Link navigation from visible link text is a `GotoDeclarationHandler` on inline-link text, not an editor mouse handler; heading anchors are matched by `MarkdownHeader.anchorText` | `MarkdownLinkText` is neither a `PsiExternalReferenceHost` nor a `ContributedReferenceHost`, so no reference of either API can sit on it, and the platform's `NavigationService` / `SymbolNavigationService` / `SourceNavigationRequest` are all `@ApiStatus.Internal`. The handler EP is public (Epic A uses it already) and plugs into the platform's Ctrl+click, Ctrl+B and Ctrl-hover underline. For the hidden destination it returns: a `WebReference` target for URLs (browser), Epic A's `FileLocationSymbol` (which now also implements the public `Navigatable`, opening the file in the project that owns it), the `MarkdownHeader` whose anchor matches `path#anchor` (the plugin resolves anchors to header symbols only its internal service can open), and the Markdown plugin's own file references restricted to the one reaching the end of the path | Claude (proposed), confirmed by Roman 2026-09-06 with the Epic F sign-off |
 | 23 | 2026-09-06 | The live-markup sync replaces any foreign fold region that sits exactly on a range it wants | Found by Roman in the Epic F review ("folded elements in markdown don't unfold ever"): the second sandbox session started with the first one's persisted folding state, so every marker came back as an ordinary collapsed region without our user data, which nothing expanded, and our own region for the range was rejected as a duplicate. The sandbox workspace files held 266 such `<marker>` entries, all with an empty placeholder. There is no public way to keep a region out of the persisted state (`TRANSIENT_KEY` and `SIGNATURE` are private, `DocumentFoldingInfo` is package-private), so the controller heals instead: a foreign region on a wanted range is removed before ours is created, and a restore landing on existing regions only collapses them, which the caret policy undoes on the next event-loop turn. Covered by two tests that save and restore the state through `CodeFoldingManager` | Claude (fix), confirmed by Roman 2026-09-06 (second review round) |
 | 24 | 2026-09-06 | Inline markup is revealed per element (caret inside or touching the element, or a selection over it); heading, bullet and checkbox markers stay per line; the Phase F2 whole-line behaviour remains available as a setting | Roman at the Epic F sign-off: per-line reveal "is fine for headers, because they take the entire line, but for inline elements like links it's not perfect". The survey in Phase F3 shows per-element reveal is what Obsidian, Typora, Bear and org-appear do; only Neovim's render-markdown reveals the cursor row, for lack of a better primitive. Touching counts because a caret cannot enter a collapsed fold region: opening on contact is what keeps arrow keys from skipping the opening marker | Roman |
+| 25 | 2026-09-06 | `open` in the terminal is intercepted by a generated shell shim on a PATH entry injected through `ShellExecOptionsCustomizer`, not by the IDE-side `TerminalShellCommandHandler` | The reworked terminal is the 2026.2 default (`TerminalOptionsProvider$State` initialises `TerminalEngine.REWORKED`) and the EP's only driver, `TerminalShellCommandHandlerHelper`, is constructed solely by the classic `ShellTerminalWidget` and highlights via JediTerm's `TerminalLineIntervalHighlighting` — the EP is dead under the default engine. Even in Classic it fires from `matchedExecutor(KeyEvent)`, i.e. the Run/Debug shortcut, so plain `open foo.php` + Enter would still reach macOS. A shim is engine-independent, works on plain Enter, and also catches `open` run by an agent inside the terminal. `MutableShellExecOptions.prependEntryToPATH` routes through `_INTELLIJ_FORCE_PREPEND_PATH`, so the entry survives a user's `.zshrc` rebuilding PATH. JetBrains does the same thing in remote dev (`UnattendedHostOpenLinkScriptHolder`) | **Proposed by Claude — awaiting Roman** |
+| 26 | 2026-09-06 | The shim talks to a per-project loopback `com.sun.net.httpserver.HttpServer` over `POST /open` with a NUL-separated body, not to the IDE's built-in web server and not over a query string | A per-project endpoint is what binds a terminal to *its* window, which is the whole feature; the built-in server is global and would need the project resolved from the request. `com.sun.net.httpserver` is in the JBR and already used by this project's tests, so nothing is added to the dependency list (decision 6). A NUL-separated body removes URL encoding from a POSIX `sh` script entirely and survives paths with spaces, quotes and newlines; the token goes in a header so it never appears in `ps`. Transport is `curl`, which macOS ships; no `curl` means the shim execs the real `open` | **Proposed by Claude — awaiting Roman** |
+| 27 | 2026-09-06 | Terminal output enhancement is built in two layers: `consoleFilterProvider` for highlighting and hyperlinks (always on, every engine) and light fold regions on the reworked output editor for collapsing (gated by the I1.3 spike) | `ConsoleFilterProvider` is stable public API and all three engines funnel through `ConsoleViewUtil.computeConsoleFilters`, so the floor works everywhere and cannot regress. Collapsing is what the feature is actually for, but the terminal has no folding at all — zero `FoldingModel` references across `terminal.jar` and its six module jars, and no EP — so it has to be done from outside, through `TerminalDataContextUtils.isReworkedTerminalEditor` (`@Experimental`, not internal) plus the fully public `editor.foldingModel`. That is legal but unproven against the terminal's document trimming and its own decoration pass, hence a spike before anything is built on it, exactly like F1.4 | **Proposed by Claude — awaiting Roman** |
+| 28 | 2026-09-06 | Enhancer rules are declarative JSON — a regex plus a named built-in renderer — and never execute user code | Agenstorm is a public Marketplace plugin, and a rule format that shells out would run arbitrary commands over whatever happens to be printed in a terminal. Declarative rules stay safe to hot-reload, safe to share, and testable without an IDE. The cost is expressiveness, which is why the external-command variant is kept as an opt-in question in §7 rather than being dropped. The safety burden that remains is regex cost, handled by the per-rule deadline in I1.2 | **Proposed by Claude — awaiting Roman** |
 
 ---
 
@@ -871,7 +1167,12 @@ Platform facts (verified against build 262):
 - [ ] Should `DiffCollector` honour a project-level ignore file (e.g. `.aiignore` / `.agenstormignore`) for files that must never leave the machine? Default: no, keep v1 simple; revisit after daily use.
 - [ ] Does `claude -p` on the author's machine accept `--max-turns 1` / `--tools ""` style flags to guarantee a tool-free single response? Verify during D2.3; otherwise rely on the prompt.
 - [x] ~~**Live markup, reveal granularity:** the caret policy reveals every hidden marker on the caret line; Obsidian and the other hybrid editors reveal inline elements one at a time.~~ Resolved 2026-09-06: Phase F3, decision 24.
-- [ ] Should live markup also render images (`![alt](src)`) — as `🖼 alt` placeholder or as a block inlay? Deferred; not in 1.0.
+- [ ] Should live markup also render images (`![alt](src)`) — as `🖼 alt` placeholder or as a block inlay? Deferred; not in 1.0. Epic H deliberately left this out when it took on fences, quotes and rules.
+- [ ] Should Epic H also give indented code blocks (`MarkdownElementTypes.CODE_BLOCK`) the card treatment? They need no markers hidden, so it is only the background — cheap once H1 exists. Left out of 1.0 on purpose; revisit after use.
+- [ ] **Epic I, external-command rules:** should a rule be allowed to name a command that the matched block is piped through, its output replacing the block? Rejected for 1.0 by decision 28 (arbitrary execution over terminal output). If it comes back, it needs an explicit opt-in toggle that is off by default, a per-rule confirmation on first use, and a note in the Marketplace description.
+- [ ] **Epic G, `ProjectUtil` API status:** `com.intellij.ide.impl.ProjectUtil` carries an `@ApiStatus.Internal` in its class file, but it appears to attach to `openExistingDir` / `FolderOpeningMode` rather than the class. G2.2 must settle this before using `openOrImportAsync`; if the class really is internal, the step is ⏸️ and the alternative (or dropping directory support) becomes a decision, not a guess.
+- [ ] **Epic G on Windows:** the shim is POSIX `sh`, so `TerminalOpenExecOptionsCustomizer` no-ops on Windows. Worth an `open.cmd` / PowerShell function later? Default: no, macOS-first (same stance as Epic A's drive paths).
+- [ ] **Epic G outside the IDE:** should the plugin offer to install the shim into the user's own shell profile, so `open path:line` works in iTerm too? It would need a stable port or a discovery file, and it takes the "only inside IDE terminals" safety argument away. Default: no.
 - [ ] Epic E on Windows/Linux: the widget works, but is it wanted there (native tabs do not exist)? Default: available, off by default outside macOS.
 - [ ] Should `Copy Location Link` also offer `path:line:col` relative to the *repository* root vs. content root when they differ (monorepos)? Default: content root; decide after use.
 - [x] ~~**Epic B, dialects:** the scratch popup lists *languages*, but `scratchLanguageFilter` filters by *file type*; JavaScript dialects map to the JavaScript file type and stay whenever JavaScript is allowed.~~ Resolved 2026-09-05: accept and document (decision 14).
