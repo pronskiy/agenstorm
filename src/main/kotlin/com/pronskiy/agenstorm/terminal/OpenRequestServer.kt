@@ -7,6 +7,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
@@ -14,6 +15,7 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.links.FileLocation
 import com.pronskiy.agenstorm.links.FileLocationResolver
@@ -165,8 +167,9 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
      * IDE's own "Open project in" setting says — new window, the current window, or by asking — because a
      * terminal command should not invent a window policy of its own (decision 29).
      *
-     * The open is launched in the service scope without waiting for it: opening a project takes far longer
-     * than the shim's two-second budget, and a timeout there would hand the same directory to Finder as well.
+     * The open is launched without waiting for it — opening a project takes far longer than the shim's
+     * two-second budget, and a timeout there would hand the same directory to Finder as well — and it is
+     * launched in the *application* scope, not this service's; see the comment on that branch.
      */
     private suspend fun openProject(path: Path): Boolean {
         when (val action = classifyProject(path)) {
@@ -177,20 +180,27 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
             is ProjectAction.Focus -> withContext(Dispatchers.EDT) {
                 ProjectUtil.focusProjectWindow(action.target, true)
             }
-            is ProjectAction.OpenNew -> scope.launch {
-                try {
-                    // No `forceOpenInNewFrame`: that flag is exactly what makes the platform skip
-                    // `checkExistingProjectOnOpen`, which is where "Open project in: New window / The current
-                    // window / Ask" is honoured. Passing this project as the one that would be closed makes
-                    // the terminal's own window the one the choice is about.
-                    // (`OpenProjectTask { … }` is an inline builder compiled for JVM 25 and cannot be inlined
-                    // into this module's JVM 21 bytecode; the `with…` copy methods are ordinary calls.)
-                    val task = OpenProjectTask.build().withProjectToClose(project)
-                    ProjectUtil.openOrImportAsync(action.path, task)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    LOG.warn("Agenstorm: could not open ${action.path} as a project", e)
+            is ProjectAction.OpenNew -> {
+                // No `forceOpenInNewFrame`: that flag is exactly what makes the platform skip
+                // `checkExistingProjectOnOpen`, which is where "Open project in: New window / The current
+                // window / Ask" is honoured. Passing this project as the one that would be closed makes the
+                // terminal's own window the one the choice is about.
+                // (`OpenProjectTask { … }` is an inline builder compiled for JVM 25 and cannot be inlined
+                // into this module's JVM 21 bytecode; the `with…` copy methods are ordinary calls.)
+                val task = OpenProjectTask.build().withProjectToClose(project)
+                // The application scope, never this service's: when the user's setting reuses the current
+                // window, the platform closes *this* project, and `ProjectManagerImpl.closeProject` cancels
+                // the project container scope and joins its children. A child of it sitting inside
+                // `openOrImportAsync` would be waiting for the close that is waiting for it — the IDE hangs
+                // with a blank frame. The work outlives the project, so it belongs to the application.
+                service<AgenstormAppScope>().scope.launch {
+                    try {
+                        ProjectUtil.openOrImportAsync(action.path, task)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        LOG.warn("Agenstorm: could not open ${action.path} as a project", e)
+                    }
                 }
             }
         }
