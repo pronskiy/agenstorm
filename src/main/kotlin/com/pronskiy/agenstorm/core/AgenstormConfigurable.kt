@@ -5,6 +5,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.options.BoundConfigurable
+import com.intellij.openapi.components.serviceIfCreated
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -22,6 +23,7 @@ import com.pronskiy.agenstorm.commit.CommitSettingsPanel
 import com.pronskiy.agenstorm.frame.FrameTitleRefresher
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
+import com.pronskiy.agenstorm.terminal.OpenRequestServer
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
 
@@ -127,6 +129,23 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .comment(AgenstormBundle.message("settings.markdown.revealScope.comment"))
             }
         }
+        featureGroup("settings.group.terminal", "settings.terminal.open.enabled", AgenstormSettings.State::terminalOpenEnabled, onApply = ::applyTerminalSettings) {
+            row(AgenstormBundle.message("settings.terminal.open.commandNames")) {
+                textField()
+                    .bindText({ AgenstormSettings.getInstance().state.terminalOpenCommandNames }, { AgenstormSettings.getInstance().state.terminalOpenCommandNames = it })
+                    .align(AlignX.FILL)
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "terminal.commandNames" }
+                    .comment(AgenstormBundle.message("settings.terminal.open.commandNames.comment"))
+            }
+            row {
+                checkBox(AgenstormBundle.message("settings.terminal.open.unknownFileTypes"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.terminalOpenUnknownFileTypes }, { AgenstormSettings.getInstance().state.terminalOpenUnknownFileTypes = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "terminal.unknownFileTypes" }
+                    .comment(AgenstormBundle.message("settings.terminal.open.unknownFileTypes.comment"))
+            }
+        }
     }
 
     private companion object {
@@ -169,6 +188,19 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
     private fun applyTabSettings() {
         NativeTabsRegistryGuard.syncFromSettings()
         ProjectTabsModel.getInstance().refresh()
+        AgenstormSettingsListener.fire()
+    }
+
+    /**
+     * The terminal toggle changed. Terminals that are already running keep the environment they started
+     * with (the settings page says so); what the switch can do at once is unbind the endpoints, so nothing
+     * is listening while the feature is off. [serviceIfCreated] so a project that never opened a terminal
+     * does not get one created here.
+     */
+    private fun applyTerminalSettings() {
+        if (!AgenstormSettings.getInstance().state.terminalOpenEnabled) {
+            ProjectManager.getInstance().openProjects.forEach { it.serviceIfCreated<OpenRequestServer>()?.stop() }
+        }
         AgenstormSettingsListener.fire()
     }
 

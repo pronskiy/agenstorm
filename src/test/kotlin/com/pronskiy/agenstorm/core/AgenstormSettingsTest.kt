@@ -111,10 +111,11 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
             val featureTexts = listOf(
                 "settings.links.enabled", "settings.scratch.enabled", "settings.frame.hideFileName",
                 "settings.commit.enabled", "settings.tabs.enabled", "settings.markdown.liveMarkup.enabled",
+                "settings.terminal.open.enabled",
             ).map(AgenstormBundle::message)
             val checkBoxes = UIUtil.findComponentsOfType(panel, JBCheckBox::class.java).filter { it.text in featureTexts }
 
-            assertEquals(6, checkBoxes.size)
+            assertEquals(7, checkBoxes.size)
             assertTrue(checkBoxes.all { it.isSelected })
             assertFalse(configurable.isModified)
 
