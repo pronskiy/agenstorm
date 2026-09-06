@@ -9,6 +9,7 @@
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-09-05 | Initial spec created from the brainstorm + code walk of the IntelliJ Platform (build 262) | Roman Pronskiy |
+| 2026-09-06 | Epic F: Phase F3 added (inline markup revealed per element, not per line) after the Epic F review; survey of other editors recorded there | Roman Pronskiy (decision), Claude (text) |
 
 ### Status legend
 
@@ -16,7 +17,7 @@
 
 ### Current focus
 
-**MVP complete.** Epic F closed 2026-09-06 (steps and guardrails ✅, decisions 22 and 23 confirmed). Open: the week-long daily-driver tests of Epics D and E (Roman's), and the follow-up in §7 on revealing inline markup per element instead of per line. Next work: release 1.0 preparation (Marketplace publishing is Roman's) or the §7 follow-up, Roman's call. Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
+**Now on:** Epic F → Phase F3 → step **F3.1** (post-MVP: inline markup revealed per element, decision 24). The MVP itself is complete: Epics 0–F closed 2026-09-06; still open are the week-long daily-driver tests of Epics D and E (Roman's) and release 1.0 preparation (Marketplace publishing is Roman's). Phase F1 closed 2026-09-06 (steps and guardrails ✅, decisions 20 and 21 confirmed). Epic E closed 2026-09-05 (all steps and guardrails ✅ except the week-long **Daily-driver test**, which is Roman's; decision 18 confirmed). Epic D is done except the **Daily-driver test** guardrail, which is Roman's over the coming commits (and owes a live run of the Anthropic and OpenAI-compatible backends with real keys).
 
 ---
 
@@ -753,6 +754,48 @@ Platform facts (verified against build 262):
 | Off switch | Toggling off restores a plain Markdown editor instantly (no leftover folds) | ✅ | Automated: `ToggleLiveMarkupActionTest` (no region of ours left after toggling off; back on restores them; settings apply reaches every editor). Roman signed off 2026-09-06 |
 | Agent-written files | Opening a file while an agent rewrites it (external change → reload) keeps live markup consistent after reload | ✅ | Automated: an outside document edit at a collapsed region's border re-syncs cleanly; a VFS reload is a document replace and goes through the same debounced sync. First review round (2026-09-06, 08:25 and 12:04 sessions): markers never unfolded — persisted folding state, fixed, decision 23; second round (12:49 session, fixed build on the same workspace) signed off. The one SEVERE of that round is PhpStorm's own: `FrameworkCommandsConfigurable` (PHP plugin) reads the VFS on the EDT while the Settings tree renders; no Agenstorm frame |
 
+#### Phase F3 — Reveal inline markup per element (post-MVP)
+
+**Goal:** On the caret line, only the inline element the caret is in (or touches) shows its raw Markdown; the other bold, italic, strike, code and link elements on that line stay rendered. Block-level markers (heading hashes, bullets, checkboxes) keep revealing per line. Requested by Roman at the Epic F sign-off: "inline elements like bold unfold along with all other elements in the line; fine for headers, not perfect for inline elements like links".
+
+**What other editors do** (checked 2026-09-06):
+
+- **Obsidian** (Live Preview) reveals the syntax of the element the cursor is in: moving the cursor into the word *bold* shows the `**` around that word and nothing else on the line; touching the edge of an element counts as being in it, enough so that a community plugin exists to require the cursor strictly inside a link. Heading hashes and list markers are revealed per line. Sources: [Obsidian help, Edit and preview Markdown](https://ryn-cx.github.io/obsidian-theme-previews/Obsidian%20Help/Editing%20and%20formatting/Edit%20and%20preview%20Markdown.html), [Actually Useful Obsidian: Formatting](https://dandylyons.net/posts/actually-useful-obsidian-formatting/), [Link Hover Reveal plugin](https://www.obsidianstats.com/plugins/link-hover-reveal).
+- **Typora** expands a span element into its Markdown source when the cursor moves into the middle of it; a preference turns that off for pure WYSIWYG. Sources: [Typora Markdown Reference](https://support.typora.io/Markdown-Reference/), [typora-issues #1317](https://github.com/typora/typora-issues/issues/1317).
+- **Bear 2** hides markup by default and shows it around the element being edited; the public docs describe the hiding, not the exact cursor rule. Source: [Bear 2.0 release notes](https://alternativeto.net/news/2023/7/bear-2-0-is-here-the-next-generation-for-the-markdown-note-taking-app-with-bunch-of-features).
+- **org-appear** (Emacs) toggles hidden element parts on entering and leaving an element: emphasis markers by default, links and entities optionally. Source: [org-appear](https://github.com/awth13/org-appear).
+- **render-markdown.nvim** (Neovim) reveals everything on the cursor row, which is what Agenstorm does after Phase F2; a consequence of Vim's line-based conceal rather than a design goal. Source: [render-markdown.nvim](https://github.com/MeanderingProgrammer/render-markdown.nvim).
+
+Accepted behaviour, therefore: inline elements one at a time, block markers per line. Decision 24.
+
+Platform facts (verified against build 262):
+
+- `FoldingGroup.newGroup(String)` + `FoldingModelEx.createFoldRegion(start, end, placeholder, group, neverExpands)` and `FoldingModelEx.getGroupedRegions(group)`: the two marker regions of one element can share a group, which also makes the platform treat them as one unit when a placeholder is clicked.
+- `FoldingModelEx.getRegionsOverlappingWith(start, end)`: the regions near the old and new caret positions, so a per-move policy does not scan the whole file.
+- A caret cannot sit inside a collapsed region; the platform moves it past the placeholder. An element must therefore open the moment a caret reaches its edge, or arrow keys skip the opening marker once.
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| F3.1 | Collector: every `MarkupRange` carries the span of its element (both markers of `**bold**` share one span; heading, bullet and checkbox spans are their line). Controller: one `FoldingGroup` per element; the caret policy reveals a group when a caret offset is inside or touching its span, or a selection overlaps it, and runs on every caret move over the regions near the old and new position only | 🔲 | |
+| F3.2 | Setting `liveMarkupRevealScope` (`element`, default, or `line` for the Phase F2 behaviour) in the Markdown group; applied through the settings topic like the other options | 🔲 | |
+| F3.3 | Tests: caret inside, touching either edge, outside on the same line; nested `***both***` and bold inside link text; selection across two elements; arrow-key walk across a collapsed element never skips a marker; the `line` scope reproduces the Phase F2 expectations | 🔲 | |
+
+**Steps (detail):**
+
+- **F3.1 — Spans and groups.** `MarkupRange(kind, range, placeholder, span: TextRange)`. The controller keys groups by span: regions with the same span get the same `FoldingGroup`; the `RegionKey` gains the span so a changed element is recreated. `applyCaretPolicy()` computes, per group, `revealed = carets.any { it.offset in span.startOffset..span.endOffset } || selections.any { it overlaps span }`; block kinds use the line span exactly as today. The caret listener drops the line-change test and instead schedules the policy on every position change; the policy looks only at `getRegionsOverlappingWith` over the lines of the old and new positions, so a keystroke inside an element costs one small scan and no fold operation.
+- **F3.2 — Setting.** `AgenstormSettings.State.liveMarkupRevealScope: String = "element"`; combo box in the Markdown group; the controller reads it in `revealedSpans()`.
+- **F3.3 — Tests.** Extend `LiveMarkupControllerTest`; the existing line-based tests become the `line` scope cases.
+
+**Exit guardrails — Phase F3**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| One at a time | On a line with two bold spans and a link, the caret in the first bold shows only its `**`; the link keeps its text-only form | 🔲 | |
+| Keyboard walk | Arrow keys from plain text through `**bold**` and out again never skip a character; the markers appear when the caret touches the element | 🔲 | |
+| Block markers | Heading hashes, bullets and checkboxes still reveal for the whole caret line | 🔲 | |
+| Copy fidelity | A selection across two elements reveals both; copy yields raw Markdown | 🔲 | |
+| Scope setting | Switching to `line` restores the Phase F2 behaviour in open editors without reopening them | 🔲 | |
+
 ---
 
 ## 5. Risk register
@@ -799,6 +842,7 @@ Platform facts (verified against build 262):
 | 21 | 2026-09-06 | Live-markup fold regions need no defence beyond a `FoldingListener` that re-applies the caret policy after foreign batches | F1.4 spike, all observed in `LiveMarkupControllerTest` against build 262. (a) The Markdown plugin's folding pass (`CodeFoldingManager.updateFoldRegions`) and the highlighting passes leave all 36 light regions of the fixture untouched, valid and collapsed, and its own heading/list/fence/table regions appear alongside. (b) `Expand All` expands our regions too and `Collapse All` collapses the caret line's — both are foreign batches, so `onFoldProcessingEnd` re-applies the policy and the file looks right again on the next event loop turn; foreign regions keep whatever the action did to them. (c) Typing at a region border, an outside edit at a collapsed region's border, `Reformat` and two `Undo`s all leave the regions equal to the collector's output with the caret line open. (d) `beforeFoldRegionRemoved` on one of ours (a model rebuild) asks for a re-sync. No region ever had to be recreated defensively | Claude (spike), confirmed by Roman 2026-09-06 with the Phase F1 sign-off |
 | 22 | 2026-09-06 | Link navigation from visible link text is a `GotoDeclarationHandler` on inline-link text, not an editor mouse handler; heading anchors are matched by `MarkdownHeader.anchorText` | `MarkdownLinkText` is neither a `PsiExternalReferenceHost` nor a `ContributedReferenceHost`, so no reference of either API can sit on it, and the platform's `NavigationService` / `SymbolNavigationService` / `SourceNavigationRequest` are all `@ApiStatus.Internal`. The handler EP is public (Epic A uses it already) and plugs into the platform's Ctrl+click, Ctrl+B and Ctrl-hover underline. For the hidden destination it returns: a `WebReference` target for URLs (browser), Epic A's `FileLocationSymbol` (which now also implements the public `Navigatable`, opening the file in the project that owns it), the `MarkdownHeader` whose anchor matches `path#anchor` (the plugin resolves anchors to header symbols only its internal service can open), and the Markdown plugin's own file references restricted to the one reaching the end of the path | Claude (proposed), confirmed by Roman 2026-09-06 with the Epic F sign-off |
 | 23 | 2026-09-06 | The live-markup sync replaces any foreign fold region that sits exactly on a range it wants | Found by Roman in the Epic F review ("folded elements in markdown don't unfold ever"): the second sandbox session started with the first one's persisted folding state, so every marker came back as an ordinary collapsed region without our user data, which nothing expanded, and our own region for the range was rejected as a duplicate. The sandbox workspace files held 266 such `<marker>` entries, all with an empty placeholder. There is no public way to keep a region out of the persisted state (`TRANSIENT_KEY` and `SIGNATURE` are private, `DocumentFoldingInfo` is package-private), so the controller heals instead: a foreign region on a wanted range is removed before ours is created, and a restore landing on existing regions only collapses them, which the caret policy undoes on the next event-loop turn. Covered by two tests that save and restore the state through `CodeFoldingManager` | Claude (fix), confirmed by Roman 2026-09-06 (second review round) |
+| 24 | 2026-09-06 | Inline markup is revealed per element (caret inside or touching the element, or a selection over it); heading, bullet and checkbox markers stay per line; the Phase F2 whole-line behaviour remains available as a setting | Roman at the Epic F sign-off: per-line reveal "is fine for headers, because they take the entire line, but for inline elements like links it's not perfect". The survey in Phase F3 shows per-element reveal is what Obsidian, Typora, Bear and org-appear do; only Neovim's render-markdown reveals the cursor row, for lack of a better primitive. Touching counts because a caret cannot enter a collapsed fold region: opening on contact is what keeps arrow keys from skipping the opening marker | Roman |
 
 ---
 
@@ -807,7 +851,7 @@ Platform facts (verified against build 262):
 - [ ] Default models per backend at implementation time (Anthropic and OpenAI model ids change; pick the current mid-tier default and keep it a free-text setting).
 - [ ] Should `DiffCollector` honour a project-level ignore file (e.g. `.aiignore` / `.agenstormignore`) for files that must never leave the machine? Default: no, keep v1 simple; revisit after daily use.
 - [ ] Does `claude -p` on the author's machine accept `--max-turns 1` / `--tools ""` style flags to guarantee a tool-free single response? Verify during D2.3; otherwise rely on the prompt.
-- [ ] **Live markup, reveal granularity:** the caret policy reveals every hidden marker on the caret line; Obsidian and the other hybrid editors reveal inline elements (bold, links, code) one at a time and only block markers (headings, bullets) per line. Raised by Roman at the Epic F sign-off, 2026-09-06; investigation and options in the session notes, decision pending.
+- [x] ~~**Live markup, reveal granularity:** the caret policy reveals every hidden marker on the caret line; Obsidian and the other hybrid editors reveal inline elements one at a time.~~ Resolved 2026-09-06: Phase F3, decision 24.
 - [ ] Should live markup also render images (`![alt](src)`) — as `🖼 alt` placeholder or as a block inlay? Deferred; not in 1.0.
 - [ ] Epic E on Windows/Linux: the widget works, but is it wanted there (native tabs do not exist)? Default: available, off by default outside macOS.
 - [ ] Should `Copy Location Link` also offer `path:line:col` relative to the *repository* root vs. content root when they differ (monorepos)? Default: content root; decide after use.
