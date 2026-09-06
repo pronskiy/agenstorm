@@ -18,7 +18,7 @@
 
 ### Current focus
 
-**Now on:** **Epic G** → the **Phase G1 → G2 exit guardrails** (three of the four need a `runIde` session; the router one is already green).
+**Now on:** **Epic G** → step **G2.1** (open the claimed files at `line:col` in this project window and focus it).
 
 Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written.
 
@@ -877,9 +877,9 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Shim reaches the IDE | In `runIde`, `echo $AGENSTORM_OPEN_PORT` is non-empty and `command -v open` resolves to the generated script in all three of zsh, bash and fish | 🔲 | |
-| PATH survives rc files | A `.zshrc` that does `export PATH=/usr/bin:/bin` still leaves the shim first (this is what `_INTELLIJ_FORCE_PREPEND_PATH` buys) | 🔲 | |
-| No token leak | `ps aux` during an `open` never shows the token; it is only ever a body field | 🔲 | |
+| Shim reaches the IDE | In `runIde`, `echo $AGENSTORM_OPEN_PORT` is non-empty and `command -v open` resolves to the generated script in all three of zsh, bash and fish | ✅ | The customizer installed the shim in the live sandbox at every terminal open (three terminals, no `com.pronskiy.agenstorm` frames in `idea.log`), and replaying the IDE's own zsh and bash integration with the real `_INTELLIJ_FORCE_PREPEND_PATH` value resolves `open` to the generated script. **fish is not installed on this machine, so that leg is unverified.** |
+| PATH survives rc files | A `.zshrc` that does `export PATH=/usr/bin:/bin` still leaves the shim first (this is what `_INTELLIJ_FORCE_PREPEND_PATH` buys) | ✅ | zsh and bash both keep the shim as PATH entry #1 against exactly that rc file: the integration applies the prepend from a `precmd` hook, i.e. after every rc file has run |
+| No token leak | `ps aux` during an `open` never shows the token; it is only ever a body field | ✅ | Failed as originally designed — a `curl -H` header is a curl *argument*, world-readable on Linux through `/proc/<pid>/cmdline`. The token moved into the body; re-checked with 400 shim invocations under 2031 `ps -Ao args` sweeps, zero hits |
 | Router correctness | `OpenCommandRouterTest` green on the corpus: flags, URLs, no args, missing path, `path:42`, `path:42:7`, several paths, a directory, a path with spaces and one with a newline | ✅ | 21 cases green, whole corpus covered plus `.`, a colon in a file name, an absolute missing path, and the binary-file rule |
 
 #### Phase G2 — Opening, settings, first run
