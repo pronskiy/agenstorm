@@ -86,7 +86,7 @@ class LiveMarkupService(private val project: Project, private val scope: Corouti
         val after = (before + delta).coerceAtLeast(0)
         file.putUserData(ACTIVE_EDITORS, after.takeIf { it > 0 })
         if ((before > 0) != (after > 0) && !project.isDisposed) {
-            PsiManager.getInstance(project).findFile(file)?.let { DaemonCodeAnalyzer.getInstance(project).restart(it) }
+            PsiManager.getInstance(project).findFile(file)?.let { DaemonCodeAnalyzer.getInstance(project).restart(it, "Agenstorm live markup state changed") }
         }
     }
 
