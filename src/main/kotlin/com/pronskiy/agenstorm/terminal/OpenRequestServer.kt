@@ -22,9 +22,10 @@ import java.security.SecureRandom
  * Step G1.1. The endpoint the terminal `open` shim (G1.3) posts to: one loopback [HttpServer] per project,
  * bound on a free port so it is unreachable from outside this machine, plus a token generated per IDE run.
  *
- * The body of `POST /open` is a NUL-separated UTF-8 list — the shell's `$PWD` first, then the original argv —
- * so a path containing spaces, quotes or newlines needs no encoding on the shell side. The token travels in
- * the [TOKEN_HEADER] header and never in argv, where `ps` would show it.
+ * The body of `POST /open` is a NUL-separated UTF-8 list — the token, the shell's `$PWD`, then the original
+ * argv — so a path containing spaces, quotes or newlines needs no encoding on the shell side. The token is a
+ * body field rather than a header because a header would have to be a `curl` argument, and on Linux
+ * `/proc/<pid>/cmdline` is world-readable: any local user could read the token out of it.
  *
  * Answers `204` when the IDE claimed the command, `409` when it did not (the shim then execs the real `open`),
  * `403` on a bad or missing token. Nothing is bound until [start] is called, which only happens while
@@ -33,7 +34,7 @@ import java.security.SecureRandom
 @Service(Service.Level.PROJECT)
 class OpenRequestServer(private val project: Project, private val scope: CoroutineScope) : Disposable {
 
-    /** Per-IDE-run secret the shim echoes back in [TOKEN_HEADER]; a request without it is refused. */
+    /** Per-IDE-run secret the shim sends back as the first body field; a request without it is refused. */
     val token: String = randomHex(TOKEN_HEX_CHARS)
 
     /** Decides one `open` invocation. Runs off the EDT, outside a read action. Installed by G1.2. */
@@ -104,15 +105,15 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
 
     private suspend fun dispatch(exchange: HttpExchange): Int {
         if (!exchange.requestMethod.equals("POST", ignoreCase = true)) return HTTP_METHOD_NOT_ALLOWED
-        if (!isTokenValid(exchange.requestHeaders.getFirst(TOKEN_HEADER))) return HTTP_FORBIDDEN
         val body = exchange.requestBody.readNBytes(MAX_BODY_BYTES + 1)
         if (body.size > MAX_BODY_BYTES) return HTTP_PAYLOAD_TOO_LARGE
-        val request = parseRequest(body) ?: return HTTP_BAD_REQUEST
+        val parsed = parseBody(body) ?: return HTTP_BAD_REQUEST
+        if (!isTokenValid(parsed.token)) return HTTP_FORBIDDEN
+        val request = parsed.request
         return if (handler.handle(request.cwd, request.argv)) HTTP_NO_CONTENT else HTTP_CONFLICT
     }
 
-    private fun isTokenValid(presented: String?): Boolean {
-        if (presented == null) return false
+    private fun isTokenValid(presented: String): Boolean {
         return MessageDigest.isEqual(
             presented.toByteArray(StandardCharsets.UTF_8),
             token.toByteArray(StandardCharsets.UTF_8),
@@ -122,9 +123,10 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
     /** One `open` invocation as it left the shell: the shell's working directory and the untouched argv. */
     data class Request(val cwd: Path, val argv: List<String>)
 
+    /** A well-formed body: the token it presented and the invocation it describes. */
+    data class ParsedBody(val token: String, val request: Request)
+
     companion object {
-        /** Header carrying [token]; the shim reads it from [TOKEN_ENV]. */
-        const val TOKEN_HEADER: String = "X-Agenstorm-Token"
         const val CONTEXT_PATH: String = "/open"
 
         /** The two variables [com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer] puts into a
@@ -148,19 +150,21 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         private val LOG = logger<OpenRequestServer>()
 
         /**
-         * Splits a NUL-separated body into `$PWD` plus argv. `printf '%s\0' "$PWD" "$@"` leaves a trailing
-         * NUL, which is dropped; every remaining field is kept verbatim, empty arguments included.
-         * Returns null when the body carries no usable working directory.
+         * Splits a NUL-separated body into the token, `$PWD` and argv. The shim's
+         * `printf '%s\0' "$AGENSTORM_OPEN_TOKEN" "$PWD" "$@"` leaves a trailing NUL, which is dropped; every
+         * remaining field is kept verbatim, empty arguments included. Returns null when the body does not
+         * carry at least a token and a usable working directory.
          */
-        fun parseRequest(body: ByteArray): Request? {
+        fun parseBody(body: ByteArray): ParsedBody? {
             val fields = String(body, StandardCharsets.UTF_8).removeSuffix("\u0000").split('\u0000')
-            val cwd = fields.firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
+            if (fields.size < 2) return null
+            val cwd = fields[1].takeIf { it.isNotBlank() } ?: return null
             val path = try {
                 Path.of(cwd)
             } catch (_: InvalidPathException) {
                 return null
             }
-            return Request(path, fields.drop(1))
+            return ParsedBody(fields[0], Request(path, fields.drop(2)))
         }
 
         private fun randomHex(chars: Int): String {

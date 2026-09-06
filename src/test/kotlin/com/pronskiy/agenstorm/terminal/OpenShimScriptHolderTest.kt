@@ -58,8 +58,9 @@ class OpenShimScriptHolderTest : BasePlatformTestCase() {
     fun testShimStaysInSyncWithTheEndpointItPostsTo() {
         val script = Files.readString(holder.install(listOf("open"))!!.resolve("open"))
 
-        assertTrue(script.contains("${OpenRequestServer.TOKEN_HEADER}: \$AGENSTORM_OPEN_TOKEN"))
-        assertTrue(script.contains("\$AGENSTORM_OPEN_PORT${OpenRequestServer.CONTEXT_PATH}"))
+        assertTrue(script.contains("\$${OpenRequestServer.TOKEN_ENV}\" \"\$PWD\" \"\$@\""))
+        assertTrue("the token must not be a curl argument", !script.contains("-H "))
+        assertTrue(script.contains("\$${OpenRequestServer.PORT_ENV}${OpenRequestServer.CONTEXT_PATH}"))
         assertFalse("POSIX sh has no [[ ]]", script.contains("[["))
     }
 

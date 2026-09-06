@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Step G1.1: the loopback endpoint answers `POST /open` with 204 / 409, refuses a bad token with 403,
  * hands the handler the shell's `$PWD` and the untouched argv, and stays unbound until it is started.
+ * The token is the first field of the body, never a header — see [OpenRequestServer].
  */
 class OpenRequestServerTest : BasePlatformTestCase() {
 
@@ -42,7 +43,7 @@ class OpenRequestServerTest : BasePlatformTestCase() {
     }
 
     fun testHandledCommandAnswers204AndCarriesCwdAndArgv() {
-        assertEquals(204, post(fields("/work/dir", "src/Foo.php:42:7")).statusCode())
+        assertEquals(204, post("/work/dir", "src/Foo.php:42:7").statusCode())
 
         val call = nextCall()
         assertEquals(Path.of("/work/dir"), call.cwd)
@@ -51,13 +52,13 @@ class OpenRequestServerTest : BasePlatformTestCase() {
 
     fun testArgumentsWithSpacesQuotesAndNewlinesSurviveVerbatim() {
         val awkward = listOf("a file with spaces.md", "quote\"and'more", "two\nlines", "")
-        assertEquals(204, post(fields("/work/dir", *awkward.toTypedArray())).statusCode())
+        assertEquals(204, post("/work/dir", *awkward.toTypedArray()).statusCode())
 
         assertEquals(awkward, nextCall().argv)
     }
 
     fun testNoArgumentsStillReachesTheHandler() {
-        assertEquals(204, post(fields("/work/dir")).statusCode())
+        assertEquals(204, post("/work/dir").statusCode())
 
         assertEquals(emptyList<String>(), nextCall().argv)
     }
@@ -65,44 +66,46 @@ class OpenRequestServerTest : BasePlatformTestCase() {
     fun testDeclinedCommandAnswers409() {
         handled = false
 
-        assertEquals(409, post(fields("/work/dir", "nope.txt")).statusCode())
+        assertEquals(409, post("/work/dir", "nope.txt").statusCode())
         assertEquals(listOf("nope.txt"), nextCall().argv)
     }
 
     fun testWrongTokenAnswers403AndNeverReachesTheHandler() {
-        val response = post(fields("/work/dir", "src/Foo.php"), token = "0".repeat(32))
+        val response = post("/work/dir", "src/Foo.php", token = "0".repeat(32))
 
         assertEquals(403, response.statusCode())
         assertNoCall()
     }
 
-    fun testMissingTokenAnswers403() {
-        assertEquals(403, post(fields("/work/dir", "src/Foo.php"), token = null).statusCode())
+    fun testEmptyTokenAnswers403() {
+        assertEquals(403, post("/work/dir", "src/Foo.php", token = "").statusCode())
         assertNoCall()
     }
 
     fun testShorterTokenPrefixIsNotAccepted() {
-        assertEquals(403, post(fields("/work/dir"), token = server.token.take(16)).statusCode())
+        assertEquals(403, post("/work/dir", token = server.token.take(16)).statusCode())
         assertNoCall()
     }
 
     fun testGetIsRefused() {
-        val request = HttpRequest.newBuilder(endpoint())
-            .header(OpenRequestServer.TOKEN_HEADER, server.token)
-            .GET()
-            .build()
+        val request = HttpRequest.newBuilder(endpoint()).GET().build()
 
         assertEquals(405, send(request).statusCode())
         assertNoCall()
     }
 
     fun testEmptyBodyAnswers400() {
-        assertEquals(400, post(ByteArray(0)).statusCode())
+        assertEquals(400, send(fields()).statusCode())
+        assertNoCall()
+    }
+
+    fun testABodyWithATokenButNoWorkingDirectoryAnswers400() {
+        assertEquals(400, send(fields(server.token)).statusCode())
         assertNoCall()
     }
 
     fun testBlankWorkingDirectoryAnswers400() {
-        assertEquals(400, post(fields("   ", "src/Foo.php")).statusCode())
+        assertEquals(400, post("   ", "src/Foo.php").statusCode())
         assertNoCall()
     }
 
@@ -120,18 +123,19 @@ class OpenRequestServerTest : BasePlatformTestCase() {
         assertEquals(-1, server.port)
     }
 
-    fun testParseRequestDropsOnlyTheTrailingSeparator() {
-        // `printf '%s\0' "$PWD" "$@"` always leaves a trailing NUL; an empty argument is a real field.
-        val parsed = OpenRequestServer.parseRequest(fields("/work", "a", ""))
+    fun testParseBodyDropsOnlyTheTrailingSeparator() {
+        // `printf '%s\0' tok "$PWD" "$@"` always leaves a trailing NUL; an empty argument is a real field.
+        val parsed = OpenRequestServer.parseBody(fields("tok", "/work", "a", ""))!!
 
-        assertEquals(Path.of("/work"), parsed!!.cwd)
-        assertEquals(listOf("a", ""), parsed.argv)
+        assertEquals("tok", parsed.token)
+        assertEquals(Path.of("/work"), parsed.request.cwd)
+        assertEquals(listOf("a", ""), parsed.request.argv)
     }
 
-    fun testParseRequestAcceptsABodyWithoutATrailingSeparator() {
-        val body = "/work\u0000a".toByteArray(StandardCharsets.UTF_8)
+    fun testParseBodyAcceptsABodyWithoutATrailingSeparator() {
+        val body = "tok\u0000/work\u0000a".toByteArray(StandardCharsets.UTF_8)
 
-        assertEquals(listOf("a"), OpenRequestServer.parseRequest(body)!!.argv)
+        assertEquals(listOf("a"), OpenRequestServer.parseBody(body)!!.request.argv)
     }
 
     private fun fields(vararg values: String): ByteArray =
@@ -139,11 +143,11 @@ class OpenRequestServerTest : BasePlatformTestCase() {
 
     private fun endpoint(): URI = URI.create("http://127.0.0.1:${server.port}${OpenRequestServer.CONTEXT_PATH}")
 
-    private fun post(body: ByteArray, token: String? = server.token): HttpResponse<Void> {
-        val builder = HttpRequest.newBuilder(endpoint()).POST(HttpRequest.BodyPublishers.ofByteArray(body))
-        token?.let { builder.header(OpenRequestServer.TOKEN_HEADER, it) }
-        return send(builder.build())
-    }
+    private fun post(cwd: String, vararg argv: String, token: String = server.token): HttpResponse<Void> =
+        send(fields(token, cwd, *argv))
+
+    private fun send(body: ByteArray): HttpResponse<Void> =
+        send(HttpRequest.newBuilder(endpoint()).POST(HttpRequest.BodyPublishers.ofByteArray(body)).build())
 
     private fun send(request: HttpRequest): HttpResponse<Void> =
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(TIMEOUT_SECONDS)).build()

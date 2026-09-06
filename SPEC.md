@@ -841,7 +841,7 @@ Platform facts (verified against build 262):
 
 **Steps (detail):**
 
-- **G1.1 — Endpoint.** Deliverable: `terminal/OpenRequestServer.kt`, a project `@Service(PROJECT)` taking a `CoroutineScope`. Binds `HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)` so the port is free-chosen and unreachable from outside the machine; generates a 32-hex token per IDE run. One context, `POST /open`: the body is a NUL-separated UTF-8 list whose first field is the shell's `$PWD` and whose rest is the original argv. **A NUL-separated body, not a query string**, because paths may contain spaces, quotes and even newlines, and this way the shim needs no URL encoding at all. The token travels in an `X-Agenstorm-Token` header — never in argv, so it cannot be read out of `ps`. Compared with `MessageDigest.isEqual` (constant time). Replies `204` when the request was handled, `409` when the router decided the IDE should not claim it, `403` on a bad token. Disposed with the project; nothing is bound while the feature is off.
+- **G1.1 — Endpoint.** Deliverable: `terminal/OpenRequestServer.kt`, a project `@Service(PROJECT)` taking a `CoroutineScope`. Binds `HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)` so the port is free-chosen and unreachable from outside the machine; generates a 32-hex token per IDE run. One context, `POST /open`: the body is a NUL-separated UTF-8 list whose first field is the shell's `$PWD` and whose rest is the original argv. **A NUL-separated body, not a query string**, because paths may contain spaces, quotes and even newlines, and this way the shim needs no URL encoding at all. The token is the **first field of the body**, not a header: a header would have to be a `curl` argument, and on Linux `/proc/<pid>/cmdline` is world-readable, so any local user could read the token out of it. The body only ever travels through the pipe. Compared with `MessageDigest.isEqual` (constant time). Replies `204` when the request was handled, `409` when the router decided the IDE should not claim it, `403` on a bad token. Disposed with the project; nothing is bound while the feature is off.
   ```kotlin
   @Service(Service.Level.PROJECT)
   class OpenRequestServer(private val project: Project, private val scope: CoroutineScope) : Disposable {
@@ -865,10 +865,9 @@ Platform facts (verified against build 262):
   case "$1" in -*|*://*) fallback "$@" ;; esac         # flags and URLs are macOS's job
   command -v curl >/dev/null 2>&1 || fallback "$@"
 
-  printf '%s\0' "$PWD" "$@" |
+  printf '%s\0' "$AGENSTORM_OPEN_TOKEN" "$PWD" "$@" |
     curl -fsS -m 2 -X POST --data-binary @- \
-         -H "X-Agenstorm-Token: $AGENSTORM_OPEN_TOKEN" \
-         "http://127.0.0.1:$AGENSTORM_OPEN_PORT/open" >/dev/null 2>&1 && exit 0
+           "http://127.0.0.1:$AGENSTORM_OPEN_PORT/open" >/dev/null 2>&1 && exit 0
   fallback "$@"                                        # 409, 403, timeout, IDE gone
   ```
   `curl -f` makes any 4xx a non-zero exit, so a `409` from the router and a dead IDE take the same path. Scope: macOS first, Linux for free (`xdg-open`); **Windows is out of scope for 1.0** — the customizer no-ops there rather than generating an `open.cmd`, matching Epic A's macOS-first stance.
@@ -880,7 +879,7 @@ Platform facts (verified against build 262):
 |-----------|----------------------|--------|----------------|
 | Shim reaches the IDE | In `runIde`, `echo $AGENSTORM_OPEN_PORT` is non-empty and `command -v open` resolves to the generated script in all three of zsh, bash and fish | 🔲 | |
 | PATH survives rc files | A `.zshrc` that does `export PATH=/usr/bin:/bin` still leaves the shim first (this is what `_INTELLIJ_FORCE_PREPEND_PATH` buys) | 🔲 | |
-| No token leak | `ps aux` during an `open` never shows the token; it is only ever a header | 🔲 | |
+| No token leak | `ps aux` during an `open` never shows the token; it is only ever a body field | 🔲 | |
 | Router correctness | `OpenCommandRouterTest` green on the corpus: flags, URLs, no args, missing path, `path:42`, `path:42:7`, several paths, a directory, a path with spaces and one with a newline | ✅ | 21 cases green, whole corpus covered plus `.`, a colon in a file name, an absolute missing path, and the binary-file rule |
 
 #### Phase G2 — Opening, settings, first run

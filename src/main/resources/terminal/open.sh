@@ -23,10 +23,10 @@ case "$1" in -*|*://*) fallback "$@" ;; esac    # flags and URLs are macOS's job
 command -v curl >/dev/null 2>&1 || fallback "$@"
 
 # NUL-separated so a path may hold spaces, quotes or newlines without any encoding.
-# The token is a header, never an argument: `ps` must not be able to read it.
-printf '%s\0' "$PWD" "$@" |
+# The token is the first field of the body, which only ever travels through this pipe. It must not be a
+# curl argument: on Linux /proc/<pid>/cmdline is world-readable, so any local user could read it there.
+printf '%s\0' "$AGENSTORM_OPEN_TOKEN" "$PWD" "$@" |
 	curl -fsS -m 2 -X POST --data-binary @- \
-		-H "X-Agenstorm-Token: $AGENSTORM_OPEN_TOKEN" \
 		"http://127.0.0.1:$AGENSTORM_OPEN_PORT/open" >/dev/null 2>&1 && exit 0
 
 fallback "$@"  # 409 (the IDE declined), 403, a timeout, or the IDE is gone
