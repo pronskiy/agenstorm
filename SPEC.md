@@ -18,7 +18,7 @@
 
 ### Current focus
 
-**Now on:** **Epic G** → step **G1.1** (`OpenRequestServer`: the loopback endpoint the terminal `open` shim talks to).
+**Now on:** **Epic G** → step **G1.2** (`OpenCommandRouter`: argv + cwd → open files / open project / fall back).
 
 Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written.
 
@@ -834,7 +834,7 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| G1.1 | `OpenRequestServer`: per-project loopback `HttpServer`, token-checked `POST /open` | 🔲 | |
+| G1.1 | `OpenRequestServer`: per-project loopback `HttpServer`, token-checked `POST /open` | ✅ | `OpenRequestHandler` seam; G1.2 installs the router |
 | G1.2 | `OpenCommandRouter`: argv + cwd → open files / open project / fall back. Pure logic, all the tests | 🔲 | |
 | G1.3 | `OpenShimScriptHolder`: generates the `open` script on disk, 0755, regenerated per plugin version | 🔲 | |
 | G1.4 | `TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer` — PATH entry plus port and token | 🔲 | |
