@@ -18,9 +18,9 @@
 
 ### Current focus
 
-**Now on:** **Epic G** → the **Epic G → Epic H exit guardrails** (all six need a `runIde` session).
+**Now on:** **Epic H** → step **H1.1** (collector emits `FENCE_OPEN` / `FENCE_CLOSE` ranges and a block list carrying the span and the language).
 
-Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written.
+Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**; Epic G closed 2026-09-06, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written; decisions 29 and 30 came out of the Epic G guardrail run.
 
 Carried over, all Roman's: the week-long **Daily-driver test** guardrails of Epic D (which also owes a live run of the Anthropic and OpenAI-compatible backends with real keys) and Epic E, and Marketplace publishing.
 
@@ -902,13 +902,13 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| The happy path | `open src/Foo.php:42:7` puts the caret at 42:7 in the window whose terminal it was typed in, in under 150 ms by feel | 🔲 | |
-| Fallback fidelity | `open -a Preview doc.pdf`, `open https://jetbrains.com`, `open nope.txt`, `open` with no arguments, and `open .` inside the project behave exactly as they did before the plugin | 🔲 | |
-| Both engines | Works with Terminal Engine set to Reworked **and** to Classic | 🔲 | |
-| Files of another open project | `open ../other-project/src/Bar.php` opens the file in that project's window and focuses it when that project is open; when it is not, the file opens in the current window | 🔲 | |
-| Projects | `open ~/projects/other` opens that project the way the IDE's "Open project in" setting says (new window / current window / ask); running it again focuses the existing window rather than opening a second one | 🔲 | |
-| Off switch | Turning `terminalOpenEnabled` off and opening a new terminal: `command -v open` is `/usr/bin/open` again, and no `AGENSTORM_OPEN_*` variables are set | 🔲 | |
-| Log clean | `idea.log` has no `com.pronskiy.agenstorm` frames after a session of use | 🔲 | |
+| The happy path | `open src/Foo.php:42:7` puts the caret at 42:7 in the window whose terminal it was typed in, in under 150 ms by feel | ✅ | Signed off by Roman 2026-09-06 after several sandbox sessions |
+| Fallback fidelity | `open -a Preview doc.pdf`, `open https://jetbrains.com`, `open nope.txt`, `open` with no arguments, and `open .` inside the project behave exactly as they did before the plugin | ✅ | Signed off by Roman 2026-09-06 |
+| Both engines | Works with Terminal Engine set to Reworked **and** to Classic | ✅ | Signed off by Roman 2026-09-06. The shim is engine-independent by construction — it is a PATH entry, not an IDE-side hook (decision 25) |
+| Files of another open project | `open ../other-project/src/Bar.php` opens the file in that project's window and focuses it when that project is open; when it is not, the file opens in the current window | ✅ | Added and signed off by Roman 2026-09-06 (decision 30) |
+| Projects | `open ~/projects/other` opens that project the way the IDE's "Open project in" setting says (new window / current window / ask); running it again focuses the existing window rather than opening a second one | ✅ | Two bugs found and fixed here before it passed: the forced new frame (decision 29) and the project-scope deadlock that reusing the current window exposed. `idea.log` shows the close-and-reopen completing in 39 ms afterwards; signed off by Roman 2026-09-06 |
+| Off switch | Turning `terminalOpenEnabled` off and opening a new terminal: `command -v open` is `/usr/bin/open` again, and no `AGENSTORM_OPEN_*` variables are set | ✅ | Signed off by Roman 2026-09-06; the settings page also unbinds every listening endpoint on Apply (`TerminalSettingsPanelTest`) |
+| Log clean | `idea.log` has no `com.pronskiy.agenstorm` frames after a session of use | ✅ | Verified across five sandbox sessions: zero SEVERE/ERROR lines carrying a plugin frame. The one `ObjectTree` SEVERE seen mid-epic was the platform's own `UndoClientState.dispose` racing project shutdown, and disappeared with the app-scope fix |
 
 ---
 
@@ -1080,7 +1080,7 @@ Platform facts (verified against build 262):
 | Broken file | A rule file with a syntax error is skipped with one balloon; the other rules still work | 🔲 | |
 | Both engines | Classic engine degrades to the I2.3 filter path with no errors | 🔲 | |
 | Off switch | Feature off: no regions, no highlights, no gutter icons, and the filter is not registered | 🔲 | |
-| Log clean | `idea.log` has no `com.pronskiy.agenstorm` frames after a session of use | 🔲 | |
+| Log clean | `idea.log` has no `com.pronskiy.agenstorm` frames after a session of use | ✅ | Verified across five sandbox sessions: zero SEVERE/ERROR lines carrying a plugin frame. The one `ObjectTree` SEVERE seen mid-epic was the platform's own `UndoClientState.dispose` racing project shutdown, and disappeared with the app-scope fix |
 
 ---
 
