@@ -18,7 +18,7 @@
 
 ### Current focus
 
-**Now on:** **Epic G** → step **G1.2** (`OpenCommandRouter`: argv + cwd → open files / open project / fall back).
+**Now on:** **Epic G** → step **G1.3** (`OpenShimScriptHolder`: the generated `open` script on disk).
 
 Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written.
 
@@ -835,7 +835,7 @@ Platform facts (verified against build 262):
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | G1.1 | `OpenRequestServer`: per-project loopback `HttpServer`, token-checked `POST /open` | ✅ | `OpenRequestHandler` seam; G1.2 installs the router |
-| G1.2 | `OpenCommandRouter`: argv + cwd → open files / open project / fall back. Pure logic, all the tests | 🔲 | |
+| G1.2 | `OpenCommandRouter`: argv + cwd → open files / open project / fall back. Pure logic, all the tests | ✅ | Claiming is all-or-nothing per command line; a loose peel next to `FileLocationParser` covers paths with spaces |
 | G1.3 | `OpenShimScriptHolder`: generates the `open` script on disk, 0755, regenerated per plugin version | 🔲 | |
 | G1.4 | `TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer` — PATH entry plus port and token | 🔲 | |
 
@@ -881,7 +881,7 @@ Platform facts (verified against build 262):
 | Shim reaches the IDE | In `runIde`, `echo $AGENSTORM_OPEN_PORT` is non-empty and `command -v open` resolves to the generated script in all three of zsh, bash and fish | 🔲 | |
 | PATH survives rc files | A `.zshrc` that does `export PATH=/usr/bin:/bin` still leaves the shim first (this is what `_INTELLIJ_FORCE_PREPEND_PATH` buys) | 🔲 | |
 | No token leak | `ps aux` during an `open` never shows the token; it is only ever a header | 🔲 | |
-| Router correctness | `OpenCommandRouterTest` green on the corpus: flags, URLs, no args, missing path, `path:42`, `path:42:7`, several paths, a directory, a path with spaces and one with a newline | 🔲 | |
+| Router correctness | `OpenCommandRouterTest` green on the corpus: flags, URLs, no args, missing path, `path:42`, `path:42:7`, several paths, a directory, a path with spaces and one with a newline | ✅ | 21 cases green, whole corpus covered plus `.`, a colon in a file name, an absolute missing path, and the binary-file rule |
 
 #### Phase G2 — Opening, settings, first run
 
