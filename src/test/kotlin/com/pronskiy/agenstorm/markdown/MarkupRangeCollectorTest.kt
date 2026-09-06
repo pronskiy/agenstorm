@@ -18,9 +18,9 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
             Some bold and em and em2 and bold2 and gone and code and  a ` b  here.
             both text
             A link b and ![img](pic.png) and <https://auto.link>.
-            - ☐ todo
-            - ☑ done
-            * ☑ DONE
+            • ☐ todo
+            • ☑ done
+            • ☑ DONE
             1. numbered x
 
             ```php
@@ -61,6 +61,7 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         assertEquals(listOf("](https://x.y/z \"title\")"), byKind[MarkupKind.LINK_TAIL])
         assertEquals(listOf("[ ]"), byKind[MarkupKind.CHECKBOX_OFF])
         assertEquals(listOf("[x]", "[X]"), byKind[MarkupKind.CHECKBOX_ON])
+        assertEquals(listOf("-", "-", "*"), byKind[MarkupKind.BULLET])
         assertEquals(MarkupKind.entries.toSet(), byKind.keys)
     }
 
@@ -69,6 +70,7 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
             val expected = when (range.kind) {
                 MarkupKind.CHECKBOX_OFF -> "☐"
                 MarkupKind.CHECKBOX_ON -> "☑"
+                MarkupKind.BULLET -> "•"
                 else -> ""
             }
             assertEquals(range.toString(), expected, range.placeholder)
@@ -95,6 +97,17 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         val text = myFixture.configureByText("a.md", "#\n# \n[](x.md)\n").text
         assertEmpty(MarkupRangeCollector.collect(myFixture.file))
         assertEquals("#\n# \n[](x.md)\n", text)
+    }
+
+    fun testOptionsLeaveCheckboxesAndBulletsRaw() {
+        val text = myFixture.configureByText("a.md", "- [ ] a\n* b **c**\n+ [x] d\n1. e\n").text
+        val all = MarkupRangeCollector.collect(myFixture.file, MarkupRangeCollector.Options(checkboxes = true, bullets = true))
+        assertEquals("• ☐ a\n• b c\n• ☑ d\n1. e\n", render(text, all))
+        val noBullets = MarkupRangeCollector.collect(myFixture.file, MarkupRangeCollector.Options(checkboxes = true, bullets = false))
+        assertEquals("- ☐ a\n* b c\n+ ☑ d\n1. e\n", render(text, noBullets))
+        val neither = MarkupRangeCollector.collect(myFixture.file, MarkupRangeCollector.Options(checkboxes = false, bullets = false))
+        assertEquals("- [ ] a\n* b c\n+ [x] d\n1. e\n", render(text, neither))
+        assertEquals(MarkupRangeCollector.Options(), MarkupRangeCollector.Options.fromSettings())
     }
 
     fun testPlainTextYieldsNothing() {

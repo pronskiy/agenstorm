@@ -87,9 +87,14 @@ class ToggleLiveMarkupActionTest : BasePlatformTestCase() {
         val service = LiveMarkupService.getInstance(project)
         val controller = service.controllerFor(myFixture.editor)!!
         controller.syncNow()
-        assertEquals(setOf(MarkupKind.CHECKBOX_OFF, MarkupKind.STRONG), controller.regions().map { it.getUserData(LiveMarkupController.KIND) }.toSet())
+        assertEquals(setOf(MarkupKind.BULLET, MarkupKind.CHECKBOX_OFF, MarkupKind.STRONG), controller.regions().map { it.getUserData(LiveMarkupController.KIND) }.toSet())
 
         AgenstormSettings.getInstance().state.liveMarkupCheckboxes = false
+        service.applySettings()
+        controller.syncNow()
+        assertEquals(setOf(MarkupKind.BULLET, MarkupKind.STRONG), controller.regions().map { it.getUserData(LiveMarkupController.KIND) }.toSet())
+
+        AgenstormSettings.getInstance().state.liveMarkupBullets = false
         service.applySettings()
         controller.syncNow()
         assertEquals(setOf(MarkupKind.STRONG), controller.regions().map { it.getUserData(LiveMarkupController.KIND) }.toSet())

@@ -73,12 +73,12 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         myFixture.configureByText("a.md", "- [ ] task\n")
         val controller = attachedController()
         controller.syncNow()
-        assertEquals(listOf("☐"), controller.regions().map { it.placeholderText })
+        assertEquals(listOf("•", "☐"), controller.regions().map { it.placeholderText })
 
         replaceAll("- [x] task\n")
         controller.syncNow()
-        assertEquals(listOf("☑"), controller.regions().map { it.placeholderText })
-        assertEquals(listOf("[x]"), texts(controller.regions()))
+        assertEquals(listOf("•", "☑"), controller.regions().map { it.placeholderText })
+        assertEquals(listOf("-", "[x]"), texts(controller.regions()))
     }
 
     fun testOtherFileTypesAndDisabledFeatureGetNoController() {
@@ -281,7 +281,7 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         // The debounced sync agrees with the swapped placeholders: same region objects survive.
         commitAndSync(controller)
         assertTrue(first.isValid && second.isValid)
-        assertEquals(listOf("[x]", "[ ]", "**", "**"), texts(controller.regions()))
+        assertEquals(listOf("-", "[x]", "-", "[ ]", "**", "**"), texts(controller.regions()))
 
         val bold = controller.regions().first { it.getUserData(LiveMarkupController.KIND) == MarkupKind.STRONG }
         assertFalse("only checkbox regions toggle", controller.toggleCheckbox(bold))
@@ -293,7 +293,7 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         caretToEnd()
         val controller = attachedController()
         controller.syncNow()
-        val region = controller.regions().single()
+        val region = controller.regions().single { it.getUserData(LiveMarkupController.KIND) == MarkupKind.CHECKBOX_OFF }
         assertTrue(controller.toggleCheckbox(region))
         assertEquals("- [x] one\n", myFixture.editor.document.text)
 
@@ -301,8 +301,8 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         UndoManager.getInstance(project).undo(fileEditor)
         assertEquals("- [ ] one\n", myFixture.editor.document.text)
         commitAndSync(controller)
-        assertEquals(listOf("☐"), controller.regions().map { it.placeholderText })
-        assertEquals(listOf(MarkupKind.CHECKBOX_OFF), controller.regions().map { it.getUserData(LiveMarkupController.KIND) })
+        assertEquals(listOf("•", "☐"), controller.regions().map { it.placeholderText })
+        assertEquals(listOf(MarkupKind.BULLET, MarkupKind.CHECKBOX_OFF), controller.regions().map { it.getUserData(LiveMarkupController.KIND) })
     }
 
     fun testDetachRemovesEveryRegion() {

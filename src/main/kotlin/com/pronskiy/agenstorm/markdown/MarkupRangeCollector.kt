@@ -15,7 +15,7 @@ import org.intellij.plugins.markdown.lang.MarkdownTokenTypes
 
 /** What a hidden range stands for; the controller keys its fold regions by kind and range. */
 enum class MarkupKind {
-    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON;
+    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET;
 
     val isCheckbox: Boolean get() = this == CHECKBOX_OFF || this == CHECKBOX_ON
 }
@@ -26,7 +26,7 @@ data class MarkupRange(val kind: MarkupKind, val range: TextRange, val placehold
 /**
  * Step F1.1. Walks a Markdown PSI tree and lists the marker characters the live-markup mode hides: emphasis and
  * strong markers, strikethrough tildes, the outer backticks of code spans, ATX heading hashes with their space,
- * the brackets and destination of inline links, and task-list checkboxes (replaced by ☐ / ☑). Code fences, indented
+ * the brackets and destination of inline links, and task-list checkboxes (replaced by ☐ / ☑) and, when asked, list bullets (replaced by •). Code fences, indented
  * code blocks, HTML blocks and images are left exactly as written, and so are link destinations and titles (they
  * sit inside the folded link tail anyway).
  *
@@ -50,6 +50,7 @@ object MarkupRangeCollector {
 
     const val CHECKBOX_OFF_PLACEHOLDER = "☐"
     const val CHECKBOX_ON_PLACEHOLDER = "☑"
+    const val BULLET_PLACEHOLDER = "•"
 
     /** The optional parts (settings of Phase F2); [fromSettings] reads the current values. */
     data class Options(val checkboxes: Boolean = true, val bullets: Boolean = true) {
@@ -74,6 +75,7 @@ object MarkupRangeCollector {
                     MarkdownElementTypes.CODE_SPAN -> codeSpan(element.node, out)
                     MarkdownElementTypes.INLINE_LINK -> inlineLink(element.node, out)
                     MarkdownTokenTypes.CHECK_BOX -> if (options.checkboxes) checkbox(element.node, out)
+                    MarkdownTokenTypes.LIST_BULLET -> if (options.bullets) bullet(element.node, out)
                     in HEADINGS -> heading(element.node, text, out)
                 }
                 super.visitElement(element)
@@ -136,6 +138,14 @@ object MarkupRangeCollector {
         out += MarkupRange(MarkupKind.LINK_OPEN, open.textRange, "")
         out += MarkupRange(MarkupKind.LINK_TAIL, TextRange(close.startOffset, node.textRange.endOffset), "")
     }
+
+    /** The token is `- ` (or `* `, `+ `) with its trailing space; only the marker character becomes a •. */
+    private fun bullet(node: ASTNode, out: MutableList<MarkupRange>) {
+        if (node.text.firstOrNull() !in BULLET_CHARS) return
+        out += MarkupRange(MarkupKind.BULLET, TextRange.from(node.startOffset, 1), BULLET_PLACEHOLDER)
+    }
+
+    private val BULLET_CHARS = setOf('-', '*', '+')
 
     /** The token is `[ ] ` / `[x] ` with a trailing space; only the three bracket characters are replaced. */
     private fun checkbox(node: ASTNode, out: MutableList<MarkupRange>) {
