@@ -154,10 +154,15 @@ Obsidian-style editing for Markdown files: the syntax hides itself until the car
 - The **Live Markup** button in the Markdown editor toolbar (also in the editor context menu) turns it off or on for
   one editor; Settings → Tools → Agenstorm → Markdown live markup has the global switch and the checkbox and bullet
   options
+- Fenced code blocks lose their ``` lines and sit on a full-width card; the two fence lines stay as the card's
+  empty header and footer rows, the highlighting inside the fence is untouched, and the caret on either of them
+  brings the backticks back
 - Copying always copies raw Markdown; the file is never changed by the folding; the Markdown plugin's own folding,
   Expand All and Collapse All keep working
 
-Limitations: heading sizes stay at the editor's single line height; images and reference-style links stay raw.
+Limitations: heading sizes stay at the editor's single line height; images and reference-style links stay raw;
+the code-block card has no rounded corners, language chip or copy button, and block quotes and thematic breaks
+render as written.
 
 ## Opening files from the terminal
 

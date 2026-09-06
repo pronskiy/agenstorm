@@ -35,15 +35,18 @@ class MarkdownSettingsPanelTest : BasePlatformTestCase() {
     fun testOptionsShowTheDefaultsAndApplyWritesTheState() {
         assertTrue(named<JBCheckBox>("markdown.checkboxes").isSelected)
         assertTrue(named<JBCheckBox>("markdown.bullets").isSelected)
+        assertTrue(named<JBCheckBox>("markdown.codeBlocks").isSelected)
         assertFalse(configurable.isModified)
 
         named<JBCheckBox>("markdown.checkboxes").isSelected = false
         named<JBCheckBox>("markdown.bullets").isSelected = false
+        named<JBCheckBox>("markdown.codeBlocks").isSelected = false
         assertTrue(configurable.isModified)
         configurable.apply()
 
         assertFalse(AgenstormSettings.getInstance().state.liveMarkupCheckboxes)
         assertFalse(AgenstormSettings.getInstance().state.liveMarkupBullets)
+        assertFalse(AgenstormSettings.getInstance().state.liveMarkupCodeBlocks)
         assertFalse(configurable.isModified)
     }
 

@@ -18,9 +18,9 @@
 
 ### Current focus
 
-**Now on:** **Epic H** → step **H1.1** (collector emits `FENCE_OPEN` / `FENCE_CLOSE` ranges and a block list carrying the span and the language).
+**Now on:** **Epic I** → step **I1.1** (`EnhancerRule` + `RuleParser`), pending Roman's go-ahead.
 
-Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**; Epic G closed 2026-09-06, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written; decisions 29 and 30 came out of the Epic G guardrail run.
+Epics 0–F closed 2026-09-06, Phase F3 included — the MVP is complete. Release 1.0 was paused at R2: Roman added three more features to 1.0 on 2026-09-06, so the order is now **G → H → I → Release 1.0**; Epic G closed 2026-09-06 and Epic H was stopped after Phase H1 the same day, and R3 (hand-install tour) and R4 (Marketplace) wait until Epic I closes. Decisions 25–28 were confirmed by Roman on 2026-09-06, so G, H and I are cleared to build as written; decisions 29 and 30 came out of the Epic G guardrail run.
 
 Carried over, all Roman's: the week-long **Daily-driver test** guardrails of Epic D (which also owes a live run of the Anthropic and OpenAI-compatible backends with real keys) and Epic E, and Marketplace publishing.
 
@@ -914,6 +914,8 @@ Platform facts (verified against build 262):
 
 ### Epic H — Markdown block rendering: code fences, quotes, rules  ·  1.0
 
+> **Stopped after Phase H1 on 2026-09-06.** Roman looked at the plain full-width card in `runIde` and called it good enough: fences hide their ``` lines and sit on a background, which is the whole of the daily value. The rounded card, the language chip and the copy action (H2), and block quotes and thematic breaks (H3) are cut, not deferred — reopen them as a new epic if the plain card ever starts to grate. What shipped: H1.1–H1.4 and decision 31.
+
 **Goal:** In live-markup mode a fenced code block renders as a rounded card carrying its language and a copy action, with the ``` lines hidden and the syntax highlighting inside untouched; block quotes lose their `>` markers and gain a left rail; thematic breaks render as a drawn line. Epic F's caret policy still governs everything — putting the caret in a block reveals its raw markers. Indented code blocks and images stay out of scope (§7).
 **Success metrics:** a 3,000-line file with 200 fences re-syncs in < 50 ms after edits stop — the Epic F budget, unchanged; the card survives a theme switch, soft wrap, and the Markdown plugin's own `CODE_FENCE` fold region; a selection across a card still copies the raw fence, backticks included.
 
@@ -935,7 +937,7 @@ Platform facts (verified against build 262):
 | H1.1 | Collector emits `FENCE_OPEN` / `FENCE_CLOSE` ranges and a block list carrying the span and the language | ✅ | `collectMarkup` returns both lists; `collect` still returns just the ranges. `liveMarkupCodeBlocks` lands here because `Options` needs it. Both regions are single-line and keep their EOL (decision 31) |
 | H1.2 | `MarkdownBlockRenderer`: one `LINES_IN_RANGE` highlighter per block, owned by the controller's sync | ✅ | Found and fixed a hang in the F1.3 caret policy: collapsing a region the caret sits in makes the folding model move the caret, our caret listener answered with another pass, and the two spun the EDT forever. A fence's closing region is the first that covers more than the line it starts on, so it is the first a caret can sit inside off that line |
 | H1.3 | Caret policy and coexistence with the Markdown plugin's own `CODE_FENCE` region | ✅ | Not quite "nothing new in the caret policy": the reveal decision had to move from the region to the `FoldingGroup`. The platform expands a group as one, so two markers asking for different things left the result to iteration order — invisible while both markers of an element sat on one line, plain as soon as a fence's two ends did not. A group is revealed when any of its markers should be, which is also what makes the caret on either fence line bring both back |
-| H1.4 | Tests: `fences.md` fixture and a controller test | 🔲 | |
+| H1.4 | Tests: `fences.md` fixture and a controller test | ✅ | Landed with H1.1–H1.3 rather than as a step of its own: `fences.md` covers the six shapes, `CodeFenceCollectorTest` the ranges and blocks, `MarkdownBlockRendererTest` one highlighter per block and none when the option or live markup is off, `CodeFenceFoldingTest` the coexistence |
 
 **Steps (detail):**
 
@@ -948,19 +950,19 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Fences hidden | In `runIde`, a ```` ```php ```` block shows no backticks; the closing line is gone; the caret on either line brings them back | 🔲 | |
-| Injection intact | Syntax highlighting inside the fence is identical with live markup on and off, and Cmd+click inside it still navigates | 🔲 | |
-| Coexistence | The Markdown plugin's own fence folding still collapses the block; `Fold All` / `Expand All` recover on the next caret move | 🔲 | |
-| Background | The block background reaches the right edge of the editor, not just the end of each line | 🔲 | |
+| Fences hidden | In `runIde`, a ```` ```php ```` block shows no backticks; both fence lines are left empty as the card's header and footer rows (decision 31 changed this from "the closing line is gone"); the caret on either line brings both markers back | ✅ | Signed off by Roman 2026-09-06 after the decision-31 fix |
+| Injection intact | Syntax highlighting inside the fence is identical with live markup on and off, and Cmd+click inside it still navigates | ✅ | The collector never walks into `CODE_FENCE`, so the injected highlighting is untouched by construction; visible in Roman's screenshot of a `php` fence |
+| Coexistence | The Markdown plugin's own fence folding still collapses the block; `Fold All` / `Expand All` recover on the next caret move | ✅ | `CodeFenceFoldingTest`: ours nest strictly inside the plugin's whole-fence region, its folding still collapses the block, and Expand All is followed by the policy |
+| Background | The block background reaches the right edge of the editor, not just the end of each line | ✅ | `LINES_IN_RANGE`, asserted in `MarkdownBlockRendererTest` and visible in Roman's screenshot |
 
 #### Phase H2 — The card: rounded painting, language chip, copy
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| H2.1 | `CodeBlockHighlighterRenderer : CustomHighlighterRenderer` — rounded rect, insets, hairline border | 🔲 | |
-| H2.2 | Language chip and copy action as an after-line-end inlay on the header row | 🔲 | |
-| H2.3 | Settings: `liveMarkupCodeBlocks`, `liveMarkupCodeBlockCard`, `liveMarkupCodeBlockCopy` | 🔲 | |
-| H2.4 | Tests plus the soft-wrap and theme-switch check | 🔲 | |
+| H2.1 | `CodeBlockHighlighterRenderer : CustomHighlighterRenderer` — rounded rect, insets, hairline border | ❌ | Cut with the epic, 2026-09-06 |
+| H2.2 | Language chip and copy action as an after-line-end inlay on the header row | ❌ | Cut with the epic, 2026-09-06 — the header row is there for it if it ever comes back |
+| H2.3 | Settings: `liveMarkupCodeBlocks`, `liveMarkupCodeBlockCard`, `liveMarkupCodeBlockCopy` | ❌ | Cut; `liveMarkupCodeBlocks` already exists (H1.1) and needs its settings-page row before release |
+| H2.4 | Tests plus the soft-wrap and theme-switch check | ❌ | Cut with the epic, 2026-09-06 |
 
 **Steps (detail):**
 
@@ -973,10 +975,10 @@ Platform facts (verified against build 262):
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| H3.1 | Collector emits `QUOTE_MARKER` ranges for each `>` plus its space | 🔲 | |
-| H3.2 | Left rail per quote, one per nesting level | 🔲 | |
-| H3.3 | `HORIZONTAL_RULE` folded and drawn as a full-width line | 🔲 | |
-| H3.4 | Settings `liveMarkupQuotes`, `liveMarkupRules`; tests | 🔲 | |
+| H3.1 | Collector emits `QUOTE_MARKER` ranges for each `>` plus its space | ❌ | Cut with the epic, 2026-09-06 |
+| H3.2 | Left rail per quote, one per nesting level | ❌ | Cut with the epic, 2026-09-06 |
+| H3.3 | `HORIZONTAL_RULE` folded and drawn as a full-width line | ❌ | Cut with the epic, 2026-09-06 |
+| H3.4 | Settings `liveMarkupQuotes`, `liveMarkupRules`; tests | ❌ | Cut with the epic, 2026-09-06 |
 
 **Steps (detail):**
 
@@ -985,16 +987,17 @@ Platform facts (verified against build 262):
 - **H3.3 — Rules.** Deliverable: the `HORIZONTAL_RULE` token folded to an empty placeholder, with a `LINES_IN_RANGE` highlighter on its line whose renderer draws a full-width one-pixel line in `HRULE` colours. `---` directly under a paragraph is a setext heading, not a rule — the parser already distinguishes them, so keying off the token is enough.
 - **H3.4 — Settings and tests.** Deliverable: `liveMarkupQuotes` and `liveMarkupRules` (both on) and fixture coverage: nested quotes, a quote containing a fence, a quote containing a list, `---` / `***` / `___`, and a setext heading that must *not* be treated as a rule.
 
-**Exit guardrails — Epic H → Epic I**
+**Exit guardrails — Epic H → Epic I** — none of these were run: the epic stopped after Phase H1, and every row below
+belongs to H2 or H3. What H1 does ship is signed off in the H1 → H2 table above and covered by `CodeFenceFoldingTest`.
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Obsidian parity (scoped) | `testData/markdown/parity.md` grows a fences / quotes / rules section; side-by-side with Obsidian the same things are hidden and drawn; the heading-size difference stays accepted | 🔲 | |
-| Injection intact | A `php` fence highlights and navigates identically with the feature on and off | 🔲 | |
-| Coexistence | The Markdown plugin's fence and quote folding still work; `Fold All` / `Expand All` recover on the next caret move | 🔲 | |
-| Copy fidelity | Selecting across a card and copying yields the raw fence with its backticks; the copy glyph yields the body without them | 🔲 | |
-| Themes and wrap | Card, rails and rules render correctly in Light and Dark and with soft wrap on | 🔲 | |
-| Perf | 3,000-line file with 200 fences: sync after an edit < 50 ms, no visible lag while scrolling | 🔲 | |
+| Obsidian parity (scoped) | `testData/markdown/parity.md` grows a fences / quotes / rules section; side-by-side with Obsidian the same things are hidden and drawn; the heading-size difference stays accepted | ❌ | Not run — the epic stopped after Phase H1 |
+| Injection intact | A `php` fence highlights and navigates identically with the feature on and off | ❌ | Not run — the epic stopped after Phase H1 |
+| Coexistence | The Markdown plugin's fence and quote folding still work; `Fold All` / `Expand All` recover on the next caret move | ❌ | Not run — the epic stopped after Phase H1 |
+| Copy fidelity | Selecting across a card and copying yields the raw fence with its backticks; the copy glyph yields the body without them | ❌ | Not run — the epic stopped after Phase H1 |
+| Themes and wrap | Card, rails and rules render correctly in Light and Dark and with soft wrap on | ❌ | Not run — the epic stopped after Phase H1 |
+| Perf | 3,000-line file with 200 fences: sync after an edit < 50 ms, no visible lag while scrolling | ❌ | Not run — the epic stopped after Phase H1 |
 
 ---
 
