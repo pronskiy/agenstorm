@@ -10,3 +10,6 @@ build
 .mcp.json
 phpstorm-agentic-plugin-brainstorm.md
 /.env
+# Plugin signing: certificate and private keys. Directory rule on purpose, so a key
+# added later is covered without touching this file. Never commit anything from here.
+/.sign/
