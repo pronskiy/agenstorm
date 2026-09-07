@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-07
+
 ### Added
 
 - Settings page under Tools → Agenstorm with an on/off switch per feature
@@ -16,3 +18,6 @@
 - `open` in an IDE terminal opens in the IDE: `open src/Foo.php:42:7` puts the caret on line 42, column 7 in the window the terminal belongs to, several paths open several files, a file that belongs to another already-open project opens in that project's window, a directory opens or focuses that project and a directory inside the current one is shown in the Project view. Flags, URLs, missing paths, binary files and anything else reach the real `open` untouched. A generated POSIX `sh` shim goes in front of the PATH of IDE terminals only, talking to a loopback endpoint bound to a free port with a per-run token; settings for the switch, the command names and binary file types under Tools → Agenstorm → Terminal
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
+
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/pronskiy/agenstorm/commits/1.0.0
