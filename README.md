@@ -3,27 +3,26 @@
 ![Build](https://github.com/pronskiy/agenstorm/workflows/Build/badge.svg)
 
 <!-- Plugin description -->
-A PhpStorm plugin that makes the IDE friendlier for agent-driven development:
+A PhpStorm plugin that removes the friction an agent-heavy workflow hits in the IDE every day.
 
-- clickable `path/to/file.php:42:7` locations in Markdown, comments and PHP strings
-- LLM-generated commit messages (streaming; Anthropic, OpenAI-compatible or `claude -p`) with no SDK bloat
-- a New Scratch File popup trimmed to the languages you actually use
-- window titles and project tabs without file names
-- project tabs inside the main toolbar, so the window loses a row of chrome
-- an Obsidian-style live-markup mode for Markdown
-- `open src/Foo.php:42` in an IDE terminal opens that file, in that window, with the caret on line 42
+- **Clickable file locations.** `src/Foo.php:42:7` is a link in Markdown, in comments of every language and in PHP strings, so a path an agent printed is one click from the caret. **Copy Location Link** puts such a token on the clipboard for the agent to read back.
+- **`open` in the IDE terminal.** `open src/Foo.php:42` opens that file in the window the terminal belongs to, caret on line 42. Several paths, directories and other open projects work too; flags, URLs and anything the IDE does not claim reach the real `open` untouched.
+- **AI commit messages.** A subject and body streamed into the commit message field from the Anthropic API, any OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, OpenRouter, Groq) or the local `claude` CLI. No SDK and no extra jars; one-step Undo, editable prompts, and text already in the field taken as a hint.
+- **Markdown live markup.** Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bullets show their result until the caret reaches them, and fenced code blocks sit on a full-width card. Nothing on disk changes.
+- **Project tabs in the main toolbar.** One tab per open project, in the slot the project widget normally occupies, so the window has one header row instead of two; the Git branch moves down to the status bar.
+- **Window titles without file names.** The title names the project, not whichever file happens to be open.
+- **A shorter New Scratch File popup.** Only the file types on your allow-list.
 
-Every feature is toggleable on its own under Settings → Tools → Agenstorm.
+Every feature has its own on/off switch under Settings → Tools → Agenstorm, and the ones that need the PHP, Markdown, Git or Terminal plugin switch themselves off when it is missing — so the plugin is at home in any IntelliJ-based IDE of the same version.
 <!-- Plugin description end -->
 
-Status: early development. `SPEC.md` is the plan and the task list; features land in the order
-listed there (location links first).
+`SPEC.md` is the plan and the task list; `CHANGELOG.md` records what each version shipped.
 
 ## Compatibility
 
 PhpStorm 2026.2 (build 262). The plugin also loads in other IntelliJ-based IDEs of the same
-version; features that need the PHP, Markdown or Git plugin switch themselves off when that
-plugin is missing.
+version; features that need the PHP, Markdown, Git or Terminal plugin switch themselves off when
+that plugin is missing.
 
 ## Installation
 

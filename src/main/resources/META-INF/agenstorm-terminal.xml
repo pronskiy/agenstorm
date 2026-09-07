@@ -1,4 +1,4 @@
-<!-- Epic G (`open path` opens in this IDE) and Epic I (terminal output enhancers).
+<!-- Epic G: `open path` opens in this IDE.
      Loaded only when the bundled Terminal plugin is present; every other feature works without it. -->
 <idea-plugin>
     <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
