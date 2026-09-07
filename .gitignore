@@ -9,3 +9,4 @@ build
 # Local to this machine, kept out of the repo
 .mcp.json
 phpstorm-agentic-plugin-brainstorm.md
+/.env
