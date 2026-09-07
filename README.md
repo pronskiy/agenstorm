@@ -3,17 +3,61 @@
 ![Build](https://github.com/pronskiy/agenstorm/workflows/Build/badge.svg)
 
 <!-- Plugin description -->
-A PhpStorm plugin that removes the friction an agent-heavy workflow hits in the IDE every day.
+**Agenstorm removes the friction an agent-heavy workflow hits in the IDE every day.**
 
-- **Clickable file locations.** `src/Foo.php:42:7` is a link in Markdown, in comments of every language and in PHP strings, so a path an agent printed is one click from the caret. **Copy Location Link** puts such a token on the clipboard for the agent to read back.
-- **`open` in the IDE terminal.** `open src/Foo.php:42` opens that file in the window the terminal belongs to, caret on line 42. Several paths, directories and other open projects work too; flags, URLs and anything the IDE does not claim reach the real `open` untouched.
-- **AI commit messages.** A subject and body streamed into the commit message field from the Anthropic API, any OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, OpenRouter, Groq) or the local `claude` CLI. No SDK and no extra jars; one-step Undo, editable prompts, and text already in the field taken as a hint.
-- **Markdown live markup.** Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bullets show their result until the caret reaches them, and fenced code blocks sit on a full-width card. Nothing on disk changes.
-- **Project tabs in the main toolbar.** One tab per open project, in the slot the project widget normally occupies, so the window has one header row instead of two; the Git branch moves down to the status bar.
-- **Window titles without file names.** The title names the project, not whichever file happens to be open.
-- **A shorter New Scratch File popup.** Only the file types on your allow-list.
+Coding agents changed what a working day looks like, and the IDE was not built for that
+rhythm. Agenstorm closes the gaps, one small feature at a time.
 
-Every feature has its own on/off switch under Settings → Tools → Agenstorm, and the ones that need the PHP, Markdown, Git or Terminal plugin switch themselves off when it is missing — so the plugin is at home in any IntelliJ-based IDE of the same version.
+### Markdown live markup
+
+Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bullets show their
+result until the caret reaches them, and fenced code blocks sit on a full-width card with their
+highlighting intact. It is folding only — the file on disk never changes, and copying always
+copies raw Markdown.
+
+### One header row instead of two
+
+Open projects become tabs inside the main toolbar, in the slot the project widget normally
+occupies, so the window loses a row of chrome; the Git branch moves down to the status bar.
+Window titles name the project, not whichever file happens to be open.
+
+### Clickable file locations
+
+`src/Foo.php:42:7` becomes a link — in Markdown, in comments of every language, and in PHP
+strings. It is the format compilers, test runners and agents already emit, so nothing has to
+change on the other side. Paths resolve against the containing file, the project root, the
+content roots, and finally a unique file name anywhere in the project. **Copy Location Link**
+puts a token for the caret on the clipboard, plain or as a Markdown link, ready to paste back
+to an agent.
+
+### `open` in the IDE terminal
+
+`open src/Foo.php:42` opens that file in the window the terminal belongs to, caret on line 42,
+instead of handing it to the OS. Several paths open several files; a file belonging to another
+open project lands in that project's window; a directory opens or focuses it. Everything the
+IDE does not claim — flags, URLs, missing paths, binaries — reaches the real `open` untouched.
+The shim shadows `open` inside IDE terminals only; every other shell on the machine is
+unaffected.
+
+### AI commit messages
+
+A subject and body streamed into the commit message field from the Anthropic API, any
+OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, OpenRouter, Groq), or the local `claude`
+CLI, which needs no API key at all. No SDK and no bundled jars — just the platform's own HTTP
+client. Undo removes the whole generation in one step, text already in the field is treated as
+a hint, and every prompt is editable.
+
+### A shorter New Scratch File popup
+
+Only the file types on your allow-list.
+
+---
+
+Every feature has its own on/off switch under **Settings → Tools → Agenstorm**, and the ones
+that need the PHP, Markdown, Git or Terminal plugin switch themselves off when it is missing —
+so the plugin is at home in any IntelliJ-based IDE of the same version.
+
+Free and open source, MIT: https://github.com/pronskiy/agenstorm
 <!-- Plugin description end -->
 
 `SPEC.md` is the plan and the task list; `CHANGELOG.md` records what each version shipped.
