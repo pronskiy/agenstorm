@@ -3,7 +3,9 @@ package com.pronskiy.agenstorm.markdown
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
@@ -23,6 +25,9 @@ import com.intellij.psi.PsiManager
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.AgenstormSettingsListener
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.intellij.plugins.markdown.lang.MarkdownFileType
 import java.util.concurrent.ConcurrentHashMap
 
@@ -85,8 +90,26 @@ class LiveMarkupService(private val project: Project, private val scope: Corouti
         val before = file.getUserData(ACTIVE_EDITORS) ?: 0
         val after = (before + delta).coerceAtLeast(0)
         file.putUserData(ACTIVE_EDITORS, after.takeIf { it > 0 })
-        if ((before > 0) != (after > 0) && !project.isDisposed) {
-            PsiManager.getInstance(project).findFile(file)?.let { DaemonCodeAnalyzer.getInstance(project).restart(it, "Agenstorm live markup state changed") }
+        if ((before > 0) != (after > 0) && !project.isDisposed) restartDaemonFor(file)
+    }
+
+    /**
+     * The daemon nudge needs a `PsiFile`, and the callers do not have a read action: `editorCreated` and
+     * `editorReleased` arrive on the EDT straight from `EditorFactoryImpl`, which holds none. Looking the file up
+     * inline logged one SEVERE per editor ("Read access is allowed from inside read-action only", the plugin named
+     * as the one to blame), so the lookup goes to the scope inside a read action and only the restart returns to
+     * the EDT. The restart itself needs no read access.
+     */
+    private fun restartDaemonFor(file: VirtualFile) {
+        scope.launch {
+            val psiFile = readAction {
+                if (project.isDisposed || !file.isValid) null else PsiManager.getInstance(project).findFile(file)
+            } ?: return@launch
+            withContext(Dispatchers.EDT) {
+                if (!project.isDisposed) {
+                    DaemonCodeAnalyzer.getInstance(project).restart(psiFile, "Agenstorm live markup state changed")
+                }
+            }
         }
     }
 
