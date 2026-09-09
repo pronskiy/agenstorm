@@ -142,6 +142,7 @@ class LiveMarkupController(
                 if (!ownBatch && region.getUserData(KIND) != null) requestSync()
             }
         }, this)
+        FoldPlaceholderStyle.install(editor)
         job = scope.launch(CoroutineName("Agenstorm live markup")) {
             sync()
             resync.debounce(debounceMs).collectLatest { sync() }
@@ -254,6 +255,7 @@ class LiveMarkupController(
         job.cancel()
         removeAll()
         blockRenderer.dispose()
+        FoldPlaceholderStyle.uninstall(editor)
     }
 
     private class Snapshot(val ranges: List<MarkupRange>, val blocks: List<MarkdownBlock>, val stamp: Long)

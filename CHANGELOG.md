@@ -6,6 +6,7 @@
 
 ### Fixed
 
+- Markdown live markup no longer paints bullets and task boxes as folded code. The •, ☐ and ☑ are fold placeholders, and the editor paints every collapsed placeholder with the colour scheme's folded-text attributes — in Catppuccin Mocha a background plus a `BOXED` border, which put each bullet in a little box. That value is per editor with no per-region hook, so live markup now overrides it for the editors it owns and the markers are painted with the editor's default text attributes. A genuinely folded heading or code fence in such an editor shows its `...` as plain text too
 - Project tabs share one window again. `ide.mac.os.wintabs.version2` is not only the look of the macOS window tabs: under the New UI it is what `JdkEx.getTabbingModeInvocator()` reads, so switching it off (as 1.0 did, to be rid of the extra tab row) meant no `NSWindowTabGroup` was ever formed and every tab was its own window. The key is now left on — and turned back on once for installs 1.0 disabled it in, with a balloon offering the restart it needs — while the platform's tab row is hidden per frame instead, which keeps the header at one line. Switching a tab no longer mirrors window bounds on macOS, since there is only one window to move
 
 ## [1.0.0] - 2026-09-07
