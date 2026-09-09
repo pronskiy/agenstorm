@@ -15,14 +15,14 @@ import org.intellij.plugins.markdown.lang.MarkdownTokenTypes
 
 /** What a hidden range stands for; the controller keys its fold regions by kind and range. */
 enum class MarkupKind {
-    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET, FENCE_OPEN, FENCE_CLOSE;
+    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET, FENCE_OPEN, FENCE_CLOSE, QUOTE_MARKER;
 
     val isCheckbox: Boolean get() = this == CHECKBOX_OFF || this == CHECKBOX_ON
 
     val isFence: Boolean get() = this == FENCE_OPEN || this == FENCE_CLOSE
 
     /** Block-level markers are revealed for their whole line; inline ones only for their element (Phase F3). */
-    val isBlock: Boolean get() = this == HEADING || this == BULLET || isCheckbox || isFence
+    val isBlock: Boolean get() = this == HEADING || this == BULLET || this == QUOTE_MARKER || isCheckbox || isFence
 }
 
 /**
@@ -31,8 +31,8 @@ enum class MarkupKind {
  */
 data class MarkupRange(val kind: MarkupKind, val range: TextRange, val placeholder: String, val span: TextRange)
 
-/** What a [MarkdownBlock] is; Phase H3 adds block quotes and thematic breaks. */
-enum class MarkdownBlockKind { CODE_FENCE }
+/** What a [MarkdownBlock] is; the rest of Phase H3 adds thematic breaks. */
+enum class MarkdownBlockKind { CODE_FENCE, BLOCK_QUOTE }
 
 /**
  * A block-level construct the renderer paints behind (Epic H): [span] is the whole element, [language] the
@@ -72,11 +72,24 @@ object MarkupRangeCollector {
     const val CHECKBOX_ON_PLACEHOLDER = "☑"
     const val BULLET_PLACEHOLDER = "•"
 
+    /** A `>` becomes one space, so hiding it — and revealing it again at the caret — never moves a column. */
+    const val QUOTE_MARKER_PLACEHOLDER = " "
+
     /** The optional parts (settings of Phase F2 and H2); [fromSettings] reads the current values. */
-    data class Options(val checkboxes: Boolean = true, val bullets: Boolean = true, val codeBlocks: Boolean = true) {
+    data class Options(
+        val checkboxes: Boolean = true,
+        val bullets: Boolean = true,
+        val codeBlocks: Boolean = true,
+        val blockQuotes: Boolean = true,
+    ) {
         companion object {
             fun fromSettings(): Options = AgenstormSettings.getInstance().state.let {
-                Options(checkboxes = it.liveMarkupCheckboxes, bullets = it.liveMarkupBullets, codeBlocks = it.liveMarkupCodeBlocks)
+                Options(
+                    checkboxes = it.liveMarkupCheckboxes,
+                    bullets = it.liveMarkupBullets,
+                    codeBlocks = it.liveMarkupCodeBlocks,
+                    blockQuotes = it.liveMarkupBlockQuotes,
+                )
             }
         }
     }
@@ -101,6 +114,8 @@ object MarkupRangeCollector {
                     return
                 }
                 when (type) {
+                    // Outermost only: one card per quote, however deeply the inner ones nest.
+                    MarkdownElementTypes.BLOCK_QUOTE -> if (options.blockQuotes && !insideBlockQuote(element)) blockQuote(element, text, out, blocks)
                     MarkdownElementTypes.STRONG -> markers(element.node, MarkdownTokenTypes.EMPH, MarkupKind.STRONG, out)
                     MarkdownElementTypes.EMPH -> markers(element.node, MarkdownTokenTypes.EMPH, MarkupKind.EMPH, out)
                     MarkdownElementTypes.STRIKETHROUGH -> markers(element.node, MarkdownTokenTypes.TILDE, MarkupKind.STRIKE, out)
@@ -115,7 +130,7 @@ object MarkupRangeCollector {
         })
         out.sortBy { it.range.startOffset }
         blocks.sortBy { it.span.startOffset }
-        return Markup(out, blocks)
+        return Markup(dropSwallowedQuoteMarkers(out), blocks)
     }
 
     /**
@@ -140,6 +155,87 @@ object MarkupRangeCollector {
         // empty instead, which gives the card a footer row to match its header row.
         if (close != null) out += MarkupRange(MarkupKind.FENCE_CLOSE, close.textRange, "", span)
         blocks += MarkdownBlock(MarkdownBlockKind.CODE_FENCE, span, language?.text?.trim()?.takeIf { it.isNotEmpty() })
+    }
+
+    /**
+     * Drops the quote markers another range already covers, so the output stays disjoint.
+     *
+     * The markers are found by scanning lines while every other range comes from a token, and the two can
+     * meet: a closing ``` inside a quote is one token that starts at the head of its line, `>` included, so
+     * the fence range already hides that marker — and starts at the very same offset it does. Everything else
+     * is disjoint by construction.
+     */
+    private fun dropSwallowedQuoteMarkers(sorted: List<MarkupRange>): List<MarkupRange> {
+        val covered = sorted.filter { it.kind != MarkupKind.QUOTE_MARKER }
+        if (covered.isEmpty() || covered.size == sorted.size) return sorted
+        val out = ArrayList<MarkupRange>(sorted.size)
+        // Both lists run in start order and the covering ranges are disjoint, so one forward pointer is enough.
+        var next = 0
+        for (range in sorted) {
+            if (range.kind != MarkupKind.QUOTE_MARKER) {
+                out += range
+                continue
+            }
+            val start = range.range.startOffset
+            while (next < covered.size && covered[next].range.endOffset <= start) next++
+            if (next < covered.size && covered[next].range.startOffset <= start) continue
+            out += range
+        }
+        return out
+    }
+
+    /**
+     * A block quote: one card behind the whole element, and every `>` on its lines folded to a space.
+     *
+     * The markers are found in the text, not in the tree. The parser puts the first `>` of a quote in a
+     * `MarkdownTokenTypes.BLOCK_QUOTE` leaf but leaves the continuation markers wherever the line landed —
+     * inside the paragraph for a wrapped line, and as plain `WHITE_SPACE` before a list or a nested quote —
+     * so walking the lines is both simpler and complete. [heading] already reads the file text the same way.
+     *
+     * Called for the outermost quote only, and its scan covers the nested ones' markers too.
+     */
+    private fun blockQuote(element: PsiElement, text: CharSequence, out: MutableList<MarkupRange>, blocks: MutableList<MarkdownBlock>) {
+        val span = element.textRange
+        for (offset in quoteMarkerOffsets(text, span.startOffset, span.endOffset)) {
+            val range = TextRange(offset, offset + 1)
+            out += MarkupRange(MarkupKind.QUOTE_MARKER, range, QUOTE_MARKER_PLACEHOLDER, range)
+        }
+        blocks += MarkdownBlock(MarkdownBlockKind.BLOCK_QUOTE, span, language = null)
+    }
+
+    /**
+     * Offsets of every `>` in the quote prefix of each line of `[start, end)`. A prefix is the run of `>`
+     * characters at the head of the line, spaces allowed before and between them (`>`, `> `, `>>`, `> > `);
+     * the scan of a line stops at its first character that is neither. A lazy continuation line, which carries
+     * no `>` at all, contributes nothing.
+     */
+    internal fun quoteMarkerOffsets(text: CharSequence, start: Int, end: Int): List<Int> {
+        val out = ArrayList<Int>()
+        var lineStart = start
+        while (lineStart < end) {
+            var i = lineStart
+            while (i < end && text[i] != '\n') {
+                if (text[i] == '>') {
+                    out += i
+                } else if (text[i] != ' ' && text[i] != '\t') {
+                    break
+                }
+                i++
+            }
+            while (i < end && text[i] != '\n') i++
+            lineStart = i + 1
+        }
+        return out
+    }
+
+    /** True when [element] sits inside another block quote, so only the outermost one draws a card. */
+    private fun insideBlockQuote(element: PsiElement): Boolean {
+        var parent = element.parent
+        while (parent != null && parent !is PsiFile) {
+            if (PsiUtilCore.getElementType(parent) == MarkdownElementTypes.BLOCK_QUOTE) return true
+            parent = parent.parent
+        }
+        return false
     }
 
     /** Leading and trailing runs of [marker] tokens among the node's direct children; both must exist and leave content between. */

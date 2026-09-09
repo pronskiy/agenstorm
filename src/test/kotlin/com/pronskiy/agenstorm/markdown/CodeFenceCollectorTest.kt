@@ -14,8 +14,8 @@ class CodeFenceCollectorTest : BasePlatformTestCase() {
 
     fun testFenceLinesAreHiddenAndBodiesAreUntouched() {
         val markup = collectFixture()
-        // A list of lines, not a raw string: two of the header rows keep a prefix ("  " and "> ") that a
-        // trimIndent literal would hide.
+        // A list of lines, not a raw string: two of the header rows keep a prefix ("  " and, since H3 folds
+        // a quote's `>` to a space, "  ") that a trimIndent literal would hide.
         val expected = listOf(
             "",                             // ```php  -> the card's header row, its EOL kept
             "echo **not** markup;",
@@ -38,8 +38,8 @@ class CodeFenceCollectorTest : BasePlatformTestCase() {
             "  indented in a list",
             "",                             // the closing token carries the line's indent, so the row is empty
             "",
-            "> ",                           // ```yaml inside the quote keeps the quote marker
-            "> quoted: fence",
+            "  ",                           // ```yaml inside the quote; H3 folded the `>` to a space
+            "  quoted: fence",
             "",                             // and its `> ` likewise
             "",
             "",                             // ```php, never closed
@@ -52,19 +52,20 @@ class CodeFenceCollectorTest : BasePlatformTestCase() {
     fun testEveryFenceBecomesOneBlockWithItsInfoString() {
         val markup = collectFixture()
 
+        val fences = markup.blocks.filter { it.kind == MarkdownBlockKind.CODE_FENCE }
+
         assertEquals(
             listOf("php", null, "mystery-lang", "js", "sh", "yaml", "php"),
-            markup.blocks.map { it.language },
+            fences.map { it.language },
         )
-        assertTrue(markup.blocks.all { it.kind == MarkdownBlockKind.CODE_FENCE })
         val text = myFixture.file.text
-        assertTrue(markup.blocks.first().span.substring(text).startsWith("```php"))
-        assertTrue(markup.blocks.first().span.substring(text).endsWith("```"))
+        assertTrue(fences.first().span.substring(text).startsWith("```php"))
+        assertTrue(fences.first().span.substring(text).endsWith("```"))
     }
 
     fun testAnUnterminatedFenceEmitsOnlyItsOpener() {
         val markup = collectFixture()
-        val last = markup.blocks.last()
+        val last = markup.blocks.last { it.kind == MarkdownBlockKind.CODE_FENCE }
         val inLast = markup.ranges.filter { it.span == last.span }
 
         assertEquals(listOf(MarkupKind.FENCE_OPEN), inLast.map { it.kind })
@@ -97,7 +98,7 @@ class CodeFenceCollectorTest : BasePlatformTestCase() {
         val markup = MarkupRangeCollector.collectMarkup(myFixture.file, MarkupRangeCollector.Options(codeBlocks = false))
 
         assertEmpty(markup.ranges.filter { it.kind.isFence })
-        assertEmpty(markup.blocks)
+        assertEmpty(markup.blocks.filter { it.kind == MarkdownBlockKind.CODE_FENCE })
     }
 
     fun testTheBodyOfAFenceIsNeverCollected() {

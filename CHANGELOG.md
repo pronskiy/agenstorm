@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Block quotes render in Markdown live markup: every `>` is folded to a single space, so no column moves and the markers come back at the caret without the line shifting, and the quote gets a full-width card with an accent bar down the column its markers left behind. Nesting reads as indent, one card and one bar per quote. New option under Tools → Agenstorm → Markdown live markup
+
 ### Fixed
 
 - Markdown live markup no longer paints bullets and task boxes as folded code. The •, ☐ and ☑ are fold placeholders, and the editor paints every collapsed placeholder with the colour scheme's folded-text attributes — in Catppuccin Mocha a background plus a `BOXED` border, which put each bullet in a little box. That value is per editor with no per-region hook, so live markup now overrides it for the editors it owns and the markers are painted with the editor's default text attributes. A genuinely folded heading or code fence in such an editor shows its `...` as plain text too

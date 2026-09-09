@@ -126,6 +126,12 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .onApply { AgenstormSettingsListener.fire() }
                     .applyToComponent { name = "markdown.codeBlocks" }
             }
+            row {
+                checkBox(AgenstormBundle.message("settings.markdown.blockQuotes"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.liveMarkupBlockQuotes }, { AgenstormSettings.getInstance().state.liveMarkupBlockQuotes = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "markdown.blockQuotes" }
+            }
             row(AgenstormBundle.message("settings.markdown.revealScope")) {
                 comboBox(REVEAL_SCOPES)
                     .bindItem(

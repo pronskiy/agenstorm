@@ -31,7 +31,7 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
 
             <div>**html**</div>
 
-            > quote q
+              quote q
 
             | a | b |
             |---|---|
@@ -67,12 +67,13 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         assertEquals(MarkupKind.entries.toSet(), byKind.keys)
     }
 
-    fun testPlaceholdersAreEmptyExceptForCheckboxes() {
+    fun testPlaceholdersAreEmptyExceptForTheGlyphsAndTheQuoteSpace() {
         for (range in collectFixture()) {
             val expected = when (range.kind) {
                 MarkupKind.CHECKBOX_OFF -> "☐"
                 MarkupKind.CHECKBOX_ON -> "☑"
                 MarkupKind.BULLET -> "•"
+                MarkupKind.QUOTE_MARKER -> " "
                 else -> ""
             }
             assertEquals(range.toString(), expected, range.placeholder)
