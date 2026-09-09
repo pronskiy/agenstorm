@@ -1,9 +1,12 @@
 package com.pronskiy.agenstorm.tabs.git
 
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.StatusBarWidgetFactory
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.intellij.openapi.wm.CustomStatusBarWidget
+import git4idea.ui.branch.GitBranchWidget
 
 /** Step E3.2: the factory is registered, needs Git repositories and the feature, and the text rules. */
 class BranchStatusBarWidgetTest : BasePlatformTestCase() {
@@ -71,9 +74,28 @@ class BranchStatusBarWidgetTest : BasePlatformTestCase() {
 
     fun testWidgetWithoutRepositoriesHidesItsComponent() {
         val widget = BranchStatusBarWidget(project)
+        Disposer.register(testRootDisposable, widget)
         assertNull(widget.repository())
         widget.refresh()
         assertFalse(widget.component.isVisible)
         assertEquals(BranchStatusBarWidgetFactory.ID, widget.ID())
+    }
+
+    /**
+     * The widget is the Git plugin's own, so the branches popup and the branch icon come from public
+     * `protected` members instead of the internal popup class. Its id stays ours, and so does a copy of it —
+     * the platform makes one per frame, and the stock widget under our id would be a different thing.
+     */
+    fun testWidgetIsTheGitOneButKeepsOurIdentity() {
+        val widget = BranchStatusBarWidget(project)
+        Disposer.register(testRootDisposable, widget)
+
+        assertEquals(GitBranchWidget::class.java, BranchStatusBarWidget::class.java.superclass)
+        assertTrue(CustomStatusBarWidget::class.java.isInstance(widget))
+        assertEquals(BranchStatusBarWidgetFactory.ID, widget.ID())
+
+        val copy = widget.copy()
+        Disposer.register(testRootDisposable, copy as BranchStatusBarWidget)
+        assertEquals(BranchStatusBarWidgetFactory.ID, copy.ID())
     }
 }

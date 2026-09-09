@@ -1,15 +1,8 @@
 package com.pronskiy.agenstorm.tabs.git
 
 import com.intellij.icons.AllIcons
-import com.intellij.ide.DataManager
 import com.intellij.ide.ui.UISettingsListener
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.ActionPlaces
-import com.intellij.openapi.actionSystem.ActionUiKind
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.ex.ActionUtil
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
@@ -27,7 +20,7 @@ import git4idea.branch.GitBranchUtil
 import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryChangeListener
 import git4idea.repo.GitRepositoryManager
-import git4idea.ui.branch.popup.GitBranchesTreePopupOnBackend
+import git4idea.ui.branch.GitBranchWidget
 import com.intellij.openapi.application.ModalityState
 import java.awt.BorderLayout
 import java.awt.Container
@@ -47,10 +40,14 @@ import javax.swing.SwingUtilities
  * bookkeeping never touches the visible part); the visible [label] is placed by [BranchWidgetPlacement] into the
  * status bar's left panel, or into [host] where that is impossible. Refreshes on repository changes and editor
  * switches; a click opens the branches popup.
+ *
+ * It extends the Git plugin's own status-bar widget, which is what the branches popup and the branch icon with
+ * its incoming/outgoing arrows come from — both are `protected` members meant for subclasses, where the popup's
+ * own class is `@ApiStatus.Internal`. `CustomStatusBarWidget` wins over the inherited presentation: the status
+ * bar wraps a widget that implements it around [getComponent], which is how [label] can leave the widget row.
  */
-class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidget {
+class BranchStatusBarWidget(project: Project) : GitBranchWidget(project), CustomStatusBarWidget {
 
-    private var statusBar: StatusBar? = null
     private var placement: BranchWidgetPlacement.Attachment? = null
     private val host = JPanel(BorderLayout()).apply {
         isOpaque = false
@@ -62,7 +59,7 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
-                if (e.button == MouseEvent.BUTTON1) showPopup(e)
+                if (e.button == MouseEvent.BUTTON1) showPopup()
             }
         })
         // Pixel alignment with the tool window above: pad the icon out to the tool window stripe's right edge,
@@ -78,7 +75,8 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
     override fun getComponent(): JComponent = host
 
     override fun install(statusBar: StatusBar) {
-        this.statusBar = statusBar
+        // The superclass keeps its own repository/branch state up to date; that is what feeds the popup.
+        super<GitBranchWidget>.install(statusBar)
         val connection = project.messageBus.connect(this)
         connection.subscribe(GitRepository.GIT_REPO_CHANGE, GitRepositoryChangeListener { refresh() })
         connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
@@ -94,8 +92,11 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
     override fun dispose() {
         placement?.let(BranchWidgetPlacement::detach)
         placement = null
-        statusBar = null
+        super<GitBranchWidget>.dispose()
     }
+
+    /** Every frame gets its own widget; without this the platform would copy the stock Git one under our id. */
+    override fun copy(): StatusBarWidget = BranchStatusBarWidget(project)
 
     private fun place() {
         ApplicationManager.getApplication().invokeLater({
@@ -118,6 +119,7 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         UIUtil.invokeLaterIfNeeded {
             if (project.isDisposed) return@invokeLaterIfNeeded
             val repository = repository()
+            label.icon = repository?.let { getIcon(it) } ?: AllIcons.Vcs.Branch
             label.text = textFor(repository?.currentBranchName, repository?.currentRevision)
             label.toolTipText = repository?.root?.presentableUrl?.let { AgenstormBundle.message("tabs.branch.tooltip", it) }
             label.isVisible = repository != null
@@ -142,8 +144,6 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
     }
 
     companion object {
-        private val LOG = logger<BranchStatusBarWidget>()
-        const val BRANCHES_ACTION = "Git.Branches"
         /** Width of the new UI's tool window stripe, used until the real one has been measured. */
         const val DEFAULT_STRIPE_WIDTH = 40
         private val RIGHT_PADDING = JBUI.scale(8)
@@ -171,21 +171,10 @@ class BranchStatusBarWidget(private val project: Project) : CustomStatusBarWidge
             branch?.takeIf { it.isNotBlank() } ?: revision?.takeIf { it.isNotBlank() }?.take(8) ?: AgenstormBundle.message("tabs.branch.noBranch")
     }
 
-    private fun showPopup(event: MouseEvent) {
+    /** The Git plugin's own branches popup, anchored under the label instead of centred in the window. */
+    private fun showPopup() {
         val repository = repository() ?: return
-        val popup = try {
-            GitBranchesTreePopupOnBackend.create(project, repository)
-        } catch (e: LinkageError) {
-            LOG.warn("Branches popup class unavailable; falling back to the Git.Branches action", e)
-            null
-        }
-        if (popup != null) {
-            popup.showUnderneathOf(label)
-            return
-        }
-        val action = ActionManager.getInstance().getAction(BRANCHES_ACTION) ?: return
-        val actionEvent = AnActionEvent.createEvent(action, DataManager.getInstance().getDataContext(label), null, ActionPlaces.STATUS_BAR_PLACE, ActionUiKind.NONE, event)
-        ActionUtil.performAction(action, actionEvent)
+        getWidgetPopup(project, repository).showUnderneathOf(label)
     }
 }
 
