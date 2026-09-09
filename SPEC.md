@@ -28,7 +28,7 @@ Epics 0–F closed 2026-09-06, Phase F3 included. Roman added three more feature
 
 **2026-09-09 — Epic E reopened.** Roman: "every tab actually opens a new window, and that should not be the case". Root cause: `NativeTabsRegistryGuard` set `ide.mac.os.wintabs.version2=false`, and under the New UI that key also gates `JdkEx.isTabbingModeAvailable()`, so no `NSWindowTabGroup` was formed and each project got its own window. Fixed per **decision 32**: the key is left on (and given back once to installs 1.0 disabled it in) while the platform's tab row is hidden per frame (**E1.6**, `tabs/NativeTabStrip.kt`). `./gradlew check` green, and Roman's 2026-09-09 sandbox run confirmed the **One window** guardrail ("seems like it worked"; the log went from `TabbingMode: disabled` to `on`). Still owed before 1.0.1 ships the fix: his look at the two guardrails the change reopened but the run did not explicitly cover — **Single row** (header still one line, no leftover band) and **Recovery** (feature off brings the platform's row back, no restart).
 
-**2026-09-09 — Epic F Phase F4.** Roman: the • bullets were drawn in a box. They are fold placeholders, so the scheme's folded-text styling (his Catppuccin Mocha: a background plus `BOXED`) landed on them. **F4.1** overrides that key for the editors live markup owns (**decision 33**); `./gradlew check` green. Its three guardrails need the same `runIde` look as Epic E's.
+**2026-09-09 — Epic E and Phase F4 closed.** Roman signed both off in the sandbox ("all good"): the projects share one window with a single header row, the feature off brings the platform's row back, and bullets and checkboxes are painted as text while a real fold still reads as folded. 1.0.1 carries both fixes. **Next: Epic H Phase H3 — block quotes.**
 
 Carried over, all Roman's: the week-long **Daily-driver test** guardrails of Epic D (which also owes a live run of the Anthropic and OpenAI-compatible backends with real keys) and Epic E, and Marketplace publishing.
 
@@ -601,10 +601,10 @@ Platform facts (verified against build 262):
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
 | One window | With 3 projects open, the projects share one window: one entry in Mission Control, one set of traffic lights, clicking a tab selects it in place and never raises a second window | ✅ | Roman, 2026-09-09 sandbox run: "seems like it worked". Sandbox state confirms the whole chain ran: the `wintabs` override is gone from `ide.general.xml` (key back to its default `true`), `nativeTabsDisabledByAgenstorm` is gone from `agenstorm.xml` (one-time restore done), and the 11:56 session logs `=== TabbingMode: on ===` per frame where it used to log `disabled (true,true,true,true false)`. No ERROR/SEVERE and no `com.pronskiy.agenstorm` frames in either of the day's sessions
-| Single row | Screenshot: with 3 projects open after restart, header is one row; the platform's tab row is gone | 🔄 | Roman, 2026-09-05 sandbox run ("all good, continue with E2"): native strip gone after restart, tabs in the toolbar row. To be re-checked after decision 32, which reaches the same look by hiding the row instead of disabling the window tabs
+| Single row | Screenshot: with 3 projects open after restart, header is one row; the platform's tab row is gone | ✅ | Roman, 2026-09-05 for the 1.0 behaviour; re-confirmed 2026-09-09 after decision 32 ("all good"), which reaches the same single row by hiding the row rather than disabling the window tabs
 | Consistency | Opening/closing a project updates the tab strip in every open frame within one EDT cycle; no stale tabs | ✅ | Roman, 2026-09-05 |
 | Switching | Click switches focus < 100 ms; bounds mirrored when both windows are normal; nothing weird in fullscreen (documented as unsupported if needed) | ✅ | Roman, 2026-09-05. Feedback fixed the same day: the × changed the tab width on hover; it now keeps its slot (always on the active tab, on hover elsewhere) |
-| Recovery | Turning the feature off restores the stock project widget and brings the platform's own tab row back (no restart needed — the window tabs were never off) | 🔄 | Roman, 2026-09-05, against the 1.0 behaviour. Re-check after decision 32: the restart is now only owed to installs whose registry key 1.0 had set to `false`
+| Recovery | Turning the feature off restores the stock project widget and brings the platform's own tab row back (no restart needed — the window tabs were never off) | ✅ | Roman, 2026-09-05 for the 1.0 behaviour; re-confirmed 2026-09-09 after decision 32 ("all good"). The restart is now owed only to installs whose registry key 1.0 had set to `false`
 | Log clean | No exceptions in `idea.log` while opening 4 projects, closing 2, reopening 1 | ✅ | 2026-09-05 sandbox sessions 21:32–21:57: nothing thrown by `com.pronskiy.agenstorm`. One SEVERE blamed on the plugin only because Restart Now was the last action: `LspIntentionActionService.dispose` threw a CancellationException during the platform's own shutdown | Re-checked 2026-09-09 after decision 32: two sessions (11:55, 11:56), no ERROR/SEVERE at all and nothing thrown by the plugin
 
 #### Phase E2 — Overflow, order, keyboard
@@ -838,9 +838,9 @@ Platform facts (verified against build 262):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Plain markers | In Catppuccin Mocha, bullets and checkboxes show no box and no block behind them, in the list text's own colour | 🔲 | Needs a `runIde` look |
-| Real folds | Collapsing a heading or a code fence in the same editor still reads as folded — accepted that its `...` loses the background and border (decision 33) | 🔲 | Needs the same run |
-| Toggle | Live Markup off for one editor puts the scheme's own folded-text styling back on its `...` | 🔲 | Needs the same run |
+| Plain markers | In Catppuccin Mocha, bullets and checkboxes show no box and no block behind them, in the list text's own colour | ✅ | Roman, 2026-09-09 ("all good")
+| Real folds | Collapsing a heading or a code fence in the same editor still reads as folded — accepted that its `...` loses the background and border (decision 33) | ✅ | Roman, 2026-09-09 ("all good")
+| Toggle | Live Markup off for one editor puts the scheme's own folded-text styling back on its `...` | ✅ | Roman, 2026-09-09 ("all good")
 
 ### Epic G — `open path` in the terminal opens in this IDE  ·  1.0
 
