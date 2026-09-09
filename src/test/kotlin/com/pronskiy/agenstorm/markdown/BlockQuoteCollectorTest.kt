@@ -103,6 +103,47 @@ class BlockQuoteCollectorTest : BasePlatformTestCase() {
         assertEquals(setOf(quote.span), markers.map { it.span }.toSet())
     }
 
+    fun testAGithubAlertIsTreatedAsAQuote() {
+        myFixture.configureByText("a.md", "> [!IMPORTANT]\n> The challenge is **live**.\n> - an item\n")
+        val markup = MarkupRangeCollector.collectMarkup(myFixture.file)
+
+        // The parser gives an alert its own element, but its lines carry the same `>` markers.
+        assertEquals(3, markup.ranges.count { it.kind == MarkupKind.QUOTE_MARKER })
+        val card = markup.blocks.single { it.kind == MarkdownBlockKind.BLOCK_QUOTE }
+        assertEquals(0, card.span.startOffset)
+        assertEquals(
+            listOf("  [!IMPORTANT]", "  The challenge is live.", "  \u2022 an item", ""),
+            render(myFixture.file.text, markup.ranges).lines(),
+        )
+    }
+
+    fun testAnAlertTitleIsLeftExactlyAsWritten() {
+        myFixture.configureByText("a.md", "> [!WARNING]\n> careful\n")
+        val markup = MarkupRangeCollector.collectMarkup(myFixture.file)
+        val title = myFixture.file.text.indexOf("[!WARNING]")
+
+        assertEmpty(
+            "the plugin styles the title and puts its icon in the gutter; we must not fold it",
+            markup.ranges.filter { it.range.startOffset >= title && it.range.endOffset <= title + "[!WARNING]".length },
+        )
+    }
+
+    fun testAnAlertMarkersAlsoShareOneSpan() {
+        myFixture.configureByText("a.md", "> [!NOTE]\n> one\n> two\n")
+        val markup = MarkupRangeCollector.collectMarkup(myFixture.file)
+        val markers = markup.ranges.filter { it.kind == MarkupKind.QUOTE_MARKER }
+
+        assertEquals(3, markers.size)
+        assertEquals(1, markers.map { it.span }.toSet().size)
+    }
+
+    fun testAnAlertInsideAQuoteDoesNotAddASecondCard() {
+        myFixture.configureByText("a.md", "> outer\n>\n> > [!TIP]\n> > nested\n")
+        val markup = MarkupRangeCollector.collectMarkup(myFixture.file)
+
+        assertEquals(1, markup.blocks.count { it.kind == MarkdownBlockKind.BLOCK_QUOTE })
+    }
+
     fun testAMarkerAnotherRangeAlreadyHidesIsDropped() {
         val markup = collectFixture()
         val sorted = markup.ranges.sortedBy { it.range.startOffset }

@@ -63,6 +63,13 @@ object MarkupRangeCollector {
         MarkdownElementTypes.LINK_DESTINATION,
         MarkdownElementTypes.LINK_TITLE,
     )
+    /**
+     * The elements whose lines carry `>` markers. A GitHub alert (`> [!IMPORTANT]`) is a block quote with a
+     * title line, but the parser gives it an element of its own, so it has to be named here too — its `[!…]`
+     * title is left exactly as written, and the Markdown plugin styles it and puts its icon in the gutter.
+     */
+    private val QUOTE_LIKE: TokenSet = TokenSet.create(MarkdownElementTypes.BLOCK_QUOTE, MarkdownElementTypes.ALERT)
+
     private val HEADINGS: TokenSet = TokenSet.create(
         MarkdownElementTypes.ATX_1, MarkdownElementTypes.ATX_2, MarkdownElementTypes.ATX_3,
         MarkdownElementTypes.ATX_4, MarkdownElementTypes.ATX_5, MarkdownElementTypes.ATX_6,
@@ -115,7 +122,7 @@ object MarkupRangeCollector {
                 }
                 when (type) {
                     // Outermost only: one card per quote, however deeply the inner ones nest.
-                    MarkdownElementTypes.BLOCK_QUOTE -> if (options.blockQuotes && !insideBlockQuote(element)) blockQuote(element, text, out, blocks)
+                    in QUOTE_LIKE -> if (options.blockQuotes && !insideQuoteLike(element)) blockQuote(element, text, out, blocks)
                     MarkdownElementTypes.STRONG -> markers(element.node, MarkdownTokenTypes.EMPH, MarkupKind.STRONG, out)
                     MarkdownElementTypes.EMPH -> markers(element.node, MarkdownTokenTypes.EMPH, MarkupKind.EMPH, out)
                     MarkdownElementTypes.STRIKETHROUGH -> markers(element.node, MarkdownTokenTypes.TILDE, MarkupKind.STRIKE, out)
@@ -185,7 +192,8 @@ object MarkupRangeCollector {
     }
 
     /**
-     * A block quote: one card behind the whole element, and every `>` on its lines folded to a space.
+     * A block quote or a GitHub alert: one card behind the whole element, every `>` on its lines folded to a
+     * space, and the alert's `[!NOTE]`-style title left alone.
      *
      * The markers are found in the text, not in the tree. The parser puts the first `>` of a quote in a
      * `MarkdownTokenTypes.BLOCK_QUOTE` leaf but leaves the continuation markers wherever the line landed —
@@ -229,11 +237,11 @@ object MarkupRangeCollector {
         return out
     }
 
-    /** True when [element] sits inside another block quote, so only the outermost one draws a card. */
-    private fun insideBlockQuote(element: PsiElement): Boolean {
+    /** True when [element] sits inside another quote or alert, so only the outermost one draws a card. */
+    private fun insideQuoteLike(element: PsiElement): Boolean {
         var parent = element.parent
         while (parent != null && parent !is PsiFile) {
-            if (PsiUtilCore.getElementType(parent) == MarkdownElementTypes.BLOCK_QUOTE) return true
+            if (PsiUtilCore.getElementType(parent) in QUOTE_LIKE) return true
             parent = parent.parent
         }
         return false
