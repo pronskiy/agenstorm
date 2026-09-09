@@ -4,10 +4,12 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-09
+
 ### Added
 
-- Block quotes and GitHub alerts (`> [!NOTE]`, `> [!IMPORTANT]`, …) render in Markdown live markup: every `>` is folded to a single space, so no column moves and the markers come back at the caret without the line shifting, and the quote gets a full-width card with an accent bar down the column its markers left behind. Nesting reads as indent, one card and one bar per quote. A caret anywhere in the quote brings back every `>` of the block at once, and the bar steps aside while they show. An alert's `[!…]` title is left as written, so the Markdown plugin keeps styling it and showing its gutter icon.
-- Thematic breaks (`---`, `***`, `___`, `- - -`) render as a full-width rule across the row their characters left empty, with no card behind it. The caret on that line brings the characters back and the rule steps aside. New option alongside the others New option under Tools → Agenstorm → Markdown live markup
+- Block quotes and GitHub alerts (`> [!NOTE]`, `> [!IMPORTANT]`, …) render in Markdown live markup: every `>` is folded to a single space, so no column moves and the markers come back at the caret without the line shifting, and the quote gets a full-width card with an accent bar down the column its markers left behind. Nesting reads as indent, one card and one bar per quote. A caret anywhere in the quote brings back every `>` of the block at once, and the bar steps aside while they show. An alert's `[!…]` title is left as written, so the Markdown plugin keeps styling it and showing its gutter icon. New option under Tools → Agenstorm → Markdown live markup
+- Thematic breaks (`---`, `***`, `___`, `- - -`) render as a full-width rule across the row their characters left empty, with no card behind it. The caret on that line brings the characters back and the rule steps aside. New option alongside the others
 
 ### Fixed
 
@@ -29,5 +31,6 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.0.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/pronskiy/agenstorm/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/pronskiy/agenstorm/commits/1.0.0
