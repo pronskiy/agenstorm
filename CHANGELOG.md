@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Removed
+
+- The New Scratch File popup allow-list, with its settings group. It was the only feature built on an internal platform extension point (`scratchLanguageFilter`), and the platform has no public replacement, so the popup is the IDE's own again
+
 ## [1.1.0] - 2026-09-09
 
 ### Added

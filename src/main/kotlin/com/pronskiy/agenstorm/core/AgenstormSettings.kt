@@ -20,8 +20,6 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
     data class State(
         /** Epic A: clickable `path:line[:col]` locations in Markdown, comments and PHP strings. */
         var linksEnabled: Boolean = true,
-        /** Epic B: New Scratch File popup limited to an allow-list of file types. */
-        var scratchFilterEnabled: Boolean = true,
         /** Epic C: window title shows the project only, never the current file. */
         var hideFileNameInTitle: Boolean = true,
         /** Epic D: AI commit message generation in the commit toolbar. */
@@ -32,8 +30,6 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupEnabled: Boolean = true,
         /** Epic G: `open path:line:col` in an IDE terminal opens the file in this window. */
         var terminalOpenEnabled: Boolean = true,
-        /** Epic B: internal `FileType.name`s that stay in the New Scratch File popup when the filter is on. */
-        var scratchAllowedFileTypes: MutableList<String> = mutableListOf("PLAIN_TEXT", "Markdown", "PHP", "JavaScript"),
         /** Epic D: backend id (`anthropic`, `openai`, `claude-cli`, `fake`); an unknown id disables the action. */
         var commitBackendId: String = "anthropic",
         /** Epic D: model id passed to the backend; empty = the backend's default (required for `openai`). */

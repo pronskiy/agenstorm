@@ -4,7 +4,6 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.SkipDefaultsSerializationFilter
 import com.intellij.util.xmlb.XmlSerializer
@@ -35,7 +34,6 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
     fun testEveryFeatureIsEnabledByDefault() {
         val state = AgenstormSettings.State()
         assertTrue(state.linksEnabled)
-        assertTrue(state.scratchFilterEnabled)
         assertTrue(state.hideFileNameInTitle)
         assertTrue(state.commitEnabled)
         assertTrue(state.projectTabsEnabled)
@@ -70,52 +68,19 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
         assertEquals(state, restored)
     }
 
-    fun testScratchAllowListRoundTripsThroughXml() {
-        val state = AgenstormSettings.State(scratchAllowedFileTypes = mutableListOf("JSON", "PHP"))
-
-        val element = XmlSerializer.serialize(state, SkipDefaultsSerializationFilter())
-        val option = element.getChildren("option").single()
-        assertEquals("scratchAllowedFileTypes", option.getAttributeValue("name"))
-        assertEquals(listOf("JSON", "PHP"), option.getChild("list").getChildren("option").map { it.getAttributeValue("value") })
-
-        assertEquals(state, XmlSerializer.deserialize(element, AgenstormSettings.State::class.java))
-    }
-
-    fun testScratchAllowListIsEditedAsOneNamePerLine() {
-        val configurable = AgenstormConfigurable()
-        try {
-            val panel = configurable.createComponent()!!
-            val area = UIUtil.findComponentsOfType(panel, JBTextArea::class.java).single { it.name == "scratch.allowList" }
-            assertEquals("PLAIN_TEXT\nMarkdown\nPHP\nJavaScript", area.text)
-            assertFalse(configurable.isModified)
-
-            area.text = "JSON\n\n  PHP \nJSON\n"
-            assertTrue(configurable.isModified)
-            configurable.apply()
-            assertEquals(listOf("JSON", "PHP"), settings.state.scratchAllowedFileTypes)
-            assertFalse(configurable.isModified)
-
-            settings.loadState(AgenstormSettings.State())
-            configurable.reset()
-            assertEquals("PLAIN_TEXT\nMarkdown\nPHP\nJavaScript", area.text)
-        } finally {
-            configurable.disposeUIResources()
-        }
-    }
-
     fun testConfigurableShowsOneTogglePerFeatureAndAppliesChanges() {
         val configurable = AgenstormConfigurable()
         try {
             // createComponent() is what the Settings dialog calls; it keeps the panel that isModified/apply/reset operate on.
             val panel = configurable.createComponent()!!
             val featureTexts = listOf(
-                "settings.links.enabled", "settings.scratch.enabled", "settings.frame.hideFileName",
+                "settings.links.enabled", "settings.frame.hideFileName",
                 "settings.commit.enabled", "settings.tabs.enabled", "settings.markdown.liveMarkup.enabled",
                 "settings.terminal.open.enabled",
             ).map(AgenstormBundle::message)
             val checkBoxes = UIUtil.findComponentsOfType(panel, JBCheckBox::class.java).filter { it.text in featureTexts }
 
-            assertEquals(7, checkBoxes.size)
+            assertEquals(6, checkBoxes.size)
             assertTrue(checkBoxes.all { it.isSelected })
             assertFalse(configurable.isModified)
 
@@ -125,7 +90,7 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
 
             configurable.apply()
             assertFalse(settings.state.linksEnabled)
-            assertTrue(settings.state.scratchFilterEnabled)
+            assertTrue(settings.state.commitEnabled)
             assertFalse(configurable.isModified)
 
             settings.loadState(AgenstormSettings.State())

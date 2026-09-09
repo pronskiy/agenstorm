@@ -1,8 +1,0 @@
-<!-- Included unconditionally from plugin.xml. Isolated on purpose: scratchLanguageFilter is an
-     @ApiStatus.Internal extension point (platform build 262). If a future build drops it, the verifier
-     and the plugin loader point at this file, and only Epic B is affected. -->
-<idea-plugin>
-    <extensions defaultExtensionNs="com.intellij">
-        <scratchLanguageFilter implementation="com.pronskiy.agenstorm.scratch.AllowlistScratchFilter"/>
-    </extensions>
-</idea-plugin>
