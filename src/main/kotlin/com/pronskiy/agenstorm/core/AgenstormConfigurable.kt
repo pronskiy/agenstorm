@@ -18,6 +18,7 @@ import com.pronskiy.agenstorm.frame.FrameTitleRefresher
 import com.pronskiy.agenstorm.tabs.NativeTabStrip
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
+import com.pronskiy.agenstorm.tabs.ProjectTabsWidgetInstaller
 import com.pronskiy.agenstorm.terminal.OpenRequestServer
 import kotlin.reflect.KMutableProperty1
 
@@ -175,6 +176,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
      * callback only runs when that cell changed, so the icon and width rows carry their own refresh.)
      */
     private fun applyTabSettings() {
+        ProjectTabsWidgetInstaller.sync()
         NativeTabsRegistryGuard.syncFromSettings()
         NativeTabStrip.applyToAllProjects()
         ProjectTabsModel.getInstance().refresh()

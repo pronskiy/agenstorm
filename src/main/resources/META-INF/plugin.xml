@@ -57,12 +57,13 @@
     <applicationListeners>
         <!-- tabs: closed projects leave the tab strip. -->
         <listener class="com.pronskiy.agenstorm.tabs.TabsProjectCloseListener" topic="com.intellij.openapi.project.ProjectCloseListener"/>
+        <!-- tabs: the main-toolbar project slot becomes a strip of project tabs, taken before the first toolbar
+             is built and given back when the feature is switched off or the plugin is unloaded. -->
+        <listener class="com.pronskiy.agenstorm.tabs.ProjectTabsWidgetLifecycleListener" topic="com.intellij.ide.AppLifecycleListener"/>
+        <listener class="com.pronskiy.agenstorm.tabs.ProjectTabsWidgetUnloadListener" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
     </applicationListeners>
 
     <actions resource-bundle="messages.AgenstormBundle">
-        <!-- tabs: the main-toolbar project widget becomes a strip of project tabs; feature off = the stock widget
-             (the class extends the internal ProjectToolbarWidgetAction, accepted by SPEC.md §2; E1.5 has the fallback). -->
-        <action id="main.toolbar.Project" class="com.pronskiy.agenstorm.tabs.ProjectTabsWidgetAction" overrides="true"/>
         <!-- tabs: keyboard navigation between project windows in tab order; no default shortcuts (README suggests some). -->
         <action id="Agenstorm.NextProjectTab" class="com.pronskiy.agenstorm.tabs.NextProjectTabAction"/>
         <action id="Agenstorm.PrevProjectTab" class="com.pronskiy.agenstorm.tabs.PrevProjectTabAction"/>

@@ -15,6 +15,9 @@ import kotlinx.coroutines.withContext
 class TabsStartupActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
+        // Normally the app lifecycle listener has the toolbar slot already; this covers a plugin installed
+        // into a running IDE, where there was no frame-created event to catch.
+        ProjectTabsWidgetInstaller.sync()
         NativeTabsRegistryGuard().sync(project)
         ProjectTabsModel.getInstance().projectOpened(project)
         withContext(Dispatchers.EDT) {
