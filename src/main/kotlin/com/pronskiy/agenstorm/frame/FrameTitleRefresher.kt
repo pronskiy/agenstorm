@@ -1,26 +1,18 @@
 package com.pronskiy.agenstorm.frame
 
-import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.project.ProjectManager
-import com.intellij.openapi.wm.WindowManager
-import com.intellij.openapi.wm.ex.IdeFrameEx
+import com.intellij.ide.ui.UISettings
 
 /** Applies a changed "hide file name" toggle to the frames that are already open. */
 object FrameTitleRefresher {
 
-    private val LOG = logger<FrameTitleRefresher>()
-
     /**
-     * Clears the file part of every open project frame's title; the next editor switch recomputes it through
-     * [ProjectOnlyFrameTitleBuilder]. Fails soft: a platform without this hook only logs a warning.
+     * Makes every open frame recompute its title, so the toggle takes effect without waiting for the next
+     * editor switch. A UI settings change is the public path into that: `FileEditorManagerImpl`'s
+     * `UISettingsListener` calls `EditorsSplitters.updateFrameTitle()`, which asks the `FrameTitleBuilder`
+     * service — [ProjectOnlyFrameTitleBuilder] while the feature is on — for both parts of the title again.
+     * Turning the toggle off therefore brings the file name straight back, which clearing the file part could not.
      */
     fun refreshOpenFrames() {
-        for (project in ProjectManager.getInstance().openProjects) {
-            try {
-                (WindowManager.getInstance().getIdeFrame(project) as? IdeFrameEx)?.setFileTitle(null, null)
-            } catch (e: LinkageError) {
-                LOG.warn("Cannot refresh the frame title of ${project.name}", e)
-            }
-        }
+        UISettings.getInstance().fireUISettingsChanged()
     }
 }
