@@ -13,12 +13,19 @@ import com.pronskiy.agenstorm.core.AgenstormSettings
 import java.util.MissingResourceException
 
 /**
- * Step E1.1. Keeps the native macOS project tabs (registry `ide.mac.os.wintabs.version2`, restart required) in
- * step with the "project tabs" toggle. While the feature is on, the native strip is turned off so the toolbar
- * tabs are the only ones; when the user turns the feature off, the key is restored — but only if Agenstorm was
- * the one that changed it ([AgenstormSettings.State.nativeTabsDisabledByAgenstorm]), so a user who had disabled
- * native tabs themselves keeps that choice. Off macOS there is nothing to do. A platform without the key logs
- * a warning and leaves everything alone (the §2 fail-soft rule for internal hooks).
+ * Step E1.1. Keeps the macOS window tabs (registry `ide.mac.os.wintabs.version2`, restart required) **on**.
+ *
+ * That key does not merely style the tabs: under the New UI it is the switch `JdkEx.getTabbingModeInvocator()`
+ * reads, so turning it off makes `isTabbingModeAvailable()` false, `MacWinTabsHandlerV2.initFrame` never calls
+ * `JdkEx.setTabbingMode`, and no `NSWindowTabGroup` is formed — every project becomes its own window. Agenstorm
+ * 1.0 turned the key off to be rid of the tab row and paid exactly that price. The row is now hidden on its own
+ * ([NativeTabStrip]) and the key is left alone, so the projects share one window while the tabs live in the
+ * toolbar.
+ *
+ * All this class still does is undo 1.0: when [AgenstormSettings.State.nativeTabsDisabledByAgenstorm] says
+ * Agenstorm was the one that turned the key off, it is turned back on once and the user is offered a restart.
+ * A user who disabled the window tabs themselves keeps that choice — their toolbar strip then switches windows,
+ * the way it does on Windows and Linux, where the platform has no window merging at all.
  *
  * Runs from [TabsStartupActivity] for every opened project and from the settings page on apply.
  */
@@ -29,36 +36,26 @@ class NativeTabsRegistryGuard(
     private val notify: (Project?, String) -> Unit = ::showRestartNotification,
 ) {
 
-    enum class Change { NONE, NATIVE_TABS_DISABLED, NATIVE_TABS_RESTORED }
+    enum class Change { NONE, NATIVE_TABS_RESTORED }
 
-    /** Aligns the registry with the toggle and reports what changed; idempotent. */
+    /** Gives back the window tabs if Agenstorm ever took them away; idempotent. */
     fun sync(project: Project?): Change {
         if (!isMac) return Change.NONE
+        val state = settings()
+        if (!state.nativeTabsDisabledByAgenstorm) return Change.NONE
         val value = Registry.get(registryKey)
         val nativeTabsOn = try {
             value.asBoolean()
         } catch (e: MissingResourceException) {
-            LOG.warn("Registry key $registryKey is not defined in this IDE; native project tabs are left alone", e)
+            // Fail soft (§2): without the key we cannot restore anything, and the flag stays for an IDE that has it.
+            LOG.warn("Registry key $registryKey is not defined in this IDE; macOS window tabs are left alone", e)
             return Change.NONE
         }
-        val state = settings()
-        return when {
-            state.projectTabsEnabled -> {
-                if (!nativeTabsOn) return Change.NONE
-                value.setValue(false)
-                state.nativeTabsDisabledByAgenstorm = true
-                notify(project, AgenstormBundle.message("tabs.notification.nativeTabsOff"))
-                Change.NATIVE_TABS_DISABLED
-            }
-            state.nativeTabsDisabledByAgenstorm -> {
-                state.nativeTabsDisabledByAgenstorm = false
-                if (nativeTabsOn) return Change.NONE
-                value.setValue(true)
-                notify(project, AgenstormBundle.message("tabs.notification.nativeTabsRestored"))
-                Change.NATIVE_TABS_RESTORED
-            }
-            else -> Change.NONE
-        }
+        state.nativeTabsDisabledByAgenstorm = false
+        if (nativeTabsOn) return Change.NONE
+        value.setValue(true)
+        notify(project, AgenstormBundle.message("tabs.notification.nativeTabsRestored"))
+        return Change.NATIVE_TABS_RESTORED
     }
 
     companion object {

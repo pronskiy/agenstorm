@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Project tabs share one window again. `ide.mac.os.wintabs.version2` is not only the look of the macOS window tabs: under the New UI it is what `JdkEx.getTabbingModeInvocator()` reads, so switching it off (as 1.0 did, to be rid of the extra tab row) meant no `NSWindowTabGroup` was ever formed and every tab was its own window. The key is now left on — and turned back on once for installs 1.0 disabled it in, with a balloon offering the restart it needs — while the platform's tab row is hidden per frame instead, which keeps the header at one line. Switching a tab no longer mirrors window bounds on macOS, since there is only one window to move
+
 ## [1.0.0] - 2026-09-07
 
 ### Added

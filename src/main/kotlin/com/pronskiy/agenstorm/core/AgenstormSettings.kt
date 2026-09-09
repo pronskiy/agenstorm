@@ -53,9 +53,9 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         /** Epic D: prompt templates; empty = the built-in templates in `resources/prompts/`. */
         var commitSystemPrompt: String = "",
         var commitUserPrompt: String = "",
-        /** Epic E: set when Agenstorm turned the native macOS project tabs off, so turning the feature off restores them; a user's own registry choice is left alone. */
+        /** Epic E: left over from 1.0, which turned the macOS window tabs off; it now only tells the guard to turn them back on once. */
         var nativeTabsDisabledByAgenstorm: Boolean = false,
-        /** Epic E: switching tabs moves the target window onto the current one's bounds (skipped in full screen). */
+        /** Epic E: switching tabs moves the target window onto the current one's bounds (skipped in full screen, and on macOS, where the projects share one window). */
         var tabsMirrorWindowBounds: Boolean = true,
         /** Epic E: project icons on the tabs. */
         var tabsShowIcons: Boolean = true,

@@ -158,17 +158,20 @@ search for "Generate Commit Message").
 
 On macOS, open projects appear as tabs inside the main toolbar, in the slot where the project widget
 normally sits, so the window has one header row instead of two. Each tab shows the project icon and
-name only; the frame's own project is highlighted. Click a tab to switch to that project's window (the
-target window first moves onto the current window's bounds, unless one of them is in full screen),
+name only; the frame's own project is highlighted. Click a tab to switch to that project,
 middle-click or use the × to close it, and the "+" button opens the usual recent-projects popup with
 New Project, Open and Clone. Right-click a tab for Close, Close Others and Copy Path.
 
-The native macOS project tabs are switched off while this feature is on (a balloon offers to restart
-the IDE, which the change needs). Turning the feature off restores them after another restart, but
-only if Agenstorm was the one that switched them off. Tab order is remembered per project in
-`agenstorm-tabs.xml`; drag a tab to reorder. When the toolbar gets narrow the tabs shrink to icons, and
-when even those do not fit the first ones stay and a "…" button lists the rest. Off macOS the strip works
-the same; there are simply no native tabs to replace.
+The projects share **one window**. That is the platform's own macOS window tabs doing the work — Agenstorm
+leaves them on and hides only their separate row, so switching a tab does not raise a second window and the
+header stays a single line. (Agenstorm 1.0 switched those window tabs off, which is why every tab was its own
+window; installs left that way are put right on first start, and a balloon offers the restart the change needs.)
+Tab order is remembered per project in `agenstorm-tabs.xml`; drag a tab to reorder. When the toolbar gets
+narrow the tabs shrink to icons, and when even those do not fit the first ones stay and a "…" button lists
+the rest.
+
+Windows and Linux have no window merging to build on, so there the strip switches between windows instead;
+the "move the other window onto this one's position and size" option exists for exactly that case.
 
 With the tabs on, the Git branch moves out of the toolbar too: the VCS widget next to the tabs is hidden
 and the current branch shows bottom-left in the status bar, where the navigation bar (breadcrumbs) was.

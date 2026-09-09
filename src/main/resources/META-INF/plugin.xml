@@ -48,7 +48,8 @@
         <!-- commit: balloons for generation failures and hints. -->
         <notificationGroup id="Agenstorm" displayType="BALLOON" bundle="messages.AgenstormBundle" key="notification.group.agenstorm"/>
 
-        <!-- tabs: native macOS project tabs off while the toolbar tabs are on (registry, restart required); feeds the tabs model. -->
+        <!-- tabs: macOS window tabs stay on (they merge the projects into one window); their row is hidden so the header
+             keeps one line. Also gives the registry key back if Agenstorm 1.0 turned it off, and feeds the tabs model. -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.tabs.TabsStartupActivity"/>
 
         <!-- frame: window title without the file name. Service override allowed by SPEC.md §2; fails soft. -->

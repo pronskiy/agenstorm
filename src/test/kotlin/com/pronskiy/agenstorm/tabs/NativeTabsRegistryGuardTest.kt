@@ -7,7 +7,10 @@ import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard.Change
 
-/** Step E1.1: the native macOS tabs registry key follows the feature toggle, and only Agenstorm's own change is undone. */
+/**
+ * Step E1.1: the macOS window tabs are never turned off (they are what merges the projects into one window);
+ * the guard only gives them back to anyone whose 1.0 install had them disabled.
+ */
 class NativeTabsRegistryGuardTest : BasePlatformTestCase() {
 
     private lateinit var nativeTabs: RegistryValue
@@ -34,46 +37,50 @@ class NativeTabsRegistryGuardTest : BasePlatformTestCase() {
     private fun guard(isMac: Boolean = true, key: String = NativeTabsRegistryGuard.REGISTRY_KEY) =
         NativeTabsRegistryGuard(isMac = isMac, registryKey = key, settings = { state }, notify = { _, message -> notifications += message })
 
-    fun testFeatureOnTurnsNativeTabsOffOnceAndAsksForARestart() {
+    fun testTheFeatureNeverTurnsWindowTabsOff() {
         nativeTabs.setValue(true)
         state.projectTabsEnabled = true
 
-        assertEquals(Change.NATIVE_TABS_DISABLED, guard().sync(project))
-        assertFalse(nativeTabs.asBoolean())
-        assertTrue(state.nativeTabsDisabledByAgenstorm)
-        assertEquals(listOf(AgenstormBundle.message("tabs.notification.nativeTabsOff")), notifications)
+        assertEquals(Change.NONE, guard().sync(project))
+        assertTrue("window tabs are what merges the projects into one window", nativeTabs.asBoolean())
+        assertFalse(state.nativeTabsDisabledByAgenstorm)
+        assertTrue(notifications.isEmpty())
+    }
+
+    fun testAnInstallLeftDisabledBy10IsRestoredOnceAndAsksForARestart() {
+        nativeTabs.setValue(false)
+        state.projectTabsEnabled = true
+        state.nativeTabsDisabledByAgenstorm = true
+
+        assertEquals(Change.NATIVE_TABS_RESTORED, guard().sync(project))
+        assertTrue(nativeTabs.asBoolean())
+        assertFalse(state.nativeTabsDisabledByAgenstorm)
+        assertEquals(listOf(AgenstormBundle.message("tabs.notification.nativeTabsRestored")), notifications)
 
         assertEquals(Change.NONE, guard().sync(project))
         assertEquals(1, notifications.size)
     }
 
-    fun testFeatureOnLeavesNativeTabsAloneWhenTheUserAlreadyTurnedThemOff() {
+    fun testRestoringHappensEvenWithTheFeatureOff() {
+        nativeTabs.setValue(false)
+        state.projectTabsEnabled = false
+        state.nativeTabsDisabledByAgenstorm = true
+
+        assertEquals(Change.NATIVE_TABS_RESTORED, guard().sync(project))
+        assertTrue(nativeTabs.asBoolean())
+    }
+
+    fun testAUsersOwnRegistryChoiceIsLeftAlone() {
         nativeTabs.setValue(false)
         state.projectTabsEnabled = true
 
         assertEquals(Change.NONE, guard().sync(project))
-        assertFalse(nativeTabs.asBoolean())
-        assertFalse(state.nativeTabsDisabledByAgenstorm)
+        assertFalse("a user's own registry choice must survive", nativeTabs.asBoolean())
         assertTrue(notifications.isEmpty())
     }
 
-    fun testFeatureOffRestoresOnlyWhatAgenstormChanged() {
-        nativeTabs.setValue(false)
-        state.projectTabsEnabled = false
-
-        assertEquals(Change.NONE, guard().sync(project))
-        assertFalse("a user's own registry choice must survive", nativeTabs.asBoolean())
-
-        state.nativeTabsDisabledByAgenstorm = true
-        assertEquals(Change.NATIVE_TABS_RESTORED, guard().sync(project))
-        assertTrue(nativeTabs.asBoolean())
-        assertFalse(state.nativeTabsDisabledByAgenstorm)
-        assertEquals(listOf(AgenstormBundle.message("tabs.notification.nativeTabsRestored")), notifications)
-    }
-
-    fun testFeatureOffWithNativeTabsAlreadyBackOnJustForgetsTheFlag() {
+    fun testAlreadyBackOnJustForgetsTheFlag() {
         nativeTabs.setValue(true)
-        state.projectTabsEnabled = false
         state.nativeTabsDisabledByAgenstorm = true
 
         assertEquals(Change.NONE, guard().sync(project))
@@ -83,18 +90,19 @@ class NativeTabsRegistryGuardTest : BasePlatformTestCase() {
     }
 
     fun testNothingHappensOffMacOs() {
-        nativeTabs.setValue(true)
-        state.projectTabsEnabled = true
+        nativeTabs.setValue(false)
+        state.nativeTabsDisabledByAgenstorm = true
 
         assertEquals(Change.NONE, guard(isMac = false).sync(project))
-        assertTrue(nativeTabs.asBoolean())
+        assertFalse(nativeTabs.asBoolean())
+        assertTrue("the flag is macOS bookkeeping; another OS must not clear it", state.nativeTabsDisabledByAgenstorm)
         assertTrue(notifications.isEmpty())
     }
 
     fun testAMissingRegistryKeyIsLoggedNotThrown() {
-        state.projectTabsEnabled = true
+        state.nativeTabsDisabledByAgenstorm = true
         assertEquals(Change.NONE, guard(key = "agenstorm.test.no.such.key").sync(project))
-        assertFalse(state.nativeTabsDisabledByAgenstorm)
+        assertTrue("the flag survives an IDE without the key", state.nativeTabsDisabledByAgenstorm)
         assertTrue(notifications.isEmpty())
     }
 }

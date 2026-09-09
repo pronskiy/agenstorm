@@ -50,9 +50,18 @@ object ProjectTabActions {
 
     fun switchTo(target: Project, from: Project?) {
         if (target.isDisposed) return
-        if (from != null && from !== target && AgenstormSettings.getInstance().state.tabsMirrorWindowBounds) mirrorWindowBounds(from, target)
+        if (from != null && from !== target && shouldMirrorBounds(from, target)) mirrorWindowBounds(from, target)
         ProjectUtil.focusProjectWindow(target, true)
     }
+
+    /**
+     * Only worth doing when the two projects really are two windows. Inside a macOS tab group they are one
+     * window already, so mirroring would move the whole group onto itself.
+     */
+    private fun shouldMirrorBounds(from: Project, target: Project): Boolean =
+        AgenstormSettings.getInstance().state.tabsMirrorWindowBounds &&
+            !NativeTabStrip.isTabbed(from) &&
+            !NativeTabStrip.isTabbed(target)
 
     fun close(target: Project, owner: Project?, tabs: List<Project>) {
         if (target.isDisposed) return

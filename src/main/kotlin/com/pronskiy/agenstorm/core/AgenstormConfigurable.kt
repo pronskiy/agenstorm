@@ -21,6 +21,7 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
 import com.pronskiy.agenstorm.commit.CommitSettingsPanel
 import com.pronskiy.agenstorm.frame.FrameTitleRefresher
+import com.pronskiy.agenstorm.tabs.NativeTabStrip
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
 import com.pronskiy.agenstorm.terminal.OpenRequestServer
@@ -82,6 +83,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                 checkBox(AgenstormBundle.message("settings.tabs.mirrorBounds"))
                     .bindSelected({ AgenstormSettings.getInstance().state.tabsMirrorWindowBounds }, { AgenstormSettings.getInstance().state.tabsMirrorWindowBounds = it })
                     .applyToComponent { name = "tabs.mirrorBounds" }
+                    .comment(AgenstormBundle.message("settings.tabs.mirrorBounds.comment"))
             }
             row {
                 checkBox(AgenstormBundle.message("settings.tabs.branchInStatusBar"))
@@ -193,6 +195,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
      */
     private fun applyTabSettings() {
         NativeTabsRegistryGuard.syncFromSettings()
+        NativeTabStrip.applyToAllProjects()
         ProjectTabsModel.getInstance().refresh()
         AgenstormSettingsListener.fire()
     }
