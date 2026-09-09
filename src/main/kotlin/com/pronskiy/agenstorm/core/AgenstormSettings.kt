@@ -75,6 +75,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupCodeBlocks: Boolean = true,
         /** Epic H (Phase H3): block quotes render as a card with an accent bar, their `>` markers hidden. */
         var liveMarkupBlockQuotes: Boolean = true,
+        /** Epic H (Phase H3): thematic breaks render as a full-width line, their `---` hidden. */
+        var liveMarkupRules: Boolean = true,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */

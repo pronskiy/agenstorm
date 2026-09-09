@@ -196,6 +196,7 @@ Obsidian-style editing for Markdown files: the syntax hides itself until the car
   revealing the whole caret line instead
 - `#` heading marks are hidden; `- [ ]` / `- [x]` become ☐ / ☑ and toggle on click; `-`, `*` and `+` bullets show as •. These three are painted as ordinary text: the colour scheme's folded-text styling is switched off for editors live markup owns, so a folded heading or fence there shows its `...` without a background or border too
 - Block quotes and GitHub alerts (`> [!NOTE]`, `> [!WARNING]`, …) lose their `>` markers and get a card with an accent bar; each marker folds to a space, so nesting still reads as indent and nothing moves when the caret brings the markers back. A caret anywhere in the quote reveals the whole block, and the bar steps aside while the markers show. An alert's `[!…]` title stays as written, so the Markdown plugin keeps styling it
+- Thematic breaks (`---`, `***`, `___`, `- - -`) become a full-width rule drawn across the row their characters left empty; the caret on the line brings them back
 - `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B on it follows the destination: files,
   `path:line:col` locations, `#headings` and URLs
 - The **Live Markup** button in the Markdown editor toolbar (also in the editor context menu) turns it off or on for

@@ -37,6 +37,8 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
             |---|---|
             | c | d |
 
+            
+            
         """.trimIndent()
         assertEquals(expected, render(myFixture.file.text, ranges))
     }
@@ -64,6 +66,8 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         assertEquals(listOf("-", "-", "*"), byKind[MarkupKind.BULLET])
         assertEquals(listOf("```php"), byKind[MarkupKind.FENCE_OPEN])
         assertEquals(listOf("```"), byKind[MarkupKind.FENCE_CLOSE])
+        assertEquals(listOf(">"), byKind[MarkupKind.QUOTE_MARKER])
+        assertEquals(listOf("---"), byKind[MarkupKind.RULE])
         assertEquals(MarkupKind.entries.toSet(), byKind.keys)
     }
 

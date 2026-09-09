@@ -19,10 +19,10 @@ import java.awt.Graphics
 import java.awt.Rectangle
 
 /**
- * Steps H1.2 and H3.2. Paints the background of the blocks [MarkupRangeCollector] found — the card behind a
- * fenced code block, and the card plus accent bar behind a block quote — and keeps them in step with the
- * document, exactly as [LiveMarkupController] keeps its fold regions: one [sync] per collector run, driven
- * from the same snapshot.
+ * Steps H1.2, H3.2 and H3.3. Paints what the blocks [MarkupRangeCollector] found need — the card behind a
+ * fenced code block, the card plus accent bar behind a block quote, and the rule across a thematic break —
+ * and keeps them in step with the document, exactly as [LiveMarkupController] keeps its fold regions: one
+ * [sync] per collector run, driven from the same snapshot.
  *
  * `LINES_IN_RANGE`, not `EXACT_RANGE`: `IterationState` skips exact-range highlighters when it works out what
  * to paint past the end of a line, so only a lines-in-range one reaches the right edge of the viewport and the
@@ -35,10 +35,12 @@ import java.awt.Rectangle
  *
  * A quote's bar is drawn by a [CustomHighlighterRenderer] on that same highlighter, down the column its `>`
  * markers vacated — the collector folds each one to a space, so the column is there and the text never moves.
+ * A thematic break is the one kind with no card at all: its highlighter carries no attributes and exists only
+ * to hang the rule on. Both are drawn only while the markers they stand in for are folded away.
  */
 class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
 
-    private class Painted(val highlighter: RangeHighlighter, val kind: MarkdownBlockKind, val background: Color)
+    private class Painted(val highlighter: RangeHighlighter, val kind: MarkdownBlockKind, val background: Color?)
 
     private data class Key(val start: Int, val end: Int, val kind: MarkdownBlockKind)
 
@@ -69,10 +71,14 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
                 key.start,
                 key.end,
                 HighlighterLayer.ADDITIONAL_SYNTAX,
-                TextAttributes().also { it.backgroundColor = background },
+                background?.let { color -> TextAttributes().also { it.backgroundColor = color } },
                 HighlighterTargetArea.LINES_IN_RANGE,
             )
-            if (block.kind == MarkdownBlockKind.BLOCK_QUOTE) highlighter.customRenderer = QuoteBarRenderer(barColor(editor.colorsScheme, background))
+            highlighter.customRenderer = when (block.kind) {
+                MarkdownBlockKind.BLOCK_QUOTE -> QuoteBarRenderer(barColor(editor.colorsScheme, background ?: editor.colorsScheme.defaultBackground))
+                MarkdownBlockKind.THEMATIC_BREAK -> RuleLineRenderer(ruleColor(editor.colorsScheme))
+                MarkdownBlockKind.CODE_FENCE -> null
+            }
             painted += Painted(highlighter, block.kind, background)
         }
     }
@@ -87,12 +93,18 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
 
     override fun dispose() = removeAll()
 
-    private fun background(kind: MarkdownBlockKind): Color = background(editor.colorsScheme, kind)
+    private fun background(kind: MarkdownBlockKind): Color? = background(editor.colorsScheme, kind)
 
     /** The bar down the left of a quote's card: whatever paints its `>` markers, else the card taken further. */
     private fun barColor(scheme: EditorColorsScheme, background: Color): Color {
         scheme.getAttributes(MarkdownHighlighterColors.BLOCK_QUOTE_MARKER)?.foregroundColor?.let { return it }
         return ColorUtil.mix(background, scheme.defaultForeground, BAR_MIX)
+    }
+
+    /** The rule itself: whatever paints a `---`, else the editor's own background taken toward the foreground. */
+    private fun ruleColor(scheme: EditorColorsScheme): Color {
+        scheme.getAttributes(MarkdownHighlighterColors.HRULE)?.foregroundColor?.let { return it }
+        return ColorUtil.mix(scheme.defaultBackground, scheme.defaultForeground, RULE_MIX)
     }
 
     /**
@@ -123,6 +135,30 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
         override fun hashCode(): Int = color.hashCode()
     }
 
+    /**
+     * Draws the line a folded `---` stands for, across the width in view rather than the width of the widest
+     * line in the file, so it reaches the edge of the viewport the way the cards do. Nothing is drawn while
+     * the break shows its own characters.
+     */
+    private class RuleLineRenderer(private val color: Color) : CustomHighlighterRenderer {
+
+        override fun paint(editor: Editor, highlighter: RangeHighlighter, g: Graphics) {
+            if (!highlighter.isValid) return
+            val document = editor.document
+            if (highlighter.startOffset >= document.textLength) return
+            if (editor.foldingModel.getCollapsedRegionAtOffset(highlighter.startOffset) == null) return
+            val top = editor.logicalPositionToXY(LogicalPosition(document.getLineNumber(highlighter.startOffset), 0)).y
+            val area = editor.scrollingModel.visibleArea
+            val bounds = ruleBounds(top, editor.lineHeight, area.x, area.width)
+            g.color = color
+            g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height)
+        }
+
+        override fun equals(other: Any?): Boolean = other is RuleLineRenderer && other.color == color
+
+        override fun hashCode(): Int = color.hashCode()
+    }
+
     companion object {
         /** Enough to read as a card against the editor background, little enough to keep code legible on it. */
         private const val FALLBACK_MIX = 0.06
@@ -130,8 +166,16 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
         /** The bar has to carry against the card it sits on, so it goes much further toward the foreground. */
         private const val BAR_MIX = 0.45
 
-        fun background(scheme: EditorColorsScheme, kind: MarkdownBlockKind): Color {
-            val key = if (kind == MarkdownBlockKind.BLOCK_QUOTE) MarkdownHighlighterColors.BLOCK_QUOTE else MarkdownHighlighterColors.CODE_FENCE
+        /** A rule is a divider, not a highlight: enough to see, not enough to cut the page in two. */
+        private const val RULE_MIX = 0.30
+
+        /** Null for a thematic break: it is a line drawn on the row, not a card behind one. */
+        fun background(scheme: EditorColorsScheme, kind: MarkdownBlockKind): Color? {
+            val key = when (kind) {
+                MarkdownBlockKind.THEMATIC_BREAK -> return null
+                MarkdownBlockKind.BLOCK_QUOTE -> MarkdownHighlighterColors.BLOCK_QUOTE
+                MarkdownBlockKind.CODE_FENCE -> MarkdownHighlighterColors.CODE_FENCE
+            }
             scheme.getAttributes(key)?.backgroundColor?.let { return it }
             return ColorUtil.mix(scheme.defaultBackground, scheme.defaultForeground, FALLBACK_MIX)
         }
@@ -144,6 +188,14 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
             Rectangle(x, topY, JBUIScale.scale(BAR_WIDTH), (bottomY - topY + lineHeight).coerceAtLeast(lineHeight))
 
         const val BAR_WIDTH = 2
+
+        const val RULE_THICKNESS = 1
+
+        /** The rule's rectangle: [RULE_THICKNESS] scaled, centred in the row that starts at [topY]. */
+        fun ruleBounds(topY: Int, lineHeight: Int, x: Int, width: Int): Rectangle {
+            val thickness = JBUIScale.scale(RULE_THICKNESS)
+            return Rectangle(x, topY + (lineHeight - thickness) / 2, width, thickness)
+        }
 
         /**
          * The offset of the `>` that opens the quote prefix at [from], or -1 when there is none. Only the

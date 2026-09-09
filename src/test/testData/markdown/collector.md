@@ -21,3 +21,5 @@ A [link **b**](https://x.y/z "title") and ![img](pic.png) and <https://auto.link
 | a | **b** |
 |---|---|
 | *c* | d |
+
+---

@@ -132,6 +132,12 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .onApply { AgenstormSettingsListener.fire() }
                     .applyToComponent { name = "markdown.blockQuotes" }
             }
+            row {
+                checkBox(AgenstormBundle.message("settings.markdown.rules"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.liveMarkupRules }, { AgenstormSettings.getInstance().state.liveMarkupRules = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "markdown.rules" }
+            }
             row(AgenstormBundle.message("settings.markdown.revealScope")) {
                 comboBox(REVEAL_SCOPES)
                     .bindItem(

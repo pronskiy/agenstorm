@@ -15,14 +15,14 @@ import org.intellij.plugins.markdown.lang.MarkdownTokenTypes
 
 /** What a hidden range stands for; the controller keys its fold regions by kind and range. */
 enum class MarkupKind {
-    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET, FENCE_OPEN, FENCE_CLOSE, QUOTE_MARKER;
+    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET, FENCE_OPEN, FENCE_CLOSE, QUOTE_MARKER, RULE;
 
     val isCheckbox: Boolean get() = this == CHECKBOX_OFF || this == CHECKBOX_ON
 
     val isFence: Boolean get() = this == FENCE_OPEN || this == FENCE_CLOSE
 
     /** Block-level markers are revealed for their whole line; inline ones only for their element (Phase F3). */
-    val isBlock: Boolean get() = this == HEADING || this == BULLET || this == QUOTE_MARKER || isCheckbox || isFence
+    val isBlock: Boolean get() = this == HEADING || this == BULLET || this == QUOTE_MARKER || this == RULE || isCheckbox || isFence
 }
 
 /**
@@ -31,8 +31,8 @@ enum class MarkupKind {
  */
 data class MarkupRange(val kind: MarkupKind, val range: TextRange, val placeholder: String, val span: TextRange)
 
-/** What a [MarkdownBlock] is; the rest of Phase H3 adds thematic breaks. */
-enum class MarkdownBlockKind { CODE_FENCE, BLOCK_QUOTE }
+/** What a [MarkdownBlock] is. */
+enum class MarkdownBlockKind { CODE_FENCE, BLOCK_QUOTE, THEMATIC_BREAK }
 
 /**
  * A block-level construct the renderer paints behind (Epic H): [span] is the whole element, [language] the
@@ -88,6 +88,7 @@ object MarkupRangeCollector {
         val bullets: Boolean = true,
         val codeBlocks: Boolean = true,
         val blockQuotes: Boolean = true,
+        val rules: Boolean = true,
     ) {
         companion object {
             fun fromSettings(): Options = AgenstormSettings.getInstance().state.let {
@@ -96,6 +97,7 @@ object MarkupRangeCollector {
                     bullets = it.liveMarkupBullets,
                     codeBlocks = it.liveMarkupCodeBlocks,
                     blockQuotes = it.liveMarkupBlockQuotes,
+                    rules = it.liveMarkupRules,
                 )
             }
         }
@@ -130,6 +132,7 @@ object MarkupRangeCollector {
                     MarkdownElementTypes.INLINE_LINK -> inlineLink(element.node, out)
                     MarkdownTokenTypes.CHECK_BOX -> if (options.checkboxes) checkbox(element.node, out)
                     MarkdownTokenTypes.LIST_BULLET -> if (options.bullets) bullet(element.node, out)
+                    MarkdownTokenTypes.HORIZONTAL_RULE -> if (options.rules) rule(element.node, out, blocks)
                     in HEADINGS -> heading(element.node, text, out)
                 }
                 super.visitElement(element)
@@ -245,6 +248,17 @@ object MarkupRangeCollector {
             parent = parent.parent
         }
         return false
+    }
+
+    /**
+     * A thematic break: the whole token goes, whichever of `---`, `***`, `___` or `- - -` was written, and the
+     * block carries the line so the renderer can draw the rule across it. The row stays behind, empty and with
+     * its number, the way a fence's ``` lines do — a document cannot lose a line, only its contents.
+     */
+    private fun rule(node: ASTNode, out: MutableList<MarkupRange>, blocks: MutableList<MarkdownBlock>) {
+        val range = node.textRange
+        out += MarkupRange(MarkupKind.RULE, range, "", range)
+        blocks += MarkdownBlock(MarkdownBlockKind.THEMATIC_BREAK, range, language = null)
     }
 
     /** Leading and trailing runs of [marker] tokens among the node's direct children; both must exist and leave content between. */

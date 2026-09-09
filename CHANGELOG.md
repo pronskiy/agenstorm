@@ -6,7 +6,8 @@
 
 ### Added
 
-- Block quotes and GitHub alerts (`> [!NOTE]`, `> [!IMPORTANT]`, …) render in Markdown live markup: every `>` is folded to a single space, so no column moves and the markers come back at the caret without the line shifting, and the quote gets a full-width card with an accent bar down the column its markers left behind. Nesting reads as indent, one card and one bar per quote. A caret anywhere in the quote brings back every `>` of the block at once, and the bar steps aside while they show. An alert's `[!…]` title is left as written, so the Markdown plugin keeps styling it and showing its gutter icon. New option under Tools → Agenstorm → Markdown live markup
+- Block quotes and GitHub alerts (`> [!NOTE]`, `> [!IMPORTANT]`, …) render in Markdown live markup: every `>` is folded to a single space, so no column moves and the markers come back at the caret without the line shifting, and the quote gets a full-width card with an accent bar down the column its markers left behind. Nesting reads as indent, one card and one bar per quote. A caret anywhere in the quote brings back every `>` of the block at once, and the bar steps aside while they show. An alert's `[!…]` title is left as written, so the Markdown plugin keeps styling it and showing its gutter icon.
+- Thematic breaks (`---`, `***`, `___`, `- - -`) render as a full-width rule across the row their characters left empty, with no card behind it. The caret on that line brings the characters back and the rule steps aside. New option alongside the others New option under Tools → Agenstorm → Markdown live markup
 
 ### Fixed
 
