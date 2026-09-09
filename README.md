@@ -195,7 +195,7 @@ Obsidian-style editing for Markdown files: the syntax hides itself until the car
   the caret is in (or touches) and under a selection, so what you see is what you copy; a setting switches to
   revealing the whole caret line instead
 - `#` heading marks are hidden; `- [ ]` / `- [x]` become ☐ / ☑ and toggle on click; `-`, `*` and `+` bullets show as •. These three are painted as ordinary text: the colour scheme's folded-text styling is switched off for editors live markup owns, so a folded heading or fence there shows its `...` without a background or border too
-- Block quotes lose their `>` markers and get a card with an accent bar; each marker folds to a space, so nesting still reads as indent and nothing moves when the caret brings the markers back
+- Block quotes lose their `>` markers and get a card with an accent bar; each marker folds to a space, so nesting still reads as indent and nothing moves when the caret brings the markers back. A caret anywhere in the quote reveals the whole block, and the bar steps aside while the markers show
 - `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B on it follows the destination: files,
   `path:line:col` locations, `#headings` and URLs
 - The **Live Markup** button in the Markdown editor toolbar (also in the editor context menu) turns it off or on for

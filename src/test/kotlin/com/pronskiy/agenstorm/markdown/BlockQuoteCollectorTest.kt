@@ -93,6 +93,16 @@ class BlockQuoteCollectorTest : BasePlatformTestCase() {
         assertTrue("the whole caret line reveals, as for headings and bullets", MarkupKind.QUOTE_MARKER.isBlock)
     }
 
+    fun testEveryMarkerOfAQuoteSharesTheQuotesSpan() {
+        val markup = collectFixture()
+        val quote = markup.blocks.first { it.kind == MarkdownBlockKind.BLOCK_QUOTE }
+        val markers = markup.ranges.filter { it.kind == MarkupKind.QUOTE_MARKER && quote.span.contains(it.range) }
+
+        assertTrue("the first quote of the fixture spans several lines", markers.size > 3)
+        // One span means one FoldingGroup, and the controller reveals a group as a whole.
+        assertEquals(setOf(quote.span), markers.map { it.span }.toSet())
+    }
+
     fun testAMarkerAnotherRangeAlreadyHidesIsDropped() {
         val markup = collectFixture()
         val sorted = markup.ranges.sortedBy { it.range.startOffset }

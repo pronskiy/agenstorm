@@ -196,9 +196,10 @@ object MarkupRangeCollector {
      */
     private fun blockQuote(element: PsiElement, text: CharSequence, out: MutableList<MarkupRange>, blocks: MutableList<MarkdownBlock>) {
         val span = element.textRange
+        // The quote's own span, shared by every marker, so they land in one `FoldingGroup` and the whole
+        // block shows its markers as soon as a caret reaches any of its lines.
         for (offset in quoteMarkerOffsets(text, span.startOffset, span.endOffset)) {
-            val range = TextRange(offset, offset + 1)
-            out += MarkupRange(MarkupKind.QUOTE_MARKER, range, QUOTE_MARKER_PLACEHOLDER, range)
+            out += MarkupRange(MarkupKind.QUOTE_MARKER, TextRange(offset, offset + 1), QUOTE_MARKER_PLACEHOLDER, span)
         }
         blocks += MarkdownBlock(MarkdownBlockKind.BLOCK_QUOTE, span, language = null)
     }

@@ -49,6 +49,33 @@ class MarkdownBlockRendererTest : BasePlatformTestCase() {
         assertNotNull(quote.getTextAttributes(myFixture.editor.colorsScheme)?.backgroundColor)
     }
 
+    fun testTheWholeQuoteShowsItsMarkersTogether() {
+        myFixture.configureByText("a.md", "> one\n> two\n> three\n\nafter\n")
+        val controller = attachedController()
+        // configureByText leaves the caret at offset 0, which is inside the quote.
+        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.getLineStartOffset(4))
+        controller.syncNow()
+        assertTrue("all hidden with the caret away", controller.regions().all { !it.isExpanded })
+
+        // The caret on the middle line: every marker of the block comes back, not just that line's.
+        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.getLineStartOffset(1) + 3)
+        controller.syncNow()
+
+        assertTrue("a caret anywhere in the quote reveals it whole", controller.regions().all { it.isExpanded })
+    }
+
+    fun testTheBarIsOnlyDrawnWhileTheMarkersAreHidden() {
+        myFixture.configureByText("a.md", "> one\n> two\n")
+        val text = myFixture.editor.document.immutableCharSequence
+
+        assertEquals(0, MarkdownBlockRenderer.firstQuoteMarker(text, 0))
+        assertEquals(6, MarkdownBlockRenderer.firstQuoteMarker(text, 6))
+        // An indented quote still opens with a `>`; a line of prose never does.
+        assertEquals(2, MarkdownBlockRenderer.firstQuoteMarker("  > quoted", 0))
+        assertEquals(-1, MarkdownBlockRenderer.firstQuoteMarker("plain text", 0))
+        assertEquals(-1, MarkdownBlockRenderer.firstQuoteMarker("", 0))
+    }
+
     fun testTheBarSpansEveryLineOfTheBlock() {
         val lineHeight = 20
 

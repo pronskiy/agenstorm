@@ -95,13 +95,22 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
         return ColorUtil.mix(background, scheme.defaultForeground, BAR_MIX)
     }
 
-    /** Fills [bounds] and nothing else; the card behind it is the highlighter's own background. */
+    /**
+     * Fills the bar and nothing else; the card behind it is the highlighter's own background.
+     *
+     * It is drawn only while the quote's markers are hidden. Once a caret reaches the block they all come
+     * back — they share one [com.intellij.openapi.editor.FoldingGroup] — and the raw `>` down the left is the
+     * cue, so a second one beside it would only be in the way. Folding never changes the document, so the
+     * first `>` is always there to look up; whether it is collapsed is the whole question.
+     */
     private class QuoteBarRenderer(private val color: Color) : CustomHighlighterRenderer {
 
         override fun paint(editor: Editor, highlighter: RangeHighlighter, g: Graphics) {
             if (!highlighter.isValid) return
             val document = editor.document
             if (highlighter.endOffset > document.textLength) return
+            val marker = firstQuoteMarker(document.immutableCharSequence, highlighter.startOffset)
+            if (marker < 0 || editor.foldingModel.getCollapsedRegionAtOffset(marker) == null) return
             val top = editor.logicalPositionToXY(LogicalPosition(document.getLineNumber(highlighter.startOffset), 0)).y
             val bottom = editor.logicalPositionToXY(LogicalPosition(document.getLineNumber(highlighter.endOffset), 0)).y
             val bounds = barBounds(top, bottom, editor.lineHeight, editor.contentComponent.insets.left)
@@ -135,5 +144,21 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
             Rectangle(x, topY, JBUIScale.scale(BAR_WIDTH), (bottomY - topY + lineHeight).coerceAtLeast(lineHeight))
 
         const val BAR_WIDTH = 2
+
+        /**
+         * The offset of the `>` that opens the quote prefix at [from], or -1 when there is none. Only the
+         * prefix is read — spaces and tabs may come first, anything else ends the search.
+         */
+        fun firstQuoteMarker(text: CharSequence, from: Int): Int {
+            var i = from
+            while (i < text.length) {
+                when (text[i]) {
+                    '>' -> return i
+                    ' ', '\t' -> i++
+                    else -> return -1
+                }
+            }
+            return -1
+        }
     }
 }
