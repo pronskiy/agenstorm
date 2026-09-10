@@ -11,13 +11,16 @@ import com.intellij.openapi.fileEditor.impl.NonProjectFileWritingAccessProvider
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindowManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * Step K1.4. One `$EDITOR` invocation from an IDE terminal: the file opens in this project's window, and the
@@ -48,6 +51,7 @@ class TerminalEditSession(private val project: Project) {
         val closed = CompletableDeferred<Unit>()
         // Subscribed before the file is opened: a listener registered afterwards could miss the close.
         val connection = project.messageBus.connect()
+        val steppedAside = stepAside()
         try {
             connection.subscribe(
                 FileEditorManagerListener.FILE_EDITOR_MANAGER,
@@ -60,12 +64,47 @@ class TerminalEditSession(private val project: Project) {
             )
             if (!open(file)) return false
             closed.await()
+            save(file)
+            awaitBytesOnDisk(file, path)
+            return true
         } finally {
             connection.disconnect()
+            restore(steppedAside)
         }
-        save(file)
-        awaitBytesOnDisk(file, path)
-        return true
+    }
+
+    /**
+     * Step K1.7. A maximized terminal *is* the editor's area, so a file opened behind it is a file nobody
+     * can see — Roman's first run: "when the terminal is maximized, I don't see the plan unless I manually
+     * minimize terminal". The terminal steps aside for the edit, and [restore] puts it back.
+     *
+     * Whatever maximized it counts, this feature's own toggle or the platform's Ctrl+Shift+': what matters
+     * is that the editor has no room, not who took it.
+     */
+    private suspend fun stepAside(): Boolean = withContext(Dispatchers.EDT) {
+        if (project.isDisposed) return@withContext false
+        val terminal = TerminalMaximizeToggleAction.terminalOf(project) ?: return@withContext false
+        if (!TerminalMaximizeToggleAction.stateOf(project, terminal).isTerminalMaximized) return@withContext false
+        ToolWindowManager.getInstance(project).setMaximized(terminal, false)
+        true
+    }
+
+    /**
+     * The terminal takes its place back once the tab is closed — but only the terminal *we* moved, and only
+     * if it is still where we left it. Someone who hides the terminal, floats it or maximizes it again while
+     * the file is open has said what they want more recently than we did.
+     *
+     * [NonCancellable] because a layout Agenstorm changed is a layout Agenstorm gives back, even when the
+     * request it was changed for is being torn down.
+     */
+    private suspend fun restore(steppedAside: Boolean) {
+        if (!steppedAside) return
+        withContext(NonCancellable + Dispatchers.EDT) {
+            if (project.isDisposed) return@withContext
+            val terminal = TerminalMaximizeToggleAction.terminalOf(project) ?: return@withContext
+            if (!shouldRestore(TerminalMaximizeToggleAction.stateOf(project, terminal))) return@withContext
+            ToolWindowManager.getInstance(project).setMaximized(terminal, true)
+        }
     }
 
     private suspend fun open(file: VirtualFile): Boolean = withContext(Dispatchers.EDT) {
@@ -114,7 +153,15 @@ class TerminalEditSession(private val project: Project) {
         LOG.warn("Agenstorm: $path was still not ${file.length} bytes on disk ${FLUSH_BUDGET_MS} ms after saving it")
     }
 
-    private companion object {
+    companion object {
+        /**
+         * Whether the terminal we un-maximized may be maximized again: it is still docked, still on screen,
+         * and nobody has maximized it in the meantime. Pure, so the "never fight the user" rule is testable.
+         */
+        @VisibleForTesting
+        fun shouldRestore(state: TerminalMaximizeToggleAction.TerminalWindowState): Boolean =
+            state.visible && state.docked && !state.maximized
+
         private val LOG = logger<TerminalEditSession>()
 
         /** Measured at a few milliseconds; the budget is generous because overshooting it costs nothing. */

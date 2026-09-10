@@ -119,6 +119,18 @@ class TerminalEditSessionTest : BasePlatformTestCase() {
     }
 
 
+    fun testTheTerminalIsOnlyPutBackWhereWeLeftIt() {
+        // Docked, visible, no longer maximized: this is the terminal we stepped past, so it goes back up.
+        assertTrue(TerminalEditSession.shouldRestore(state(visible = true, maximized = false, docked = true)))
+        // Everything else is the user having said something more recent than we did while the file was open.
+        assertFalse("hidden while the file was open", TerminalEditSession.shouldRestore(state(visible = false, maximized = false, docked = true)))
+        assertFalse("floated while the file was open", TerminalEditSession.shouldRestore(state(visible = true, maximized = false, docked = false)))
+        assertFalse("already maximized again", TerminalEditSession.shouldRestore(state(visible = true, maximized = true, docked = true)))
+    }
+
+    private fun state(visible: Boolean, maximized: Boolean, docked: Boolean) =
+        TerminalMaximizeToggleAction.TerminalWindowState(visible = visible, maximized = maximized, docked = docked)
+
     private data class Fixture(val name: String, val path: Path)
 
     private fun write(name: String, text: String): Fixture {
