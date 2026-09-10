@@ -27,6 +27,7 @@ import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
 import com.pronskiy.agenstorm.tabs.ProjectTabsWidgetInstaller
 import com.pronskiy.agenstorm.terminal.OpenRequestServer
+import com.pronskiy.agenstorm.terminal.TerminalMaximizeLayout
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
 
@@ -108,7 +109,7 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .comment(AgenstormBundle.message("settings.tabs.maxWidth.comment"))
             }
         }
-        featureGroup("settings.group.terminalMaximize", "settings.terminal.maximize.enabled", AgenstormSettings.State::terminalMaximizeEnabled) {
+        featureGroup("settings.group.terminalMaximize", "settings.terminal.maximize.enabled", AgenstormSettings.State::terminalMaximizeEnabled, onApply = ::applyTerminalMaximizeSettings) {
             row {
                 comment(AgenstormBundle.message("settings.terminal.maximize.comment"))
             }
@@ -231,6 +232,14 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
             ProjectManager.getInstance().openProjects.forEach { it.serviceIfCreated<OpenRequestServer>()?.stop() }
         }
         AgenstormSettingsListener.fire()
+    }
+
+    /**
+     * The maximize toggle was switched off: give back the widescreen tool window layout if Agenstorm was the
+     * one that turned it on. A layout the user chose is left alone.
+     */
+    private fun applyTerminalMaximizeSettings() {
+        if (!AgenstormSettings.getInstance().state.terminalMaximizeEnabled) TerminalMaximizeLayout.restore()
     }
 
     /** The language of the file selected in the most recently opened project's editor, if any. */

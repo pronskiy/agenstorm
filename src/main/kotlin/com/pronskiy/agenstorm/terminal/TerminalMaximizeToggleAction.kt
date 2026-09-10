@@ -64,6 +64,9 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
 
     /** Show first and maximize once it is on screen: a hidden tool window has nothing to expand over. */
     private fun maximizeTerminal(project: Project, terminal: ToolWindow) {
+        // Give the editor its own column first, or "maximized" would mean the whole window, side tool windows
+        // included — that is the pane's geometry, not something setMaximized can choose. See J2.1.
+        TerminalMaximizeLayout.ensureEditorAreaOnly(project)
         terminal.activate({
             if (!project.isDisposed) ToolWindowManager.getInstance(project).setMaximized(terminal, true)
         }, true, true)

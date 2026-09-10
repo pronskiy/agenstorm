@@ -32,8 +32,15 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupEnabled: Boolean = true,
         /** Epic G: `open path:line:col` in an IDE terminal opens the file in this window. */
         var terminalOpenEnabled: Boolean = true,
-        /** Epic J: a button and a shortcut that fill the window with the terminal, and put the editor back. */
+        /** Epic J: a button and a shortcut that fill the editor's area with the terminal, and put the editor back. */
         var terminalMaximizeEnabled: Boolean = true,
+        /**
+         * Epic J: set when Agenstorm turned the widescreen tool window layout on, so the terminal could fill
+         * the editor's column instead of the whole window. Only a layout *we* changed is ever changed back.
+         */
+        var terminalMaximizeWideScreenByAgenstorm: Boolean = false,
+        /** Epic J: set once the balloon explained that the tool window layout changed. */
+        var terminalMaximizeNoticeShown: Boolean = false,
         /**
          * Epic B: the languages that stay in the New Scratch File popup, in the order they are shown. Entries
          * name a language by id or display name; a file type name still resolves, which is what 1.0 wrote here.
