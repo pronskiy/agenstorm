@@ -136,7 +136,7 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
         try {
             val panel = configurable.createComponent()!!
             val area = UIUtil.findComponentsOfType(panel, JBTextArea::class.java).single { it.name == "scratch.allowList" }
-            assertEquals("Plain text\nMarkdown\nPHP\nJavaScript", area.text)
+            assertEquals("Plain text\nMarkdown\nPHP\nJavaScript\nHTML", area.text)
             assertFalse(configurable.isModified)
 
             area.text = "JSON\n\n  PHP \nJSON\n"
@@ -147,7 +147,7 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
 
             settings.loadState(AgenstormSettings.State())
             configurable.reset()
-            assertEquals("Plain text\nMarkdown\nPHP\nJavaScript", area.text)
+            assertEquals("Plain text\nMarkdown\nPHP\nJavaScript\nHTML", area.text)
         } finally {
             configurable.disposeUIResources()
         }

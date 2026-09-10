@@ -36,7 +36,7 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
          * Epic B: the languages that stay in the New Scratch File popup, in the order they are shown. Entries
          * name a language by id or display name; a file type name still resolves, which is what 1.0 wrote here.
          */
-        var scratchAllowedLanguages: MutableList<String> = mutableListOf("Plain text", "Markdown", "PHP", "JavaScript"),
+        var scratchAllowedLanguages: MutableList<String> = mutableListOf("Plain text", "Markdown", "PHP", "JavaScript", "HTML"),
         /**
          * Epic B before 1.2: the same list, but of `FileType.name`s. Read once by [loadState] so a list a user
          * customized under 1.0 or 1.1 carries over, then left empty. Never written.
