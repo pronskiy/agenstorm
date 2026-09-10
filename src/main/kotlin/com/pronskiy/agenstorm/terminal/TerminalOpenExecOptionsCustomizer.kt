@@ -47,7 +47,9 @@ class TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer {
             if (eelDescriptor != LocalEelDescriptor) return null
             return try {
                 val names = OpenShimScriptHolder.parseCommandNames(state.terminalOpenCommandNames)
-                val binDir = service<OpenShimScriptHolder>().install(names) ?: return null
+                // editShim = false until K1.2, which turns it on with `terminalEditorEnabled` and points
+                // $EDITOR and $VISUAL at it.
+                val binDir = service<OpenShimScriptHolder>().install(names, editShim = false) ?: return null
                 val server = project.service<OpenRequestServer>()
                 val port = server.start()
                 if (port <= 0) return null

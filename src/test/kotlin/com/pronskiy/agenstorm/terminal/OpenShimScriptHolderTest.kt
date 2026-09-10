@@ -14,6 +14,10 @@ import java.util.concurrent.TimeUnit
  * Step G1.3: one executable shim per configured command name, rewritten when the script or the names
  * change and never otherwise, plus a live round trip proving the generated script reaches the G1.1
  * endpoint with the shell's working directory and the untouched argv.
+ *
+ * Step K1.1 adds the `$EDITOR` shim to the same directory: the two features are switched on and off
+ * independently, so what matters here is that each one's files come and go on their own. What the edit
+ * script itself does is [EditShimScriptTest].
  */
 class OpenShimScriptHolderTest : BasePlatformTestCase() {
 
@@ -44,7 +48,7 @@ class OpenShimScriptHolderTest : BasePlatformTestCase() {
     }
 
     fun testInstallWritesOneExecutableShimPerName() {
-        val dir = holder.install(listOf("open", "e"))!!
+        val dir = holder.install(listOf("open", "e"), editShim = false)!!
 
         assertEquals(dir, holder.binDir)
         for (name in listOf("open", "e")) {
@@ -56,7 +60,7 @@ class OpenShimScriptHolderTest : BasePlatformTestCase() {
     }
 
     fun testShimStaysInSyncWithTheEndpointItPostsTo() {
-        val script = Files.readString(holder.install(listOf("open"))!!.resolve("open"))
+        val script = Files.readString(holder.install(listOf("open"), editShim = false)!!.resolve("open"))
 
         assertTrue(script.contains("\$${OpenRequestServer.TOKEN_ENV}\" \"\$PWD\" \"\$@\""))
         assertTrue("the token must not be a curl argument", !script.contains("-H "))
@@ -65,36 +69,74 @@ class OpenShimScriptHolderTest : BasePlatformTestCase() {
     }
 
     fun testUnchangedInstallLeavesTheFilesAlone() {
-        val shim = holder.install(listOf("open"))!!.resolve("open")
+        val shim = holder.install(listOf("open"), editShim = false)!!.resolve("open")
         Files.writeString(shim, "# touched by hand\n")
 
-        holder.install(listOf("open"))
+        holder.install(listOf("open"), editShim = false)
 
         assertEquals("# touched by hand\n", Files.readString(shim))
     }
 
     fun testADeletedShimIsWrittenAgain() {
-        val shim = holder.install(listOf("open"))!!.resolve("open")
+        val shim = holder.install(listOf("open"), editShim = false)!!.resolve("open")
         Files.delete(shim)
 
-        holder.install(listOf("open"))
+        holder.install(listOf("open"), editShim = false)
 
         assertTrue(Files.isRegularFile(shim))
     }
 
     fun testANameTheUserRemovedStopsShadowing() {
-        val dir = holder.install(listOf("open", "edit"))!!
+        val dir = holder.install(listOf("open", "edit"), editShim = false)!!
         assertTrue(Files.isRegularFile(dir.resolve("edit")))
 
-        holder.install(listOf("open"))
+        holder.install(listOf("open"), editShim = false)
 
         assertTrue(Files.isRegularFile(dir.resolve("open")))
         assertFalse("edit is no longer configured", Files.exists(dir.resolve("edit")))
     }
 
     fun testNoUsableNameInstallsNothing() {
-        assertNull(holder.install(listOf("../evil", "")))
+        assertNull(holder.install(listOf("../evil", ""), editShim = false))
         assertFalse(Files.exists(holder.binDir))
+    }
+
+    fun testTheEditShimIsWrittenBesideTheOpenOnes() {
+        val dir = holder.install(listOf("open"), editShim = true)!!
+
+        val editShim = dir.resolve(OpenShimScriptHolder.EDIT_SHIM_NAME)
+        assertTrue(Files.isRegularFile(editShim))
+        assertTrue(Files.isExecutable(editShim))
+        assertTrue("the two shims are different scripts", Files.readString(editShim) != Files.readString(dir.resolve("open")))
+    }
+
+    fun testTheEditShimNeedsNoOpenNameOfItsOwn() {
+        val dir = holder.install(emptyList(), editShim = true)!!
+
+        assertTrue(Files.isRegularFile(dir.resolve(OpenShimScriptHolder.EDIT_SHIM_NAME)))
+        assertFalse("the `open` feature is off, so nothing shadows `open`", Files.exists(dir.resolve("open")))
+    }
+
+    fun testTheEditShimGoesAwayWithItsFeature() {
+        val dir = holder.install(listOf("open"), editShim = true)!!
+        assertTrue(Files.isRegularFile(dir.resolve(OpenShimScriptHolder.EDIT_SHIM_NAME)))
+
+        holder.install(listOf("open"), editShim = false)
+
+        assertTrue(Files.isRegularFile(dir.resolve("open")))
+        assertFalse(Files.exists(dir.resolve(OpenShimScriptHolder.EDIT_SHIM_NAME)))
+    }
+
+    fun testNeitherFeatureInstallsNothing() {
+        assertNull(holder.install(emptyList(), editShim = false))
+        assertFalse(Files.exists(holder.binDir))
+    }
+
+    fun testAnOpenNameThatCollidesWithTheEditShimGetsTheEditShim() {
+        val dir = holder.install(listOf("open", OpenShimScriptHolder.EDIT_SHIM_NAME), editShim = true)!!
+
+        val collided = Files.readString(dir.resolve(OpenShimScriptHolder.EDIT_SHIM_NAME))
+        assertFalse("an `open` copy under that name could never be reached through \$EDITOR", collided == Files.readString(dir.resolve("open")))
     }
 
     fun testTheGeneratedShimPostsTheWorkingDirectoryAndArgvToTheEndpoint() {
@@ -107,7 +149,7 @@ class OpenShimScriptHolderTest : BasePlatformTestCase() {
         }
         try {
             assertTrue(server.start() > 0)
-            val shim = holder.install(listOf("open"))!!.resolve("open")
+            val shim = holder.install(listOf("open"), editShim = false)!!.resolve("open")
 
             val exitCode = runShim(shim, "src/Foo.php:42:7", "a file with spaces.md", port = server.port, token = server.token)
 
@@ -123,7 +165,7 @@ class OpenShimScriptHolderTest : BasePlatformTestCase() {
 
     fun testTheShimDoesNothingOutsideAnAgenstormTerminal() {
         if (SystemInfo.isWindows) return
-        val shim = holder.install(listOf("open"))!!.resolve("open")
+        val shim = holder.install(listOf("open"), editShim = false)!!.resolve("open")
 
         // No port in the environment: the shim must exec the real `open`, which fails on a missing file.
         assertFalse(0 == runShim(shim, "definitely-not-there.txt", port = null, token = null))

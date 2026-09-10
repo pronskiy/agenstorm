@@ -295,6 +295,13 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
     companion object {
         const val CONTEXT_PATH: String = "/open"
 
+        /**
+         * Where the `$EDITOR` shim of step K1.1 posts. The same server, the same token and the same body
+         * shape as [CONTEXT_PATH]; what differs is that the answer is held back until the tab closes.
+         * Step K1.3 binds it — until then the shim is declined by the server's 404 and falls back.
+         */
+        const val EDIT_CONTEXT_PATH: String = "/edit"
+
         /** The two variables [com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer] puts into a
          *  terminal's environment; without [PORT_ENV] the shim claims nothing at all. */
         const val PORT_ENV: String = "AGENSTORM_OPEN_PORT"

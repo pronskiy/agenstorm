@@ -19,6 +19,7 @@
 | 2026-09-09 | Phase H3 finished: GitHub alerts handled alongside block quotes, and thematic breaks fold to a rule drawn across the row (H3.3, H3.4) | Roman Pronskiy (decision), Claude (text) |
 | 2026-09-09 | Version cut as **1.1.0** rather than 1.0.1 — Phase H3 adds features — and 1.0.0 is superseded before it ever shipped | Roman Pronskiy (decision), Claude (text) |
 | 2026-09-10 | **Marketplace review rejected 1.1.0 for internal API usage.** All fifteen usages replaced or removed: Epic B cut (decision 35), the toolbar slot taken with `ActionManager.replaceAction` (36), the branch widget built on git4idea's `GitBranchWidget` (37), the title refresh moved to `UISettings` (38). §2's internal-API row is now "none" and a release gate | Roman Pronskiy (decisions), Claude (investigation, code, text) |
+| 2026-09-10 | **Epic K added:** the IDE becomes the terminal's `$EDITOR`, so Claude Code's Ctrl+G (and `git commit`, and everything else that reaches for an editor) opens in this project's window and blocks until the tab closes. Requested as IJPL-221866; decision 43 | Roman Pronskiy (decisions), Claude (investigation, text) |
 
 ### Status legend
 
@@ -26,7 +27,9 @@
 
 ### Current focus
 
-**Now on:** **Release R7 — the internal-API rework, then re-submit.** The Marketplace review **rejected 1.1.0** for 15 `@ApiStatus.Internal` usages. The code side is done (2026-09-10, commits `b7db79d`…`f331c4b`): Epic B cut, the toolbar slot swapped with `ActionManager.replaceAction`, the branch widget rebuilt on git4idea's `GitBranchWidget`, the title refresh moved to `UISettings` — decisions 35–38, §2's internal-API row is now "none". `./gradlew check` green and `verifyPlugin` **Compatible on PS-262.10315.130 and IU-262.10315.125 with zero internal usages** (46 experimental, 2 deprecated). **Three things are left, all Roman's:** (1) ~~the guardrail run~~ — done 2026-09-10, Roman signed off on a 5 h 19 m session with a clean log; the feature toggles were not exercised, see R7; ~~(2) the version number~~ — **cut as 1.2.0 on 2026-09-10**, ZIP built and verified; (3) re-submit, which is R6 and needs the listing text plus a screenshot pass over the changed UI. **Epic J landed after the cut** (terminal ⇄ editor maximize toggle, decision 40): it is in `[Unreleased]`, not in 1.2.0, so it either waits for 1.3.0 or 1.2.0 is re-cut around it — Roman's call. Its own guardrail run is still open. Note the 1.1.0 draft GitHub release (id 385481892) sits on `12f3932` and its notes no longer match what will ship. R6's listing text and four screenshots still apply, except any that show the New Scratch File popup.
+**Now on:** **Epic K — the IDE is the terminal's editor** (`$EDITOR`, Ctrl+G), requested as IJPL-221866 and scoped with Roman on 2026-09-10 (decision 43: on by default, forced past the rc file, tab close ends the wait). **K1.1 is done** — the `agenstorm-edit` shim is generated and tested; `OpenShimScriptHolder` now installs a set of scripts rather than one under N names. Next is **K1.2**, the injection. The release track below is unchanged and still Roman's.
+
+**Release track (Roman's):** **Release R7 — the internal-API rework, then re-submit.** The Marketplace review **rejected 1.1.0** for 15 `@ApiStatus.Internal` usages. The code side is done (2026-09-10, commits `b7db79d`…`f331c4b`): Epic B cut, the toolbar slot swapped with `ActionManager.replaceAction`, the branch widget rebuilt on git4idea's `GitBranchWidget`, the title refresh moved to `UISettings` — decisions 35–38, §2's internal-API row is now "none". `./gradlew check` green and `verifyPlugin` **Compatible on PS-262.10315.130 and IU-262.10315.125 with zero internal usages** (46 experimental, 2 deprecated). **Three things are left, all Roman's:** (1) ~~the guardrail run~~ — done 2026-09-10, Roman signed off on a 5 h 19 m session with a clean log; the feature toggles were not exercised, see R7; ~~(2) the version number~~ — **cut as 1.2.0 on 2026-09-10**, ZIP built and verified; (3) re-submit, which is R6 and needs the listing text plus a screenshot pass over the changed UI. **Epic J landed after the cut** (terminal ⇄ editor maximize toggle, decision 40): it is in `[Unreleased]`, not in 1.2.0, so it either waits for 1.3.0 or 1.2.0 is re-cut around it — Roman's call. Its own guardrail run is still open. Note the 1.1.0 draft GitHub release (id 385481892) sits on `12f3932` and its notes no longer match what will ship. R6's listing text and four screenshots still apply, except any that show the New Scratch File popup.
 
 **Superseded (kept for the trail):** **Now on:** **Release 1.1.0** → step **R6** (publish), Roman's. The version is cut and the ZIP builds; what it still needs is the listing text and the five screenshots R2 deferred — taken against 1.1.0's behaviour, which differs visibly from what 1.0.0 would have shown. R1–R5 are closed. **Corrected 2026-09-09:** `1.0.0` is not a draft — it was *published* on 2026-09-07 with its signed ZIP attached, so the note this pointer used to carry was stale. `main` is now pushed through `12f3932`, and a **draft release `1.1.0`** (id 385481892) sits on that commit with the changelog section as its notes and no assets. A draft fires nothing: `release.yml` runs on `released`/`prereleased`, so publishing that draft is what signs the ZIP and pushes it to the Marketplace. The four signing/publishing secrets are set. What it still needs from Roman is the listing text and the five screenshots R2 deferred.
 
@@ -1237,6 +1240,113 @@ turning the widescreen layout on. Decision 42 supersedes 41 on the mechanism.
 | Verifier | Still zero internal API usages | ✅ | 2026-09-10: Compatible on PS-262.10315.130 and IU-262.10315.125, **zero internal**, 50 experimental and 4 deprecated — all three counts unchanged from 1.2.0, so this epic added none |
 
 
+### Epic K — The IDE is the terminal's editor (`$EDITOR`, Ctrl+G)  ·  after 1.2.0
+
+**Goal:** Ctrl+G in a Claude Code session running in an IDE terminal opens the prompt — or, in plan mode,
+the plan file — in *this* project's window, and closing the tab hands the edited text back to Claude. The
+same bridge serves every other program in an IDE terminal that reaches for `$EDITOR`: `git commit`,
+`crontab -e`, `kubectl edit`.
+**Success metrics:** the round trip returns the text as *edited*, not as it was opened; the file lands in the
+window whose terminal asked for it; a user's own `export EDITOR=…` does not silently disable the feature;
+the terminal is released the moment the tab closes; zero internal API.
+
+Asked for as [IJPL-221866](https://youtrack.jetbrains.com/issue/IJPL-221866) (Open, Major, Tools. Terminal).
+The issue names the two costs of the obvious `export EDITOR='idea --wait'` workaround — it leaks out of the
+IDE into every other program, and the file may land in the wrong IntelliJ window — and both are what a
+per-terminal shim answers. Roman's own comment there offers `export EDITOR='open -a …PhpStorm.app '`, which
+turns out not to work at all (see the fourth bullet below); correcting that comment is part of K1.6.
+
+**Claude Code facts** (read out of the 2.1.267 binary on 2026-09-10 — the bundled JS is the only authority
+here, and both the docs and the third-party write-ups are wrong about the central question):
+
+- Ctrl+G is the `chat:externalEditor` binding and is rebindable through `/keybindings`. In plan mode it
+  hands over the plan file itself (`tengu_plan_external_editor_used`); otherwise it writes the prompt to
+  `$TMPDIR/claude-<uid>/claude-prompt-<hash>.md`, in a directory it creates 0700 and checks the ownership of.
+- The editor is resolved once per session as `session override ?? $VISUAL ?? $EDITOR ?? the first of code,
+  vi, nano on PATH`. **`$VISUAL` wins**, so a bridge that sets only `$EDITOR` loses to any profile that
+  exports `VISUAL`.
+- The launch is `spawnSync(argv0, [...args, file], { stdio: "inherit" })` followed immediately by
+  `readFileSync(file)`. **The editor command must block until editing is done**, or Claude reads the file
+  back unchanged in the same millisecond. A non-zero exit or a signal is reported as "… quit unexpectedly
+  (exit code N)" and the edit is dropped, which is why the shim's exit code is part of its contract.
+- The command string is split on plain spaces with no quote handling, and only the exact values `code` and
+  `subl` are given `-w` / `--wait` automatically. So `EDITOR='open -a /Applications/PhpStorm.app'` opens the
+  file and returns at once — the round trip is a silent no-op — and a value carrying a quoted path with
+  spaces breaks outright. A trailing space in the value adds an empty argument.
+- Nothing in the bundled Terminal plugin sets `EDITOR` or `VISUAL`, so the slot is free. (`Esc`-`o` and
+  `__jetbrains_intellij_report_shell_editor_buffer` edit the *shell command line* in the IDE — unrelated.)
+
+**Platform facts** (verified against build 262):
+
+- **The injection can beat a user's rc file.** `shell-integrations/{zsh,bash,fish,powershell}` export every
+  `_INTELLIJ_FORCE_SET_FOO=BAR` in the environment as `FOO=BAR` *after* the rc files have run, then unset the
+  carrier. It is the same mechanism as `prependEntryToPATH` (`_INTELLIJ_FORCE_PREPEND_PATH`), which Epic G
+  already relies on. So `EDITOR` and `VISUAL` are set twice: plainly, which covers a terminal whose shell
+  integration is off, and forced, which wins wherever the integration runs.
+- `NonProjectFileWritingAccessProvider.allowWriting(Iterable<VirtualFile>)` is `public static` and carries
+  **no** `ApiStatus` annotation — the class file references none at all. Available if the non-project-file
+  protection bar shows up over the temp `.md`, which the K1.4 guardrail decides.
+- No new extension point: `MutableShellExecOptions.setEnvironmentVariable` is the `@ApiStatus.Experimental`
+  hook Epic G already uses, and the endpoint is the `HttpServer` Epic G already binds per project.
+
+#### Phase K1 — The bridge
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| K1.1 | `resources/terminal/edit.sh`, installed as `agenstorm-edit` beside the `open` shims | ✅ | `OpenShimScriptHolder` now installs a *set* of scripts and stamps their content; either feature can be off without taking the other's files with it |
+| K1.2 | `terminalEditorEnabled` + the customizer points `EDITOR`/`VISUAL` (plain **and** `_INTELLIJ_FORCE_SET_*`) at the shim, and captures the editor it displaced as the shim's fallback | 🔲 | The fallback must never be the shim itself, or a declined edit loops |
+| K1.3 | `POST /edit` on `OpenRequestServer`: same token and body shape as `/open`, the answer held open until the IDE is done | 🔲 | The suspending handler already runs off the dispatcher thread; what is new is that it may suspend for minutes |
+| K1.4 | Open and wait: resolve the path, open it in the project that owns the terminal, save the document when the tab closes, answer then — and answer on project dispose so nothing hangs | 🔲 | Tab close is the done signal (decision 43). Also the step that decides whether the non-project-file bar needs `allowWriting` |
+| K1.5 | Settings row of its own and the one-time balloon | 🔲 | The balloon names the rc-file caveat when the IDE's login shell already exports an editor |
+| K1.6 | README, CHANGELOG, and the correction to the YouTrack comment | 🔲 | Roman's for the YouTrack half |
+
+**Steps (detail):**
+
+- **K1.1 — The shim.** Deliverable: `resources/terminal/edit.sh` plus the widening of `OpenShimScriptHolder`
+  from "one script under N names" to "a set of named scripts", stamped by content so that switching either
+  feature off removes exactly its own files. The script posts `token \0 $PWD \0 argv` to
+  `OpenRequestServer.EDIT_CONTEXT_PATH` on the port the `open` shim already gets — one endpoint per project
+  serves both — and **nothing bounds the wait**: `--connect-timeout` covers the only part that can hang
+  unattended, while the answer itself arrives at the user's own pace. Any other outcome (409, 403, the 404
+  the server still answers until K1.3, a dead IDE, no arguments at all) execs a real editor:
+  `$AGENSTORM_EDITOR_FALLBACK` if K1.2 has filled it in, else the first of `vi`, `vim`, `nano` on PATH. The
+  name `agenstorm-edit` is not a setting — `$EDITOR` carries the absolute path, so the name is never typed.
+- **K1.2 — Injection.** Deliverable: `terminalEditorEnabled` on `AgenstormSettings.State` (default on) and
+  four `setEnvironmentVariable` calls in `TerminalOpenExecOptionsCustomizer`: `EDITOR`, `VISUAL` and their
+  `_INTELLIJ_FORCE_SET_` twins, all pointing at the installed shim. The same gates as Epic G — feature on,
+  not Windows, `LocalEelDescriptor` only. The displaced editor is read from the IDE's own login-shell
+  environment and passed as `AGENSTORM_EDITOR_FALLBACK`, guarded against ever being the shim's own path.
+- **K1.3 — Endpoint.** Deliverable: a second context on `OpenRequestServer`. Same token check, same
+  NUL-separated body, same 403/409 vocabulary; what differs is that a claimed request does not answer until
+  the IDE says the edit is finished, and that a request the shim abandons (the user's Ctrl+C) must not leave
+  a coroutine waiting forever.
+- **K1.4 — Open and wait.** Deliverable: the routing and the waiting. One argument, an existing file, no
+  flags — anything else is a 409, because a `+42 file` invocation means the caller wanted vi. The file opens
+  in the project the terminal belongs to (a temp file belongs to no project, so Epic G's ownership search is
+  not what decides here), and the request is answered when that file's last editor closes: save the document
+  first, then answer. Project dispose and IDE shutdown answer too.
+- **K1.5 — Settings and first run.** Deliverable: a "Terminal editor" group of its own — the Terminal
+  group's master toggle gates the `open` shim, and switching the shim off must not take `$EDITOR` with it —
+  plus a one-time balloon on first install saying that `$EDITOR` is redirected *inside IDE terminals only*.
+  When the IDE's login-shell environment already carries `EDITOR` or `VISUAL`, the balloon says so: the
+  forced injection wins, but the user's own value is what the fallback will use.
+
+**Exit guardrails — Epic K**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| The round trip | Ctrl+G in a Claude Code session opens the prompt in this window; editing, saving and closing the tab returns the **edited** text to the prompt | 🔲 | |
+| Plan mode | Ctrl+G on a plan opens the plan file, and the edit comes back into the plan | 🔲 | |
+| The right window | With two projects open, the file opens in the window whose terminal asked | 🔲 | |
+| The rc file | A profile that exports `EDITOR` or `VISUAL` does not win over the shim (shell integration on), and its value is what a declined edit falls back to | 🔲 | |
+| Other callers | `git commit` in an IDE terminal opens the message in the IDE and blocks until the tab closes; `:q`-style abandonment (closing without saving) is reported the way the caller expects | 🔲 | |
+| Non-project bar | Editing the temp `.md` does not require clicking through the non-project-file protection bar — or, if it does, `allowWriting` is used | 🔲 | |
+| Interrupt | Ctrl+C while the tab is open leaves no coroutine waiting and no stuck terminal | 🔲 | |
+| Off switch | Feature off → a new terminal has no `EDITOR`/`VISUAL` from us and no `agenstorm-edit` on disk | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Verifier | Still zero internal API usages | 🔲 | |
+
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
@@ -1332,6 +1442,7 @@ turning the widescreen layout on. Decision 42 supersedes 41 on the mechanism.
 | 40 | 2026-09-10 | The terminal maximize toggle ships a default binding — ⌘⌥M on macOS, ⌥⇧F12 elsewhere — narrowing decision 12 to everything except this action | Decision 12 keeps Agenstorm's actions unbound as Marketplace etiquette, and the other five stay that way. This one is different in kind: its entire value is being one keystroke away, and an unbound toggle is a toggle nobody presses. The binding was checked against `$default`, `Mac OS X`, `Mac OS X 10.5+` and `macOS System Shortcuts` by enumerating the whole `meta alt` family rather than guessing a modifier order, plus a scan of every bundled plugin's `plugin.xml` for `first-keystroke`; neither keystroke appears anywhere. Known outside the IDE: ⌥⌘M is "Minimize All" in most native macOS apps, documented in the README | Roman |
 | 41 | 2026-09-10 | The maximize toggle does not touch `UISettings.wideScreenSupport`; how far the terminal grows is left to the user's own layout, and documented | Roman's first run showed the terminal covering the Project view, because in the default layout the bottom tool window spans the full width and the side windows sit above it — geometry, not a bug. Confining the terminal to the editor column requires the widescreen layout. Two alternatives were offered: switch it on with the feature (the nav-bar pattern of Epic E3, with a one-time balloon), or flip it only while maximized. Roman chose neither: a global appearance setting changed on a user's behalf is a bigger surprise than a terminal that fills the window, and flipping it per keystroke would reshape the side windows on every press. So the behaviour stands and the docs name the setting | Roman  **Superseded the same day by decision 42**, once the documented-only version was tried and found wanting |
 | 42 | 2026-09-10 | The maximize toggle turns `UISettings.wideScreenSupport` on the first time it is used, records that it did, and turns it back off when the feature is switched off — superseding decision 41 | Roman tried the documented-only version and still wanted the terminal confined to the editor's area in the standard layout, which no argument to `setMaximized` can do: the pane nests its splitters by that setting. Of the three mechanisms offered he took the one modelled on Epic E3's navigation bar — change it once, own the change, give it back — over flipping it per keystroke (`UISettings` is application-wide, so with several project windows open one maximize would reflow them all, and an interrupted toggle could leave it flipped) and over setting it and walking away. Turning it on happens on first **use**, not on install: a plugin must not rearrange an IDE nobody has asked it to | Roman |
+| 43 | 2026-09-10 | The `$EDITOR` bridge is a blocking shim, per IDE terminal: `EDITOR` and `VISUAL` (plain **and** `_INTELLIJ_FORCE_SET_*`) point at a generated script that holds the terminal until the tab closes. On by default, with the one-time balloon | Three questions were put to Roman and he took all three recommendations. **On by default**, like Epic G's `open` shim: a feature nobody discovers is a feature nobody has, and the balloon is what makes the change visible. **Forced past the rc file**, because Claude Code resolves `$VISUAL` before `$EDITOR` and a profile that exports either would otherwise disable the bridge silently — Roman's own profile does exactly that. **Tab close ends the wait**, the `--wait` convention every JetBrains launcher already follows, rather than a Done button that would be one more thing to learn. The blocking part is not a preference: Claude Code reads the file back the instant the editor process exits, so a non-blocking editor makes the whole round trip a silent no-op | Roman |
 
 ---
 
