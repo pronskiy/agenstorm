@@ -1345,7 +1345,7 @@ here, and both the docs and the third-party write-ups are wrong about the centra
 | Interrupt | Ctrl+C while the tab is open leaves no coroutine waiting and no stuck terminal | 🔲 | |
 | Off switch | Feature off → a new terminal has no `EDITOR`/`VISUAL` from us and no `agenstorm-edit` on disk | 🔲 | |
 | Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
-| Verifier | Still zero internal API usages | 🔲 | |
+| Verifier | Still zero internal API usages | ✅ | 2026-09-10: Compatible on PS-262.10315.130 and IU-262.10315.125, **zero internal** (no such report file at all), 50 experimental and 4 deprecated — both counts unchanged from 1.2.0, so this epic added none. `NonProjectFileWritingAccessProvider.allowWriting` sits in an `impl` package but carries no `ApiStatus` annotation, and the verifier agrees |
 
 
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
