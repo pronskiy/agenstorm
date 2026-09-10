@@ -53,12 +53,23 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
     override fun setSelected(e: AnActionEvent, state: Boolean) {
         val project = e.project ?: return
         val terminal = terminalOf(project) ?: return
-        when (nextStep(stateOf(project, terminal), wantMaximized = state)) {
-            Step.MAXIMIZE_TERMINAL -> maximizeTerminal(project, terminal)
-            Step.MAXIMIZE_EDITOR -> maximizeEditor(project, terminal)
-            // Floating and windowed terminals are their own window already; there, setMaximized would maximize
-            // that window rather than fill the IDE, which is not what the button says. Just bring it up.
-            Step.ACTIVATE_ONLY -> terminal.activate(null, true, true)
+        val step = nextStep(stateOf(project, terminal), wantMaximized = state)
+        // Not here and now, one event later. This action reshapes the tool window pane — it hides the
+        // terminal, and on its first use it re-nests the pane's splitters — and the terminal's title bar,
+        // this button's own toolbar included, is rebuilt when that happens. `ActionButton.performAction`
+        // refreshes that toolbar the moment the action returns, and `ActionToolbarImpl` warns, with the
+        // toolbar's creation trace attached, when it is asked to update a toolbar that no longer has a
+        // parent. Letting the button finish first costs nothing visible and keeps the log clean. J2.5.
+        ToolWindowManager.getInstance(project).invokeLater {
+            if (project.isDisposed) return@invokeLater
+            when (step) {
+                Step.MAXIMIZE_TERMINAL -> maximizeTerminal(project, terminal)
+                Step.MAXIMIZE_EDITOR -> maximizeEditor(project, terminal)
+                // Floating and windowed terminals are their own window already; there, setMaximized would
+                // maximize that window rather than fill the IDE, which is not what the button says. Just
+                // bring it up.
+                Step.ACTIVATE_ONLY -> terminal.activate(null, true, true)
+            }
         }
     }
 

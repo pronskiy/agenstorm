@@ -1224,6 +1224,7 @@ turning the widescreen layout on. Decision 42 supersedes 41 on the mechanism.
 | J2.2 | One-time balloon naming the changed setting, with a Settings action | ✅ | `terminalMaximizeNoticeShown` written before the balloon, so two windows maximizing at once cannot produce two |
 | J2.3 | Restore on feature-off | ✅ | `applyTerminalMaximizeSettings` in the configurable; only undoes a layout Agenstorm turned on |
 | J2.4 | Tests | ✅ | 6 cases in `TerminalMaximizeLayoutTest`: turns on and records, never claims the user's own, restores only ours, leaves the user's alone, does not fight a user who turned it off again, idempotent |
+| J2.5 | The toggle does its work one event after the button click | ✅ | Roman's 2026-09-10 run logged `'ToolwindowTitle' toolbar manual update is ignored` once, with no plugin frames. It is ours all the same: `ActionButton.performAction` refreshes its toolbar as soon as the action returns, and `ActionToolbarImpl.updateActionsImmediately` warns whenever it is asked to update a toolbar whose `getParent()` is null — which is what this action leaves behind, since hiding the terminal and re-nesting the pane both rebuild the terminal's title bar. `ToolWindowManager.invokeLater` (public, unannotated) puts the work after the button's own refresh. One occurrence in a log holding 85 sessions and 66 terminal starts matches the first press of a button that landed the same day |
 
 **Exit guardrails — Epic J**
 
