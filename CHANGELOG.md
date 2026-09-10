@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Notification popups that hide themselves.** Balloons fade after 5 seconds instead of the IDE's own 10 seconds (for a notification group set to Balloon) or 5 minutes (Sticky balloon), so a burst of them clears itself instead of stacking up in the corner. The countdown pauses while the IDE is in the background, so something that arrived while you were in another app is still there when you come back, and every notification stays in the Notifications tool window either way — only the popup goes. Errors keep the IDE's five-minute timer unless you opt them in. The delay and both switches live under Tools → Agenstorm → Notifications
+
 ## [1.3.0] - 2026-09-10
 
 ### Added

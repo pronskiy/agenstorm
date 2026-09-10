@@ -31,6 +31,8 @@
 
 **Now on:** **Publishing 1.3.0.** The version is cut (2026-09-10): `pluginVersion = 1.3.0`, the changelog section is patched, `agenstorm-1.3.0.zip` is built, and the verifier is **Compatible on PS-262.10315.130 and IU-262.10315.125 with zero internal usages** (50 experimental, 4 deprecated — both unchanged since 1.2.0). It carries **Epic J** (terminal ⇄ editor maximize, ⌘⌥M won from Extract Method by a promoter rather than by editing a keymap — decisions 45 and 46) and **Epic K** (the IDE as the terminal's `$EDITOR`: Claude Code's Ctrl+G, `git commit`, anything that reaches for an editor — decisions 43 and 44). **What is left is Roman's**: 24 commits to push, the GitHub release to publish — `release.yml` fires on `released`/`prereleased` and signs and pushes the ZIP to the Marketplace — and then the guardrails he has not run yet (two projects open, a profile that exports `EDITOR`, `git commit`, the non-project-file bar, Ctrl+C mid-edit, the off switch, a daily-driver log run), plus the correction to IJPL-221866.
 
+**2026-09-10 — Epic L, notification popups that hide themselves.** Roman asked whether balloons can be hidden automatically; §7 keeps the survey, and he chose the timed auto-dismiss over the IDE's all-or-nothing switches. **Phase L1 is built**: balloons fade after 5 s instead of the platform's 10 s / 5 min, errors keep their long timer unless opted in, and nothing persisted by the platform is touched — the one call re-arms the balloon's own alarm, so the pause-while-the-IDE-is-in-the-background behaviour comes along for free. `./gradlew check` green, and `verifyPlugin` Compatible on both IDEs with **zero internal usages** and 50 experimental / 4 deprecated, all three unchanged from 1.3.0. It sits in `[Unreleased]`, not in 1.3.0, and **its six guardrails are Roman's to run**.
+
 **Release track (Roman's):** **Release R7 — the internal-API rework, then re-submit.** The Marketplace review **rejected 1.1.0** for 15 `@ApiStatus.Internal` usages. The code side is done (2026-09-10, commits `b7db79d`…`f331c4b`): Epic B cut, the toolbar slot swapped with `ActionManager.replaceAction`, the branch widget rebuilt on git4idea's `GitBranchWidget`, the title refresh moved to `UISettings` — decisions 35–38, §2's internal-API row is now "none". `./gradlew check` green and `verifyPlugin` **Compatible on PS-262.10315.130 and IU-262.10315.125 with zero internal usages** (46 experimental, 2 deprecated). **Three things are left, all Roman's:** (1) ~~the guardrail run~~ — done 2026-09-10, Roman signed off on a 5 h 19 m session with a clean log; the feature toggles were not exercised, see R7; ~~(2) the version number~~ — **cut as 1.2.0 on 2026-09-10**, ZIP built and verified; (3) re-submit, which is R6 and needs the listing text plus a screenshot pass over the changed UI. **Epic J landed after the cut** (terminal ⇄ editor maximize toggle, decision 40): it is in `[Unreleased]`, not in 1.2.0, so it either waits for 1.3.0 or 1.2.0 is re-cut around it — Roman's call. Its own guardrail run is still open. Note the 1.1.0 draft GitHub release (id 385481892) sits on `12f3932` and its notes no longer match what will ship. R6's listing text and four screenshots still apply, except any that show the New Scratch File popup.
 
 **Superseded (kept for the trail):** **Now on:** **Release 1.1.0** → step **R6** (publish), Roman's. The version is cut and the ZIP builds; what it still needs is the listing text and the five screenshots R2 deferred — taken against 1.1.0's behaviour, which differs visibly from what 1.0.0 would have shown. R1–R5 are closed. **Corrected 2026-09-09:** `1.0.0` is not a draft — it was *published* on 2026-09-07 with its signed ZIP attached, so the note this pointer used to carry was stale. `main` is now pushed through `12f3932`, and a **draft release `1.1.0`** (id 385481892) sits on that commit with the changelog section as its notes and no assets. A draft fires nothing: `release.yml` runs on `released`/`prereleased`, so publishing that draft is what signs the ZIP and pushes it to the Marketplace. The four signing/publishing secrets are set. What it still needs from Roman is the listing text and the five screenshots R2 deferred.
@@ -1353,6 +1355,62 @@ here, and both the docs and the third-party write-ups are wrong about the centra
 | Verifier | Still zero internal API usages | ✅ | 2026-09-10: Compatible on PS-262.10315.130 and IU-262.10315.125, **zero internal** (no such report file at all), 50 experimental and 4 deprecated — both counts unchanged from 1.2.0, so this epic added none. `NonProjectFileWritingAccessProvider.allowWriting` sits in an `impl` package but carries no `ApiStatus` annotation, and the verifier agrees |
 
 
+### Epic L — Notification popups that hide themselves  ·  after 1.3.0
+
+**Goal:** a notification balloon leaves on its own after a few seconds, without the notification being lost.
+**Success metrics:** no persisted platform setting is written; the countdown still pauses while the IDE is in
+the background; every notification stays in the Notifications tool window; zero internal API.
+
+Roman, 2026-09-10: "is it possible to automatically hide notifications popups?", then "let's do the timed
+auto-dismiss". §7 keeps the survey that came first: the IDE covers *never show a popup* (per group, or the
+global "Display balloon notifications"), but has nothing between that and a balloon that just sits there.
+
+Platform facts (verified against build 262 with `javap -c`):
+
+- **Sticky balloons already fade — after five minutes.** `NotificationsManagerImpl.notifyByBalloon` ends with
+  `startSmartFadeoutTimer(displayType == STICKY_BALLOON ? 300000 : 10000)`. The feature is therefore not "add
+  a timer", it is "shorten the one already running".
+- **"Smart" means paused while the IDE is not the active application.** `startSmartFadeoutTimer` only sets
+  `mySmartFadeout` / `mySmartFadeoutDelay` and subscribes to `ApplicationActivationListener`; that listener
+  (`BalloonImpl$10`) is what starts and restarts the alarm, recomputing what is left from
+  `myFadeoutRequestDelay`. **`startFadeoutTimer(int)`** is the one that cancels the pending request and
+  schedules the hide — so one call replaces the platform's delay *and* inherits its pausing, which is why the
+  feature needs no timer of its own.
+- **`BalloonImpl` is not internal.** No class-level `@ApiStatus`; the two members carrying
+  `@ApiStatus.Internal` are `getShadowBorderProvider` and `setShadowBorderProvider`, neither of them touched.
+  Same shape as the `ProjectUtil` row in §7. `startFadeoutTimer` and `startSmartFadeoutTimer` are public and
+  unannotated, and `verifyPlugin` confirms the counts did not move.
+- **`Notifications.TOPIC` is `BroadcastDirection.NONE`**, and `Notifications.Bus.doNotify` publishes a
+  project-scoped notification on that project's bus and everything else on the application's. One
+  registration sees half of them — hence the listener in both `applicationListeners` and `projectListeners`.
+- **The balloon does not exist when the topic fires.** `Notification.getBalloon()` is null at `notify()` time
+  and is filled further down the same publish, which is why L1.3 waits for one instead of acting inline.
+- `Notification.getBalloon/isExpired/getType` and `Balloon.hide/isDisposed` are public and unannotated.
+
+#### Phase L1 — The shorter fadeout
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| L1.1 | `AutoDismissPolicy`: which balloons get a shortened fadeout, and how long it is | ✅ | Pure function of `(NotificationType, State)`; `null` means "leave the platform's timer alone". The only logic in the epic, so the only thing carrying tests |
+| L1.2 | Settings: `notificationsAutoDismissEnabled` (on), `notificationsAutoDismissSeconds` (5), `notificationsAutoDismissErrors` (off), and the Notifications group | ✅ | Errors keeping the five-minute timer by default is Roman's call; `WARNING` and `IDE_UPDATE` are dismissed like `INFORMATION`. The delay is clamped to 1–600 s: below a second nothing is readable, past ten minutes the platform's own sticky timer is the shorter of the two |
+| L1.3 | `NotificationAutoDismissService`: wait for the balloon, then re-arm its timer | ✅ | App-level `@Service` with an injected scope; `Dispatchers.EDT` under `ModalityState.any()`, because balloons show over modal dialogs and all this touches is a UI timer. Polls `getBalloon()` every 50 ms for at most 3 s, then gives up quietly — which is what a group set to "No popups" or to the tool window looks like from here. Our own `delay` + `Balloon.hide()` is the fallback for the day the platform hands out a `Balloon` that is not a `BalloonImpl` |
+| L1.4 | `NotificationAutoDismissListener` registered on **both** buses | ✅ | `applicationListeners` + `projectListeners`, for the `BroadcastDirection.NONE` reason above |
+| L1.5 | Tests | ✅ | 8 cases in `AutoDismissPolicyTest`: the feature off leaves every type alone, information/warning/IDE-update get the delay, errors do not until opted in, a configured delay is honoured, and both ends of the range clamp |
+| L1.6 | Docs: README section, changelog, settings comments | ✅ | All three name the IDE's own timers, so the setting reads as "shorter than 10 s / 5 min" rather than as something invented |
+
+**Exit guardrails — Epic L**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| It hides | An information balloon disappears about 5 s after it appears | 🔲 | |
+| Nothing is lost | That same notification is still in the Notifications tool window afterwards | 🔲 | |
+| Background pause | Trigger a balloon, switch to another app for a minute, come back → it is still there, and *then* fades | 🔲 | |
+| Errors stay | An error balloon is still there after 30 s; switching "Also hide error notifications" on makes it go at 5 s | 🔲 | |
+| Off switch | Feature off → balloons keep the IDE's own 10 s / 5 min behaviour, no restart | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Verifier | Still zero internal API usages | ✅ | 2026-09-10: Compatible on PS-262.10315.130 and IU-262.10315.125, **zero internal**, 50 experimental and 4 deprecated — all three unchanged from 1.3.0, so the `BalloonImpl` cast added none |
+
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
@@ -1471,7 +1529,7 @@ here, and both the docs and the third-party write-ups are wrong about the centra
 - [ ] Epic E on Windows/Linux: the widget works, but is it wanted there (native tabs do not exist)? Default: available, off by default outside macOS.
 - [ ] Should `Copy Location Link` also offer `path:line:col` relative to the *repository* root vs. content root when they differ (monorepos)? Default: content root; decide after use.
 - [x] ~~**Epic B, dialects:** the scratch popup lists *languages*, but `scratchLanguageFilter` filters by *file type*; JavaScript dialects map to the JavaScript file type and stay whenever JavaScript is allowed.~~ Resolved 2026-09-05: accept and document (decision 14). **Fixed 2026-09-10** (decision 39): the popup is ours and filters languages, so ActionScript and ECMAScript 6 stay out unless named.
-- [ ] **Auto-hiding notification balloons — feasibility settled 2026-09-10, nothing built.** Roman asked whether notification popups can be hidden automatically. The zero-code half: Settings | Appearance & Behavior | Notifications carries a global "Display balloon notifications" (`NotificationsConfigurationImpl.SHOW_BALLOONS`) and a per-group display type (`No popups` / `Balloon` / `Sticky balloon` / `Tool window`); `No popups` still logs the entry to the Notifications tool window, and `Balloon` fades by itself while `Sticky balloon` does not — which is the part that actually annoys. The plugin half is all public API: `NotificationsConfiguration.setDisplayType(groupId, NONE)` (the abstract class carries no ApiStatus at all, and `NotificationsConfigurationImpl` carries only `@State`, so neither is internal — same reasoning as the `ProjectUtil` row above), and for a timed auto-dismiss a `Notifications.TOPIC` subscriber calling `Notification.hideBalloon()` (popup gone, entry kept) or `expire()` (entry dropped) after a delay. Two traps to design around: `Notifications.TOPIC` is declared `BroadcastDirection.NONE` and `Notifications.Bus.doNotify` publishes project-scoped notifications on the project bus and the rest on the app bus, so a listener needs both an `applicationListeners` entry and a per-project subscription or it sees half of them; and at `notify()` time the balloon does not exist yet (`getBalloon()` is null), so the hide must be scheduled, never inline — "never show at all" belongs to the display type instead. The platform's own timer (`BalloonLayoutData.fadeoutTime` → `BalloonImpl.startSmartFadeoutTimer`) sits behind `NotificationsManagerImpl` and is not reachable, so a plugin schedules its own hide rather than retuning theirs. Deferred, not rejected: the only gap worth filling is the timed auto-dismiss, since the IDE offers fade-vs-sticky per group and nothing in between.
+- [ ] **Auto-hiding notification balloons — feasibility settled 2026-09-10, nothing built.** Roman asked whether notification popups can be hidden automatically. The zero-code half: Settings | Appearance & Behavior | Notifications carries a global "Display balloon notifications" (`NotificationsConfigurationImpl.SHOW_BALLOONS`) and a per-group display type (`No popups` / `Balloon` / `Sticky balloon` / `Tool window`); `No popups` still logs the entry to the Notifications tool window, and `Balloon` fades by itself while `Sticky balloon` does not — which is the part that actually annoys. The plugin half is all public API: `NotificationsConfiguration.setDisplayType(groupId, NONE)` (the abstract class carries no ApiStatus at all, and `NotificationsConfigurationImpl` carries only `@State`, so neither is internal — same reasoning as the `ProjectUtil` row above), and for a timed auto-dismiss a `Notifications.TOPIC` subscriber calling `Notification.hideBalloon()` (popup gone, entry kept) or `expire()` (entry dropped) after a delay. Two traps to design around: `Notifications.TOPIC` is declared `BroadcastDirection.NONE` and `Notifications.Bus.doNotify` publishes project-scoped notifications on the project bus and the rest on the app bus, so a listener needs both an `applicationListeners` entry and a per-project subscription or it sees half of them; and at `notify()` time the balloon does not exist yet (`getBalloon()` is null), so the hide must be scheduled, never inline — "never show at all" belongs to the display type instead. The platform's own timer (`BalloonLayoutData.fadeoutTime` → `BalloonImpl.startSmartFadeoutTimer`) sits behind `NotificationsManagerImpl` and is not reachable, so a plugin schedules its own hide rather than retuning theirs. Roman chose the timed auto-dismiss the same day; it is **Epic L**, and the platform facts moved there.
 
 ---
 

@@ -21,6 +21,7 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
 import com.pronskiy.agenstorm.commit.CommitSettingsPanel
 import com.pronskiy.agenstorm.frame.FrameTitleRefresher
+import com.pronskiy.agenstorm.notifications.AutoDismissPolicy
 import com.pronskiy.agenstorm.scratch.ScratchActionInstaller
 import com.pronskiy.agenstorm.tabs.NativeTabStrip
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
@@ -177,6 +178,20 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .onApply { AgenstormSettingsListener.fire() }
                     .applyToComponent { name = "terminal.unknownFileTypes" }
                     .comment(AgenstormBundle.message("settings.terminal.open.unknownFileTypes.comment"))
+            }
+        }
+        featureGroup("settings.group.notifications", "settings.notifications.autoDismiss.enabled", AgenstormSettings.State::notificationsAutoDismissEnabled) {
+            row(AgenstormBundle.message("settings.notifications.autoDismiss.seconds")) {
+                intTextField(AutoDismissPolicy.SECONDS_RANGE, 1)
+                    .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.notificationsAutoDismissSeconds }, { AgenstormSettings.getInstance().state.notificationsAutoDismissSeconds = it }))
+                    .applyToComponent { name = "notifications.autoDismissSeconds" }
+                    .comment(AgenstormBundle.message("settings.notifications.autoDismiss.seconds.comment"))
+            }
+            row {
+                checkBox(AgenstormBundle.message("settings.notifications.autoDismiss.errors"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.notificationsAutoDismissErrors }, { AgenstormSettings.getInstance().state.notificationsAutoDismissErrors = it })
+                    .applyToComponent { name = "notifications.autoDismissErrors" }
+                    .comment(AgenstormBundle.message("settings.notifications.autoDismiss.errors.comment"))
             }
         }
     }

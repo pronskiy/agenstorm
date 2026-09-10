@@ -70,7 +70,15 @@
              platform's own action is put back when the feature goes off or the plugin is unloaded. -->
         <listener class="com.pronskiy.agenstorm.scratch.ScratchLifecycleListener" topic="com.intellij.ide.AppLifecycleListener"/>
         <listener class="com.pronskiy.agenstorm.scratch.ScratchUnloadListener" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+        <!-- notifications: balloons fade after the configured delay instead of the platform's 10 s / 5 min. -->
+        <listener class="com.pronskiy.agenstorm.notifications.NotificationAutoDismissListener" topic="com.intellij.notification.Notifications"/>
     </applicationListeners>
+
+    <projectListeners>
+        <!-- notifications: Notifications.TOPIC is BroadcastDirection.NONE and a project-scoped notification is
+             published on that project's bus, so the application listener above never sees it. -->
+        <listener class="com.pronskiy.agenstorm.notifications.NotificationAutoDismissListener" topic="com.intellij.notification.Notifications"/>
+    </projectListeners>
 
     <actions resource-bundle="messages.AgenstormBundle">
         <!-- tabs: keyboard navigation between project windows in tab order; no default shortcuts (README suggests some). -->

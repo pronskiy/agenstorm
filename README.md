@@ -51,6 +51,14 @@ IDE terminals only.
 One key fills the editor's area with the terminal and the same key gives the editor back, opening the
 terminal first if it was closed. Other tool windows keep their place.
 
+### Notification popups that hide themselves
+
+Balloons fade after a few seconds instead of the IDE's 10 seconds — or 5 minutes for the sticky
+ones — so a burst clears itself instead of stacking up in the corner. The countdown pauses while
+the IDE is in the background, so nothing that arrived while you were elsewhere is gone before you
+look, and everything stays in the Notifications tool window either way; only the popup goes.
+Errors keep their long timer unless you say otherwise.
+
 ### AI commit messages
 
 A subject and body streamed into the commit message field from the Anthropic API, any
