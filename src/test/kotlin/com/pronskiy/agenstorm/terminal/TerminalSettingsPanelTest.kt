@@ -15,6 +15,9 @@ import javax.swing.JComponent
 /**
  * Step G2.3: the Terminal group shows the three options, Apply writes them and fires the settings topic,
  * and turning the feature off unbinds the endpoints that are listening.
+ *
+ * Step K1.5 adds the Terminal editor group beside it, and with it the rule the endpoint's lifetime now
+ * follows: one endpoint serves both features, so it stays bound while either of them is on.
  */
 class TerminalSettingsPanelTest : BasePlatformTestCase() {
 
@@ -62,21 +65,43 @@ class TerminalSettingsPanelTest : BasePlatformTestCase() {
         assertFalse(configurable.isModified)
     }
 
-    fun testTurningTheFeatureOffUnbindsAListeningEndpoint() {
+    fun testTurningBothFeaturesOffUnbindsAListeningEndpoint() {
         val server = project.service<OpenRequestServer>()
         assertTrue(server.start() > 0)
 
-        featureToggle().isSelected = false
+        featureToggle("settings.terminal.open.enabled").isSelected = false
+        featureToggle("settings.terminal.editor.enabled").isSelected = false
         configurable.apply()
 
         assertFalse(AgenstormSettings.getInstance().state.terminalOpenEnabled)
-        assertEquals("nothing may be listening while the feature is off", -1, server.port)
+        assertFalse(AgenstormSettings.getInstance().state.terminalEditorEnabled)
+        assertEquals("nothing may be listening while both features are off", -1, server.port)
+    }
+
+    fun testTheEndpointSurvivesTheOtherFeatureBeingSwitchedOff() {
+        val server = project.service<OpenRequestServer>()
+        assertTrue(server.start() > 0)
+
+        featureToggle("settings.terminal.open.enabled").isSelected = false
+        configurable.apply()
+
+        assertTrue("the \$EDITOR bridge posts to this very endpoint", server.port > 0)
+    }
+
+    fun testTheEditorGroupIsThereAndOnByDefault() {
+        assertTrue(featureToggle("settings.terminal.editor.enabled").isSelected)
+
+        featureToggle("settings.terminal.editor.enabled").isSelected = false
+        assertTrue(configurable.isModified)
+        configurable.apply()
+
+        assertFalse(AgenstormSettings.getInstance().state.terminalEditorEnabled)
     }
 
     /** The group's own switch has no component name — [AgenstormConfigurable.featureGroup] labels it instead. */
-    private fun featureToggle(): JBCheckBox =
+    private fun featureToggle(key: String = "settings.terminal.open.enabled"): JBCheckBox =
         UIUtil.findComponentsOfType(panel, JBCheckBox::class.java)
-            .single { it.text == AgenstormBundle.message("settings.terminal.open.enabled") }
+            .single { it.text == AgenstormBundle.message(key) }
 
     private inline fun <reified T : JComponent> named(name: String): T =
         UIUtil.findComponentsOfType(panel, T::class.java).single { it.name == name }

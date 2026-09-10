@@ -12,8 +12,11 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
 
-/** Step G2.4: shadowing `open` announces itself exactly once, and never again after the flag is set. */
-class TerminalOpenNoticeTest : BasePlatformTestCase() {
+/**
+ * Step K1.5: taking over `$EDITOR` announces itself exactly once, and says what happens to the editor the
+ * user set themselves — the balloon is the only place that answers "where did my vim go".
+ */
+class TerminalEditorNoticeTest : BasePlatformTestCase() {
 
     private val shown = mutableListOf<Notification>()
 
@@ -42,34 +45,54 @@ class TerminalOpenNoticeTest : BasePlatformTestCase() {
     }
 
     fun testTheNoticeIsShownOnceAndCarriesALinkToTheSettings() {
-        TerminalOpenNotice.showOnce(project)
-        TerminalOpenNotice.showOnce(project)
+        TerminalEditorNotice.showOnce(project, fallback = null)
+        TerminalEditorNotice.showOnce(project, fallback = null)
         UIUtil.dispatchAllInvocationEvents()
 
         val notification = assertOneElement(shown)
         assertTrue(notification.content.contains("IDE terminals only"))
         assertEquals(1, notification.actions.size)
-        assertTrue(AgenstormSettings.getInstance().state.terminalOpenNoticeShown)
+        assertTrue(AgenstormSettings.getInstance().state.terminalEditorNoticeShown)
+    }
+
+    fun testTheEditorTheUserSetIsNamedAsWhatStillHandlesTheRest() {
+        TerminalEditorNotice.showOnce(project, fallback = "vim")
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertTrue(assertOneElement(shown).content.contains("vim"))
     }
 
     fun testAFlagFromAnEarlierRunKeepsItQuiet() {
-        AgenstormSettings.getInstance().state.terminalOpenNoticeShown = true
+        AgenstormSettings.getInstance().state.terminalEditorNoticeShown = true
 
-        TerminalOpenNotice.showOnce(project)
+        TerminalEditorNotice.showOnce(project, fallback = null)
         UIUtil.dispatchAllInvocationEvents()
 
         assertEmpty(shown)
     }
 
-    fun testInstallingTheShimAnnouncesItself() {
+    fun testInstallingTheBridgeAnnouncesItself() {
         if (SystemInfo.isWindows) return
-        // The `$EDITOR` bridge has a balloon of its own (K1.5), and this test is about this one.
-        AgenstormSettings.getInstance().state.terminalEditorEnabled = false
+        // The `open` shim has a balloon of its own, and this test is about this one.
+        AgenstormSettings.getInstance().state.terminalOpenEnabled = false
 
         TerminalOpenExecOptionsCustomizer.shimFor(project, LocalEelDescriptor)
         TerminalOpenExecOptionsCustomizer.shimFor(project, LocalEelDescriptor)
         UIUtil.dispatchAllInvocationEvents()
 
         assertOneElement(shown)
+        assertTrue(AgenstormSettings.getInstance().state.terminalEditorNoticeShown)
+    }
+
+    fun testTheBridgeOffSaysNothing() {
+        if (SystemInfo.isWindows) return
+        AgenstormSettings.getInstance().state.terminalEditorEnabled = false
+        AgenstormSettings.getInstance().state.terminalOpenNoticeShown = true
+
+        TerminalOpenExecOptionsCustomizer.shimFor(project, LocalEelDescriptor)
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEmpty(shown)
+        assertFalse(AgenstormSettings.getInstance().state.terminalEditorNoticeShown)
     }
 }

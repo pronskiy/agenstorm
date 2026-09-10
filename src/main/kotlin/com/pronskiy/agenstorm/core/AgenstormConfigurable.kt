@@ -157,6 +157,11 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .comment(AgenstormBundle.message("settings.markdown.revealScope.comment"))
             }
         }
+        featureGroup("settings.group.terminalEditor", "settings.terminal.editor.enabled", AgenstormSettings.State::terminalEditorEnabled, onApply = ::applyTerminalSettings) {
+            row {
+                comment(AgenstormBundle.message("settings.terminal.editor.comment"))
+            }
+        }
         featureGroup("settings.group.terminal", "settings.terminal.open.enabled", AgenstormSettings.State::terminalOpenEnabled, onApply = ::applyTerminalSettings) {
             row(AgenstormBundle.message("settings.terminal.open.commandNames")) {
                 textField()
@@ -222,13 +227,17 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
     }
 
     /**
-     * The terminal toggle changed. Terminals that are already running keep the environment they started
-     * with (the settings page says so); what the switch can do at once is unbind the endpoints, so nothing
-     * is listening while the feature is off. [serviceIfCreated] so a project that never opened a terminal
-     * does not get one created here.
+     * A terminal toggle changed. Terminals that are already running keep the environment they started with
+     * (the settings page says so); what the switch can do at once is unbind the endpoints, so nothing is
+     * listening while the feature is off.
+     *
+     * One endpoint serves both terminal features, so it may only be unbound once **both** are off — the
+     * `open` shim switched off while the `$EDITOR` bridge is on would otherwise take the bridge's endpoint
+     * with it. [serviceIfCreated] so a project that never opened a terminal does not get one created here.
      */
     private fun applyTerminalSettings() {
-        if (!AgenstormSettings.getInstance().state.terminalOpenEnabled) {
+        val state = AgenstormSettings.getInstance().state
+        if (!state.terminalOpenEnabled && !state.terminalEditorEnabled) {
             ProjectManager.getInstance().openProjects.forEach { it.serviceIfCreated<OpenRequestServer>()?.stop() }
         }
         AgenstormSettingsListener.fire()

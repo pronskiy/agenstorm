@@ -94,6 +94,8 @@ class TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer {
                 if (names.isNotEmpty()) TerminalOpenNotice.showOnce(project)
                 val editor = binDir.resolve(OpenShimScriptHolder.EDIT_SHIM_NAME)
                     .takeIf { state.terminalEditorEnabled }
+                val fallback = editor?.let { displacedEditor(EnvironmentUtil.getEnvironmentMap(), binDir) }
+                if (editor != null) TerminalEditorNotice.showOnce(project, fallback)
                 Shim(
                     // Only the `open` shims belong on PATH. With just the editor bridge on, the directory
                     // holds one script nothing ever looks up by name — `$EDITOR` carries its full path.
@@ -101,7 +103,7 @@ class TerminalOpenExecOptionsCustomizer : ShellExecOptionsCustomizer {
                     editor = editor?.toString(),
                     port = port,
                     token = server.token,
-                    editorFallback = editor?.let { displacedEditor(EnvironmentUtil.getEnvironmentMap(), binDir) },
+                    editorFallback = fallback,
                 )
             } catch (e: Exception) {
                 // A terminal must open even when the shims cannot be installed.

@@ -102,6 +102,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var terminalOpenUnknownFileTypes: Boolean = false,
         /** Epic G: set once the first-run balloon explained that `open` is shadowed inside IDE terminals. */
         var terminalOpenNoticeShown: Boolean = false,
+        /** Epic K: set once the first-run balloon explained that `$EDITOR` opens in this IDE. */
+        var terminalEditorNoticeShown: Boolean = false,
     )
 
     private var currentState = State()

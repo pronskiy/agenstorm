@@ -39,6 +39,13 @@ IDE does not claim — flags, URLs, missing paths, binaries — reaches the real
 The shim shadows `open` inside IDE terminals only; every other shell on the machine is
 unaffected.
 
+### The IDE as your terminal's editor
+
+Press <kbd>Ctrl</kbd>+<kbd>G</kbd> in Claude Code and the prompt — or the plan it is showing you —
+opens in this project's window instead of vim. Close the tab and the edited text goes back to it.
+Everything else that reaches for `$EDITOR` gets the same treatment, `git commit` included, inside
+IDE terminals only.
+
 ### A terminal that fills the window
 
 One key fills the editor's area with the terminal and the same key gives the editor back, opening the
@@ -260,6 +267,37 @@ Settings → Tools → Agenstorm → **Terminal** has the switch, the command na
 `edit` can shadow as well) and an option to let the IDE claim files it treats as binary. Terminals that are
 already running keep the environment they started with, so a change takes effect in the next terminal.
 Shells running over WSL or SSH are never shimmed; Windows is not supported yet.
+
+## The IDE as your terminal's editor
+
+Programs hand a file to whatever `$EDITOR` or `$VISUAL` names and wait for it to exit. Inside IDE
+terminals, that is now this IDE:
+
+- **Claude Code**: <kbd>Ctrl</kbd>+<kbd>G</kbd> while typing a prompt, or on a plan it is showing you,
+  opens it here. Edit it, close the tab, and the text goes straight back into the prompt.
+- **`git commit`** with no `-m`: the message opens in an editor tab, and closing it commits.
+- Anything else in the same habit — `crontab -e`, `kubectl edit`, `visudo`.
+
+The file opens in the window whose terminal asked for it, and the command stays blocked until its
+**last tab is closed** — that is the "I am done" gesture, the same one `--wait` has always meant.
+What you typed is on disk before the caller is let go, so it reads the edit and not the text it
+started with.
+
+The IDE takes exactly one existing, writable file and nothing else. Anything with an option in it
+(`vi +42 notes.md`, `$EDITOR -R log`), a path that is not there, a directory, or a read-only file goes
+to a real editor instead: the one your shell profile set, or `vi` when it set none. The same happens
+when the IDE cannot take the file at all, so a terminal is never left without an editor.
+
+How it works: the IDE writes a small POSIX `sh` script and points `EDITOR` and `VISUAL` at it — both,
+because programs read `VISUAL` first. They are set twice over: once in the terminal's environment, and
+once through the terminal's own `_INTELLIJ_FORCE_SET_*` mechanism, which is applied **after** your
+`.zshrc` or `.bash_profile` has run. So a profile that exports its own `EDITOR` no longer decides what
+happens in IDE terminals — while that editor is kept as the fallback above. Every other shell on the
+machine is untouched.
+
+Settings → Tools → Agenstorm → **Terminal editor** has the switch. Terminals that are already running
+keep the environment they started with, so a change takes effect in the next one. Shells over WSL or
+SSH are never touched; Windows is not supported yet.
 
 ## Filling the window with the terminal
 
