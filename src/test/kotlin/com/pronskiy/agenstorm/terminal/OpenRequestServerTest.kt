@@ -36,7 +36,7 @@ class OpenRequestServerTest : BasePlatformTestCase() {
     override fun tearDown() {
         try {
             server.stop()
-            server.handler = OpenRequestHandler { _, _ -> false }
+            server.resetHandlers()
         } finally {
             super.tearDown()
         }

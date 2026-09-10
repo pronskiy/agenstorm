@@ -46,8 +46,13 @@ import org.jetbrains.annotations.VisibleForTesting
  * `/proc/<pid>/cmdline` is world-readable: any local user could read the token out of it.
  *
  * Answers `204` when the IDE claimed the command, `409` when it did not (the shim then execs the real `open`),
- * `403` on a bad or missing token. Nothing is bound until [start] is called, which only happens while
- * `terminalOpenEnabled` is on; the server is closed with the project.
+ * `403` on a bad or missing token. Nothing is bound until [start] is called, which happens while either
+ * terminal feature is on; the server is closed with the project.
+ *
+ * Step K1.3 adds a second context, `POST /edit`, for the `$EDITOR` shim. Everything above holds for it —
+ * one token, one body shape, the same 204/409/403 — except that a claimed request is not answered until the
+ * user has closed the file again, which is what makes the IDE a blocking editor. `503` is the third answer
+ * there: the project closed while the file was still open.
  */
 @Service(Service.Level.PROJECT)
 class OpenRequestServer(private val project: Project, private val scope: CoroutineScope) : Disposable {
@@ -58,6 +63,25 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
     /** Decides and performs one `open` invocation. Runs off the EDT, outside a read action; tests replace it. */
     @Volatile
     var handler: OpenRequestHandler = OpenRequestHandler { cwd, argv -> perform(cwd, argv) }
+
+    /**
+     * Step K1.3. The same for one `$EDITOR` invocation — with one difference that shapes everything else
+     * here: it does not return until the user has closed the file again, so this one may be suspended for
+     * as long as someone is typing.
+     */
+    @Volatile
+    var editHandler: OpenRequestHandler = OpenRequestHandler { cwd, argv -> edit(cwd, argv) }
+
+    /**
+     * Puts both handlers back to what the IDE itself uses. Only tests need it, and they need it badly: a
+     * light test's project — and so this service — is shared by every test class in the JVM, so a stub left
+     * behind by one class would otherwise decide what the next class's requests do.
+     */
+    @VisibleForTesting
+    fun resetHandlers() {
+        handler = OpenRequestHandler { cwd, argv -> perform(cwd, argv) }
+        editHandler = OpenRequestHandler { cwd, argv -> edit(cwd, argv) }
+    }
 
     @Volatile
     private var server: HttpServer? = null
@@ -84,6 +108,11 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         bound.createContext(CONTEXT_PATH) { exchange ->
             scope.launch { serve(exchange) }
         }
+        // The edit context holds its exchange open for as long as the file stays open, which is exactly why
+        // the dispatcher thread must not be the one waiting: it answers by starting a coroutine and moving on.
+        bound.createContext(EDIT_CONTEXT_PATH) { exchange ->
+            scope.launch { serve(exchange, editHandler, "edit") }
+        }
         bound.start()
         server = bound
         LOG.debug("Agenstorm: terminal open endpoint listening on 127.0.0.1:${bound.address.port}")
@@ -101,34 +130,59 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         stop()
     }
 
-    private suspend fun serve(exchange: HttpExchange) {
+    private suspend fun serve(exchange: HttpExchange, with: OpenRequestHandler = handler, what: String = "open") {
         try {
             val status = try {
-                dispatch(exchange)
+                dispatch(exchange, with)
             } catch (e: CancellationException) {
+                // The project is closing under an edit that is still open. Answering is the last useful thing
+                // this coroutine can do: the shim falls back to a real editor instead of waiting on a socket
+                // nobody will ever write to again.
+                answer(exchange, HTTP_SERVICE_UNAVAILABLE, what)
                 throw e
             } catch (e: Exception) {
                 // The shim must always get an answer: without one it waits for its own timeout instead of
-                // falling straight through to the real `open`.
-                LOG.warn("Agenstorm: terminal open request failed", e)
+                // falling straight through to the real command.
+                LOG.warn("Agenstorm: terminal $what request failed", e)
                 HTTP_SERVER_ERROR
             }
-            exchange.sendResponseHeaders(status, NO_BODY)
-        } catch (e: IOException) {
-            LOG.debug("Agenstorm: could not answer a terminal open request", e)
+            answer(exchange, status, what)
         } finally {
             exchange.close()
         }
     }
 
-    private suspend fun dispatch(exchange: HttpExchange): Int {
+    private fun answer(exchange: HttpExchange, status: Int, what: String) {
+        try {
+            exchange.sendResponseHeaders(status, NO_BODY)
+        } catch (e: IOException) {
+            LOG.debug("Agenstorm: could not answer a terminal $what request", e)
+        }
+    }
+
+    private suspend fun dispatch(exchange: HttpExchange, with: OpenRequestHandler): Int {
         if (!exchange.requestMethod.equals("POST", ignoreCase = true)) return HTTP_METHOD_NOT_ALLOWED
         val body = exchange.requestBody.readNBytes(MAX_BODY_BYTES + 1)
         if (body.size > MAX_BODY_BYTES) return HTTP_PAYLOAD_TOO_LARGE
         val parsed = parseBody(body) ?: return HTTP_BAD_REQUEST
         if (!isTokenValid(parsed.token)) return HTTP_FORBIDDEN
         val request = parsed.request
-        return if (handler.handle(request.cwd, request.argv)) HTTP_NO_CONTENT else HTTP_CONFLICT
+        return if (with.handle(request.cwd, request.argv)) HTTP_NO_CONTENT else HTTP_CONFLICT
+    }
+
+    /**
+     * Step K1.4. Routes one `$EDITOR` invocation and, when the IDE takes it, stays here until the user has
+     * closed the file again. Returns false for anything the shim should hand to a real editor.
+     */
+    private suspend fun edit(cwd: Path, argv: List<String>): Boolean {
+        if (!AgenstormSettings.getInstance().state.terminalEditorEnabled || project.isDisposed) return false
+        return when (val decision = EditCommandRouter.route(cwd, argv)) {
+            is EditCommandRouter.Decision.Edit -> TerminalEditSession(project).editAndAwaitClose(decision.path)
+            is EditCommandRouter.Decision.Decline -> {
+                LOG.debug("Agenstorm: leaving this edit to the shim's own editor (${decision.reason})")
+                false
+            }
+        }
     }
 
     /**
@@ -296,9 +350,9 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         const val CONTEXT_PATH: String = "/open"
 
         /**
-         * Where the `$EDITOR` shim of step K1.1 posts. The same server, the same token and the same body
-         * shape as [CONTEXT_PATH]; what differs is that the answer is held back until the tab closes.
-         * Step K1.3 binds it — until then the shim is declined by the server's 404 and falls back.
+         * Where the `$EDITOR` shim posts. The same server, the same token and the same body shape as
+         * [CONTEXT_PATH]; what differs is that the answer is held back until the file's tab closes, so this
+         * context routinely keeps an exchange open for minutes.
          */
         const val EDIT_CONTEXT_PATH: String = "/edit"
 
@@ -320,6 +374,7 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         private const val HTTP_CONFLICT = 409
         private const val HTTP_PAYLOAD_TOO_LARGE = 413
         private const val HTTP_SERVER_ERROR = 500
+        private const val HTTP_SERVICE_UNAVAILABLE = 503
 
         private val LOG = logger<OpenRequestServer>()
 
@@ -350,8 +405,9 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
 }
 
 /**
- * What the IDE does with one `open` invocation. Implemented by the router wiring in G1.2 / G2.1;
- * `true` means the IDE claimed the command, `false` sends the shim to the real `open`.
+ * What the IDE does with one shim invocation — `open` (G1.2 / G2.1) or `$EDITOR` (K1.4). `true` means the
+ * IDE claimed it, `false` sends the shim to the real command it stands in for. An edit handler returns only
+ * once the user is done with the file, so an implementation may suspend here for a very long time.
  */
 fun interface OpenRequestHandler {
     suspend fun handle(cwd: Path, argv: List<String>): Boolean
