@@ -6,12 +6,9 @@
 
 ### Changed
 
-- The plugin uses no internal platform API at all: the JetBrains Marketplace review rejected 1.1.0 over fifteen usages of it, and every one of them is gone. The window title refreshes through a UI settings change instead of `IdeFrameEx`; the status-bar branch widget extends the Git plugin's own widget instead of calling the internal branches popup; and the project tabs take the main toolbar's project slot through `ActionManager.replaceAction` instead of subclassing the stock widget. What each feature does is unchanged
+- The plugin uses no internal platform API at all: the JetBrains Marketplace review rejected 1.1.0 over fifteen usages of it, and every one of them is gone. The window title refreshes through a UI settings change instead of `IdeFrameEx`; the status-bar branch widget extends the Git plugin's own widget instead of calling the internal branches popup; the project tabs take the main toolbar's project slot through `ActionManager.replaceAction` instead of subclassing the stock widget; and the New Scratch File popup is Agenstorm's own action rather than a filter plugged into the platform's. What each feature does is unchanged
+- The New Scratch File popup now filters **languages** rather than file types, so allowing JavaScript no longer also offers ActionScript and ECMAScript 6 — the limitation 1.0 had to document. The allow-list is a list of language names, keeps the order you write it in, and ends with an "All Languages…" entry that opens the full list when you need something you did not list. A list customized under 1.0 or 1.1 carries over as it is: a file type name still resolves to its language
 - The branch in the status bar now carries the Git plugin's own branch icon, so a branch with unpushed or unfetched commits shows the incoming/outgoing arrows
-
-### Removed
-
-- The New Scratch File popup allow-list, with its settings group. It was the only feature built on an internal platform extension point (`scratchLanguageFilter`), and the platform has no public replacement, so the popup is the IDE's own again
 
 ## [1.1.0] - 2026-09-09
 

@@ -4,6 +4,7 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.SkipDefaultsSerializationFilter
 import com.intellij.util.xmlb.XmlSerializer
@@ -34,6 +35,7 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
     fun testEveryFeatureIsEnabledByDefault() {
         val state = AgenstormSettings.State()
         assertTrue(state.linksEnabled)
+        assertTrue(state.scratchFilterEnabled)
         assertTrue(state.hideFileNameInTitle)
         assertTrue(state.commitEnabled)
         assertTrue(state.projectTabsEnabled)
@@ -74,13 +76,13 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
             // createComponent() is what the Settings dialog calls; it keeps the panel that isModified/apply/reset operate on.
             val panel = configurable.createComponent()!!
             val featureTexts = listOf(
-                "settings.links.enabled", "settings.frame.hideFileName",
+                "settings.links.enabled", "settings.scratch.enabled", "settings.frame.hideFileName",
                 "settings.commit.enabled", "settings.tabs.enabled", "settings.markdown.liveMarkup.enabled",
                 "settings.terminal.open.enabled",
             ).map(AgenstormBundle::message)
             val checkBoxes = UIUtil.findComponentsOfType(panel, JBCheckBox::class.java).filter { it.text in featureTexts }
 
-            assertEquals(6, checkBoxes.size)
+            assertEquals(7, checkBoxes.size)
             assertTrue(checkBoxes.all { it.isSelected })
             assertFalse(configurable.isModified)
 
@@ -96,6 +98,56 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
             settings.loadState(AgenstormSettings.State())
             configurable.reset()
             assertTrue(linksToggle.isSelected)
+        } finally {
+            configurable.disposeUIResources()
+        }
+    }
+
+    fun testScratchAllowListRoundTripsThroughXml() {
+        val state = AgenstormSettings.State(scratchAllowedLanguages = mutableListOf("JSON", "PHP"))
+
+        val element = XmlSerializer.serialize(state, SkipDefaultsSerializationFilter())
+        val option = element.getChildren("option").single()
+        assertEquals("scratchAllowedLanguages", option.getAttributeValue("name"))
+        assertEquals(listOf("JSON", "PHP"), option.getChild("list").getChildren("option").map { it.getAttributeValue("value") })
+
+        assertEquals(state, XmlSerializer.deserialize(element, AgenstormSettings.State::class.java))
+    }
+
+    /**
+     * A settings file written by 1.0 or 1.1 holds the list under `scratchAllowedFileTypes`, of file type names.
+     * Loading it has to carry the customization over, and stop writing the old key.
+     */
+    fun testALegacyFileTypeAllowListIsFoldedInOnLoad() {
+        settings.loadState(AgenstormSettings.State(scratchAllowedFileTypes = mutableListOf("JSON", "PLAIN_TEXT")))
+
+        assertEquals(listOf("JSON", "PLAIN_TEXT"), settings.state.scratchAllowedLanguages)
+        assertTrue(settings.state.scratchAllowedFileTypes.isEmpty())
+    }
+
+    fun testAStateWithoutTheLegacyKeyKeepsItsOwnAllowList() {
+        settings.loadState(AgenstormSettings.State(scratchAllowedLanguages = mutableListOf("Markdown")))
+
+        assertEquals(listOf("Markdown"), settings.state.scratchAllowedLanguages)
+    }
+
+    fun testScratchAllowListIsEditedAsOneNamePerLine() {
+        val configurable = AgenstormConfigurable()
+        try {
+            val panel = configurable.createComponent()!!
+            val area = UIUtil.findComponentsOfType(panel, JBTextArea::class.java).single { it.name == "scratch.allowList" }
+            assertEquals("Plain text\nMarkdown\nPHP\nJavaScript", area.text)
+            assertFalse(configurable.isModified)
+
+            area.text = "JSON\n\n  PHP \nJSON\n"
+            assertTrue(configurable.isModified)
+            configurable.apply()
+            assertEquals(listOf("JSON", "PHP"), settings.state.scratchAllowedLanguages)
+            assertFalse(configurable.isModified)
+
+            settings.loadState(AgenstormSettings.State())
+            configurable.reset()
+            assertEquals("Plain text\nMarkdown\nPHP\nJavaScript", area.text)
         } finally {
             configurable.disposeUIResources()
         }

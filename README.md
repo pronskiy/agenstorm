@@ -47,6 +47,11 @@ CLI, which needs no API key at all. No SDK and no bundled jars — just the plat
 client. Undo removes the whole generation in one step, text already in the field is treated as
 a hint, and every prompt is editable.
 
+### A shorter New Scratch File popup
+
+Only the languages on your allow-list, in your order, with "All Languages…" at the bottom for
+everything else.
+
 ---
 
 Every feature has its own on/off switch under **Settings → Tools → Agenstorm**, and the ones
@@ -80,6 +85,13 @@ that plugin is missing.
 <kbd>Settings</kbd> > <kbd>Tools</kbd> > <kbd>Agenstorm</kbd> has one group per feature with an on/off
 switch. Everything is on by default. Settings are stored in `agenstorm.xml` in the IDE config
 directory, so they roam with Settings Sync.
+
+The **Scratch files** group holds the allow-list for the New Scratch File popup: one language per
+line (`Plain text`, `Markdown`, `PHP` and `JavaScript` by default), with buttons to add the current
+file's language or pick from every registered one. The popup keeps that order and ends with an
+"All Languages…" entry, so a language you left out is one click further away rather than out of
+reach. An entry may also name a file type, which is what allow-lists written for 1.0 and 1.1 hold —
+those keep working unchanged.
 
 ## Links for agents
 

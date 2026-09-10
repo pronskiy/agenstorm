@@ -20,6 +20,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
     data class State(
         /** Epic A: clickable `path:line[:col]` locations in Markdown, comments and PHP strings. */
         var linksEnabled: Boolean = true,
+        /** Epic B: New Scratch File popup limited to an allow-list of languages. */
+        var scratchFilterEnabled: Boolean = true,
         /** Epic C: window title shows the project only, never the current file. */
         var hideFileNameInTitle: Boolean = true,
         /** Epic D: AI commit message generation in the commit toolbar. */
@@ -30,6 +32,16 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupEnabled: Boolean = true,
         /** Epic G: `open path:line:col` in an IDE terminal opens the file in this window. */
         var terminalOpenEnabled: Boolean = true,
+        /**
+         * Epic B: the languages that stay in the New Scratch File popup, in the order they are shown. Entries
+         * name a language by id or display name; a file type name still resolves, which is what 1.0 wrote here.
+         */
+        var scratchAllowedLanguages: MutableList<String> = mutableListOf("Plain text", "Markdown", "PHP", "JavaScript"),
+        /**
+         * Epic B before 1.2: the same list, but of `FileType.name`s. Read once by [loadState] so a list a user
+         * customized under 1.0 or 1.1 carries over, then left empty. Never written.
+         */
+        var scratchAllowedFileTypes: MutableList<String> = mutableListOf(),
         /** Epic D: backend id (`anthropic`, `openai`, `claude-cli`, `fake`); an unknown id disables the action. */
         var commitBackendId: String = "anthropic",
         /** Epic D: model id passed to the backend; empty = the backend's default (required for `openai`). */
@@ -86,7 +98,20 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
     override fun getState(): State = currentState
 
     override fun loadState(state: State) {
-        currentState = state
+        currentState = migrateScratchAllowList(state)
+    }
+
+    /**
+     * Folds a `scratchAllowedFileTypes` list written by 1.0 or 1.1 into [State.scratchAllowedLanguages] and
+     * clears it, so a list the user customized under the file-type-level filter survives the move to languages.
+     * The entries need no translation: a file type name still matches its language.
+     */
+    private fun migrateScratchAllowList(state: State): State {
+        val legacy = state.scratchAllowedFileTypes
+        if (legacy.isEmpty()) return state
+        state.scratchAllowedLanguages = legacy.toMutableList()
+        state.scratchAllowedFileTypes = mutableListOf()
+        return state
     }
 
     companion object {

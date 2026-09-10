@@ -140,10 +140,10 @@ class CommitSettingsPanelTest : BasePlatformTestCase() {
         }
     }
 
-    fun testFeatureTogglesAreStillFiveAmongTheOtherCheckBoxes() {
-        val featureTexts = listOf("settings.links.enabled", "settings.frame.hideFileName", "settings.commit.enabled", "settings.tabs.enabled", "settings.markdown.liveMarkup.enabled").map(AgenstormBundle::message)
+    fun testFeatureTogglesAreStillSixAmongTheOtherCheckBoxes() {
+        val featureTexts = listOf("settings.links.enabled", "settings.scratch.enabled", "settings.frame.hideFileName", "settings.commit.enabled", "settings.tabs.enabled", "settings.markdown.liveMarkup.enabled").map(AgenstormBundle::message)
         val checkBoxes = UIUtil.findComponentsOfType(panel, JBCheckBox::class.java)
-        assertEquals(5, checkBoxes.count { it.text in featureTexts })
+        assertEquals(6, checkBoxes.count { it.text in featureTexts })
     }
 
     fun testTestConnectionRunsTheCliWithTheModelAsTyped() {
