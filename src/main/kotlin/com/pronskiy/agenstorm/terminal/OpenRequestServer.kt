@@ -303,7 +303,8 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         const val EDIT_CONTEXT_PATH: String = "/edit"
 
         /** The two variables [com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer] puts into a
-         *  terminal's environment; without [PORT_ENV] the shim claims nothing at all. */
+         *  terminal's environment for both shims — they share this one endpoint. Without [PORT_ENV] neither
+         *  shim claims anything at all. */
         const val PORT_ENV: String = "AGENSTORM_OPEN_PORT"
         const val TOKEN_ENV: String = "AGENSTORM_OPEN_TOKEN"
 

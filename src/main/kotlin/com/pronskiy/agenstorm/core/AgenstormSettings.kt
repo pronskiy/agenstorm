@@ -32,6 +32,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupEnabled: Boolean = true,
         /** Epic G: `open path:line:col` in an IDE terminal opens the file in this window. */
         var terminalOpenEnabled: Boolean = true,
+        /** Epic K: `$EDITOR` and `$VISUAL` in an IDE terminal open the file in this window and wait for the tab to close. */
+        var terminalEditorEnabled: Boolean = true,
         /** Epic J: a button and a shortcut that fill the editor's area with the terminal, and put the editor back. */
         var terminalMaximizeEnabled: Boolean = true,
         /**
