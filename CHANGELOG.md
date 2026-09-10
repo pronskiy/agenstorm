@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-10
+
 ### Added
 
 - **The IDE as your terminal's editor.** `$EDITOR` and `$VISUAL` in an IDE terminal point at this IDE, so Claude Code's <kbd>Ctrl</kbd>+<kbd>G</kbd> opens the prompt — or the plan — in the window whose terminal asked for it, and closing the tab hands the edited text back. `git commit`, `crontab -e` and everything else that reaches for an editor behave the same way, and the command stays blocked until the last tab for that file is closed, with what you typed on disk before it is let go. Only one existing, writable file is ever claimed: an invocation carrying options, a missing path, a directory or a read-only file goes to the editor your profile set, or to `vi`. Both variables are also set through the terminal's `_INTELLIJ_FORCE_SET_*` mechanism, which runs after your rc files, so a profile that exports its own `EDITOR` no longer disables the bridge — that editor becomes the fallback instead. A terminal that is covering the editor — maximized, or dragged over most of the window — steps aside for the file and takes its place back when the tab closes. Inside IDE terminals only, announced once in a balloon, and switchable under Tools → Agenstorm → Terminal editor
@@ -44,7 +46,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.2.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.3.0...HEAD
+[1.3.0]: https://github.com/pronskiy/agenstorm/compare/1.2.0...1.3.0
 [1.2.0]: https://github.com/pronskiy/agenstorm/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/pronskiy/agenstorm/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/pronskiy/agenstorm/commits/1.0.0
