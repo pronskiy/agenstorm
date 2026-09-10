@@ -3,6 +3,7 @@ package com.pronskiy.agenstorm.terminal
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.keymap.KeymapManager
+import javax.swing.KeyStroke
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.pronskiy.agenstorm.core.AgenstormSettings
@@ -17,6 +18,17 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 class TerminalMaximizeToggleActionTest : BasePlatformTestCase() {
 
     private val actionId = "Agenstorm.ToggleTerminalMaximized"
+
+    /** The one binding, kept in step with `plugin.xml` by the two keymap tests below. */
+    private val KEYSTROKE = "alt shift F12"
+
+    /** Every keymap that decides what this keystroke does on a machine someone actually uses. */
+    private val KEYMAPS = listOf(
+        KeymapManager.DEFAULT_IDEA_KEYMAP,
+        KeymapManager.MAC_OS_X_10_5_PLUS_KEYMAP,
+        KeymapManager.MAC_OS_X_KEYMAP,
+        "macOS System Shortcuts",
+    )
 
     override fun setUp() {
         super.setUp()
@@ -47,6 +59,29 @@ class TerminalMaximizeToggleActionTest : BasePlatformTestCase() {
         val shortcuts = KeymapManager.getInstance().activeKeymap.getShortcuts(actionId)
 
         assertTrue("expected a default binding for $actionId", shortcuts.isNotEmpty())
+    }
+
+    /**
+     * The binding has to be free in the keymap that will actually be in force, and "free" is not something
+     * a text search can answer: macOS keymaps inherit `$default` with Ctrl and Meta swapped
+     * (`MacOSDefaultKeymapKt.mapModifiers`), so `control alt M` — Extract Method — *is* ⌘⌥M there without
+     * the string ever appearing in a keymap file. A text search over the keymaps is what first picked ⌘⌥M
+     * for this action. Asking the keymap itself is the only check that cannot miss it.
+     */
+    fun testNothingElseClaimsTheBinding() {
+        for (name in KEYMAPS) {
+            val keymap = KeymapManager.getInstance().getKeymap(name) ?: continue
+            val claimed = keymap.getActionIds(KeyStroke.getKeyStroke(KEYSTROKE)).toList()
+            assertEquals("$KEYSTROKE in the $name keymap", listOf(actionId), claimed)
+        }
+    }
+
+    fun testTheBindingReachesEveryKeymapWithoutAnOverride() {
+        for (name in KEYMAPS - "macOS System Shortcuts") {
+            val keymap = KeymapManager.getInstance().getKeymap(name) ?: continue
+            val strokes = keymap.getShortcuts(actionId).map { it.toString() }
+            assertTrue("$actionId has no binding in the $name keymap: $strokes", strokes.isNotEmpty())
+        }
     }
 
     fun testTheToolWindowIdMatchesTheTerminalPlugin() {

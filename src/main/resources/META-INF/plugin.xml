@@ -75,14 +75,18 @@
 
         <!-- terminal: fill the window with the terminal, and put the editor back. The button is added to the
              terminal's own title bar in agenstorm-terminal.xml, which loads only when that plugin is present.
-             This is the one action that ships a default binding (decision 40 narrows decision 12); both
-             keystrokes were checked against every bundled keymap and plugin. -->
+             This is the one action that ships a default binding (decision 40 narrows decision 12), and it is
+             the same one on every platform: ⌥⇧F12, one shift away from ⌥F12, which activates the terminal
+             everywhere. It carries no macOS override — `alt shift F12` needs none, since the Ctrl/Meta swap
+             the mac keymaps apply to inherited shortcuts leaves it alone.
+             TerminalMaximizeToggleActionTest asks the keymaps themselves whether anything else claims it. A
+             text search cannot answer that, and a search is what let the first version of this binding pick
+             ⌘⌥M, which fires Extract Method: `control alt M` in $default *is* ⌘⌥M on macOS, and the string
+             appears in no keymap file. Caught before it shipped. Decision 45. -->
         <action id="Agenstorm.ToggleTerminalMaximized"
                 class="com.pronskiy.agenstorm.terminal.TerminalMaximizeToggleAction"
                 icon="AllIcons.General.ExpandComponent">
             <keyboard-shortcut keymap="$default" first-keystroke="alt shift F12"/>
-            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta alt M" replace-all="true"/>
-            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt M" replace-all="true"/>
         </action>
 
         <!-- links: copies relpath:line[:col] for the caret / selection start / clicked gutter line. No default shortcut. -->
