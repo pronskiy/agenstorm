@@ -119,16 +119,50 @@ class TerminalEditSessionTest : BasePlatformTestCase() {
     }
 
 
-    fun testTheTerminalIsOnlyPutBackWhereWeLeftIt() {
-        // Docked, visible, no longer maximized: this is the terminal we stepped past, so it goes back up.
-        assertTrue(TerminalEditSession.shouldRestore(state(visible = true, maximized = false, docked = true)))
-        // Everything else is the user having said something more recent than we did while the file was open.
-        assertFalse("hidden while the file was open", TerminalEditSession.shouldRestore(state(visible = false, maximized = false, docked = true)))
-        assertFalse("floated while the file was open", TerminalEditSession.shouldRestore(state(visible = true, maximized = false, docked = false)))
-        assertFalse("already maximized again", TerminalEditSession.shouldRestore(state(visible = true, maximized = true, docked = true)))
+    fun testAMaximizedTerminalIsUnmaximizedForTheFile() {
+        val step = TerminalEditSession.stepAsideFor(state(maximized = true), terminalHeight = 900, frameHeight = 1000)
+
+        assertEquals(TerminalEditSession.StepAside.UNMAXIMIZED, step)
     }
 
-    private fun state(visible: Boolean, maximized: Boolean, docked: Boolean) =
+    /**
+     * The case the first version of this missed: a terminal dragged to the top of the window covers the
+     * editor without anything ever calling `setMaximized`, so the platform's `isMaximized` says no while the
+     * user is looking at a terminal and no file.
+     */
+    fun testATerminalDraggedOverTheEditorIsHiddenForTheFile() {
+        val step = TerminalEditSession.stepAsideFor(state(maximized = false), terminalHeight = 900, frameHeight = 1000)
+
+        assertEquals(TerminalEditSession.StepAside.HIDDEN, step)
+    }
+
+    fun testAnOrdinarySplitIsLeftAlone() {
+        val half = TerminalEditSession.stepAsideFor(state(maximized = false), terminalHeight = 500, frameHeight = 1000)
+        // A frame nobody has laid out yet cannot be measured, so only what the platform states is acted on.
+        val unmeasurable = TerminalEditSession.stepAsideFor(state(maximized = false), terminalHeight = 0, frameHeight = 0)
+
+        assertEquals(TerminalEditSession.StepAside.NOTHING, half)
+        assertEquals(TerminalEditSession.StepAside.NOTHING, unmeasurable)
+    }
+
+    fun testATerminalThatIsNotThereIsNotInTheWay() {
+        val hidden = TerminalEditSession.stepAsideFor(state(visible = false, maximized = true), 900, 1000)
+        val floating = TerminalEditSession.stepAsideFor(state(docked = false, maximized = true), 900, 1000)
+
+        assertEquals(TerminalEditSession.StepAside.NOTHING, hidden)
+        assertEquals(TerminalEditSession.StepAside.NOTHING, floating)
+    }
+
+    fun testTheTerminalIsOnlyPutBackWhereWeLeftIt() {
+        // Docked, visible, no longer maximized: this is the terminal we stepped past, so it goes back up.
+        assertTrue(TerminalEditSession.shouldRestore(state(maximized = false)))
+        // Everything else is the user having said something more recent than we did while the file was open.
+        assertFalse("hidden while the file was open", TerminalEditSession.shouldRestore(state(visible = false, maximized = false)))
+        assertFalse("floated while the file was open", TerminalEditSession.shouldRestore(state(docked = false, maximized = false)))
+        assertFalse("already maximized again", TerminalEditSession.shouldRestore(state(maximized = true)))
+    }
+
+    private fun state(visible: Boolean = true, maximized: Boolean = false, docked: Boolean = true) =
         TerminalMaximizeToggleAction.TerminalWindowState(visible = visible, maximized = maximized, docked = docked)
 
     private data class Fixture(val name: String, val path: Path)

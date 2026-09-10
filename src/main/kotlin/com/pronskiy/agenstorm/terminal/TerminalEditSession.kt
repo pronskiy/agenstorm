@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.WindowManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -51,7 +52,7 @@ class TerminalEditSession(private val project: Project) {
         val closed = CompletableDeferred<Unit>()
         // Subscribed before the file is opened: a listener registered afterwards could miss the close.
         val connection = project.messageBus.connect()
-        val steppedAside = stepAside()
+        val steppedAside = makeRoom()
         try {
             connection.subscribe(
                 FileEditorManagerListener.FILE_EDITOR_MANAGER,
@@ -73,40 +74,6 @@ class TerminalEditSession(private val project: Project) {
         }
     }
 
-    /**
-     * Step K1.7. A maximized terminal *is* the editor's area, so a file opened behind it is a file nobody
-     * can see — Roman's first run: "when the terminal is maximized, I don't see the plan unless I manually
-     * minimize terminal". The terminal steps aside for the edit, and [restore] puts it back.
-     *
-     * Whatever maximized it counts, this feature's own toggle or the platform's Ctrl+Shift+': what matters
-     * is that the editor has no room, not who took it.
-     */
-    private suspend fun stepAside(): Boolean = withContext(Dispatchers.EDT) {
-        if (project.isDisposed) return@withContext false
-        val terminal = TerminalMaximizeToggleAction.terminalOf(project) ?: return@withContext false
-        if (!TerminalMaximizeToggleAction.stateOf(project, terminal).isTerminalMaximized) return@withContext false
-        ToolWindowManager.getInstance(project).setMaximized(terminal, false)
-        true
-    }
-
-    /**
-     * The terminal takes its place back once the tab is closed — but only the terminal *we* moved, and only
-     * if it is still where we left it. Someone who hides the terminal, floats it or maximizes it again while
-     * the file is open has said what they want more recently than we did.
-     *
-     * [NonCancellable] because a layout Agenstorm changed is a layout Agenstorm gives back, even when the
-     * request it was changed for is being torn down.
-     */
-    private suspend fun restore(steppedAside: Boolean) {
-        if (!steppedAside) return
-        withContext(NonCancellable + Dispatchers.EDT) {
-            if (project.isDisposed) return@withContext
-            val terminal = TerminalMaximizeToggleAction.terminalOf(project) ?: return@withContext
-            if (!shouldRestore(TerminalMaximizeToggleAction.stateOf(project, terminal))) return@withContext
-            ToolWindowManager.getInstance(project).setMaximized(terminal, true)
-        }
-    }
-
     private suspend fun open(file: VirtualFile): Boolean = withContext(Dispatchers.EDT) {
         if (project.isDisposed) return@withContext false
         // What the caller hands over is usually a temp file outside every content root, and editing one of
@@ -125,6 +92,63 @@ class TerminalEditSession(private val project: Project) {
         // Closing a tab leaves the document modified in memory, and the caller reads the file from disk as
         // soon as this request is answered — so what was typed has to be on disk before that happens.
         ApplicationManager.getApplication().runWriteAction { documents.saveDocument(document) }
+    }
+
+    /**
+     * Step K1.7. A terminal that fills the editor's area leaves the file open behind it, where nobody can
+     * see it — Roman's first run: "when the terminal is maximized, I don't see the plan unless I manually
+     * minimize terminal".
+     *
+     * The first version of this asked `ToolWindowManager.isMaximized`, and that is the wrong question. That
+     * flag is an identity check against a proportion `setMaximized(true)` records on the pane
+     * (`ToolWindowPaneState.isMaximized`), so it answers "did something call setMaximized", not "is the
+     * editor buried" — a splitter dragged to the top records nothing at all, and Roman's second run showed
+     * the terminal staying put. What the user is asking is whether there is room for the file, so that is
+     * what gets measured: a terminal taking almost the whole frame is covering the editor, however it got
+     * there.
+     */
+    private suspend fun makeRoom(): StepAside = withContext(Dispatchers.EDT) {
+        if (project.isDisposed) return@withContext StepAside.NOTHING
+        val terminal = TerminalMaximizeToggleAction.terminalOf(project) ?: return@withContext StepAside.NOTHING
+        val state = TerminalMaximizeToggleAction.stateOf(project, terminal)
+        val terminalHeight = terminal.component?.height ?: 0
+        val frameHeight = WindowManager.getInstance().getFrame(project)?.height ?: 0
+        val step = stepAsideFor(state, terminalHeight, frameHeight)
+        // One line per edit, because "the plan opened behind the terminal" is otherwise unanswerable from a log.
+        LOG.info(
+            "Agenstorm: terminal visible=${state.visible} docked=${state.docked} maximized=${state.maximized}" +
+                " height=$terminalHeight of $frameHeight -> $step"
+        )
+        when (step) {
+            StepAside.UNMAXIMIZED -> ToolWindowManager.getInstance(project).setMaximized(terminal, false)
+            // Nothing public moves a splitter, so a terminal that is merely dragged tall is hidden instead.
+            StepAside.HIDDEN -> terminal.hide(null)
+            StepAside.NOTHING -> Unit
+        }
+        step
+    }
+
+    /**
+     * Puts back exactly what [makeRoom] moved, and only while it is still where we left it. Someone who
+     * hides, floats or re-maximizes the terminal while the file is open has said what they want more
+     * recently than we did.
+     *
+     * [NonCancellable] because a window Agenstorm moved is one Agenstorm gives back, even when the request
+     * it was moved for is being torn down.
+     */
+    private suspend fun restore(step: StepAside) {
+        if (step == StepAside.NOTHING) return
+        withContext(NonCancellable + Dispatchers.EDT) {
+            if (project.isDisposed) return@withContext
+            val terminal = TerminalMaximizeToggleAction.terminalOf(project) ?: return@withContext
+            val state = TerminalMaximizeToggleAction.stateOf(project, terminal)
+            when {
+                step == StepAside.HIDDEN && !state.visible -> terminal.show(null)
+                step == StepAside.UNMAXIMIZED && shouldRestore(state) ->
+                    ToolWindowManager.getInstance(project).setMaximized(terminal, true)
+                else -> LOG.info("Agenstorm: leaving the terminal as the user left it (was $step)")
+            }
+        }
     }
 
     /**
@@ -153,7 +177,29 @@ class TerminalEditSession(private val project: Project) {
         LOG.warn("Agenstorm: $path was still not ${file.length} bytes on disk ${FLUSH_BUDGET_MS} ms after saving it")
     }
 
+    /** What was done to give the file room, and so what has to be undone when its tab closes. */
+    enum class StepAside { NOTHING, UNMAXIMIZED, HIDDEN }
+
     companion object {
+        /**
+         * Whether the terminal is covering the editor, and how to get it out of the way. Pure, so both the
+         * measurement and the "never fight the user" rule below are testable without a frame.
+         *
+         * A frame height of zero means the question cannot be measured — a headless run, a window not yet
+         * laid out — and then only a terminal that says it is maximized is moved.
+         */
+        @VisibleForTesting
+        fun stepAsideFor(
+            state: TerminalMaximizeToggleAction.TerminalWindowState,
+            terminalHeight: Int,
+            frameHeight: Int,
+        ): StepAside = when {
+            !state.visible || !state.docked -> StepAside.NOTHING
+            state.maximized -> StepAside.UNMAXIMIZED
+            frameHeight > 0 && terminalHeight > frameHeight * COVERING_SHARE -> StepAside.HIDDEN
+            else -> StepAside.NOTHING
+        }
+
         /**
          * Whether the terminal we un-maximized may be maximized again: it is still docked, still on screen,
          * and nobody has maximized it in the meantime. Pure, so the "never fight the user" rule is testable.
@@ -161,6 +207,13 @@ class TerminalEditSession(private val project: Project) {
         @VisibleForTesting
         fun shouldRestore(state: TerminalMaximizeToggleAction.TerminalWindowState): Boolean =
             state.visible && state.docked && !state.maximized
+
+        /**
+         * How much of the frame a terminal has to take before the editor behind it is unreadable. A terminal
+         * dragged to four fifths of the window leaves a line or two of editor, which is not somewhere anyone
+         * is going to edit a plan; the usual half-and-half split is nowhere near it.
+         */
+        private const val COVERING_SHARE = 0.8
 
         private val LOG = logger<TerminalEditSession>()
 

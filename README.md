@@ -283,10 +283,9 @@ The file opens in the window whose terminal asked for it, and the command stays 
 What you typed is on disk before the caller is let go, so it reads the edit and not the text it
 started with.
 
-If the terminal is maximized when the file arrives, it steps aside — a maximized terminal *is* the editor's
-area, so the file would otherwise open behind it — and takes its place back when you close the tab. Only the
-terminal Agenstorm moved is moved back, and only if you have not hidden, floated or re-maximized it
-meanwhile.
+If the terminal is covering the editor when the file arrives — maximized, or simply dragged over most of the
+window — it steps aside, and takes its place back when you close the tab. Only the terminal Agenstorm moved is
+moved back, and only if you have not hidden, floated or re-maximized it meanwhile.
 
 The IDE takes exactly one existing, writable file and nothing else. Anything with an option in it
 (`vi +42 notes.md`, `$EDITOR -R log`), a path that is not there, a directory, or a read-only file goes
