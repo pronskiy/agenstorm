@@ -6,11 +6,13 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.ui.BalloonImpl
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -35,23 +37,30 @@ class NotificationAutoDismissService(private val scope: CoroutineScope) {
      * created further down the same publish — so this waits for one to appear and gives up quietly if none
      * ever does, which is what a group set to "No popups" or to the tool window looks like from here.
      */
-    fun schedule(notification: Notification) {
-        val delayMs = AutoDismissPolicy.delayMs(notification.type, AgenstormSettings.getInstance().state) ?: return
+    fun schedule(notification: Notification): Job? {
+        val delayMs = AutoDismissPolicy.delayMs(notification.type, AgenstormSettings.getInstance().state)
+        if (LOG.isDebugEnabled) LOG.debug("notified: ${notification.groupId} ${notification.type} -> ${delayMs ?: "left to the platform"}")
+        if (delayMs == null) return null
         // ModalityState.any(): balloons show over modal dialogs too, and all this touches is a UI timer.
-        scope.launch(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+        return scope.launch(Dispatchers.EDT + ModalityState.any().asContextElement()) {
             val balloon = awaitBalloon(notification) ?: return@launch
             rearm(balloon, delayMs)
+            if (LOG.isDebugEnabled) LOG.debug("re-armed ${notification.groupId} (${balloon.javaClass.name}) to ${delayMs}ms")
         }
     }
 
     private suspend fun awaitBalloon(notification: Notification): Balloon? {
         var waited = 0
         while (waited <= BALLOON_WAIT_MS) {
-            if (notification.isExpired) return null
+            if (notification.isExpired) {
+                if (LOG.isDebugEnabled) LOG.debug("${notification.groupId} expired after ${waited}ms, before a balloon appeared")
+                return null
+            }
             notification.balloon?.takeIf { !it.isDisposed }?.let { return it }
             delay(POLL_MS.toLong())
             waited += POLL_MS
         }
+        if (LOG.isDebugEnabled) LOG.debug("${notification.groupId} (${notification.type}) produced no balloon within ${BALLOON_WAIT_MS}ms")
         return null
     }
 
@@ -68,6 +77,7 @@ class NotificationAutoDismissService(private val scope: CoroutineScope) {
     }
 
     companion object {
+        private val LOG = logger<NotificationAutoDismissService>()
         private const val POLL_MS = 50
         private const val BALLOON_WAIT_MS = 3_000
 
