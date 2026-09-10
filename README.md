@@ -41,8 +41,8 @@ unaffected.
 
 ### A terminal that fills the window
 
-One key makes the terminal the whole window and the same key gives the editor back. The other tool
-windows stay where they are.
+One key makes the terminal the whole window and the same key gives the editor back, opening it first
+if it was closed.
 
 ### AI commit messages
 
@@ -267,9 +267,15 @@ Shells running over WSL or SSH are never shimmed; Windows is not supported yet.
 own; pressing it again hides the terminal and puts the caret back where it was. The button sits in the
 terminal's title bar next to **+**, and the shortcut opens the terminal first if it is closed.
 
-Only the editor is squeezed — the Project view and every other tool window stay exactly where they are — and
-the height you dragged the terminal to is what comes back, because the IDE restores it itself. The toggle
+The height you dragged the terminal to is what comes back, because the IDE restores it itself. The toggle
 deliberately has no third state: the ordinary split view comes back the usual way, with ⌥F12 or by dragging.
+
+**How far it grows is your layout's doing, not the plugin's.** In the standard layout the terminal spans the
+full width of the window and the Project view sits above it, so a maximized terminal covers the side tool
+windows as well. Turn on <kbd>Settings</kbd> > <kbd>Appearance & Behavior</kbd> > <kbd>Appearance</kbd> >
+**Widescreen tool window layout** and the geometry changes: side tool windows own the full height and the
+terminal lives inside the editor's column, so maximizing it fills the editor area and leaves them alone.
+Agenstorm does not touch that setting for you.
 
 This is the one Agenstorm action that ships a keyboard binding; both keystrokes are free in every bundled
 keymap. Worth knowing on macOS: ⌥⌘M is "Minimize All" in the Window menu of most native apps, so the muscle

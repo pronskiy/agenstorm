@@ -6,7 +6,7 @@
 
 ### Added
 
-- **Maximize Terminal** (⌘⌥M on macOS, ⌥⇧F12 elsewhere, and a button in the terminal's title bar): the terminal takes the editor's space as well as its own, and the same key hides it again and returns the caret to the editor. Other tool windows are untouched, the terminal opens first if it was closed, and the height you dragged it to is what comes back. This is the first Agenstorm action to ship a default binding — both keystrokes are free in every bundled keymap — and it can be switched off, button and all, under Tools → Agenstorm → Terminal size
+- **Maximize Terminal** (⌘⌥M on macOS, ⌥⇧F12 elsewhere, and a button in the terminal's title bar): the terminal fills the window, and the same key hides it again and returns the caret to the editor. The terminal opens first if it was closed, and the height you dragged it to is what comes back. How far it grows follows the IDE's own layout: normally the terminal spans the full width, so it covers the side tool windows too; with Widescreen tool window layout on it sits in the editor's column and they keep their full height. This is the first Agenstorm action to ship a default binding — both keystrokes are free in every bundled keymap — and it can be switched off, button and all, under Tools → Agenstorm → Terminal size
 
 ## [1.2.0] - 2026-09-10
 

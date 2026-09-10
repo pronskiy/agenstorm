@@ -1156,9 +1156,9 @@ Platform facts (verified against build 262):
 
 ### Epic J — Terminal ⇄ editor maximize toggle  ·  after 1.2.0
 
-**Goal:** one key makes the terminal the whole window, and the same key gives the editor back.
-**Success metrics:** no size is remembered by the plugin (the platform restores the dragged height); other
-tool windows never move; zero internal API; the binding is free in every bundled keymap.
+**Goal:** one key makes the terminal fill the window, and the same key gives the editor back.
+**Success metrics:** no size is remembered by the plugin (the platform restores the dragged height); no IDE
+layout setting is changed on the user's behalf; zero internal API; the binding is free in every bundled keymap.
 
 Roman, 2026-09-10: the terminal can be moved into the editor area, which he does not want, and resizing it
 means dragging the splitter both ways. The IDE has `MaximizeToolWindow` (Ctrl+Shift+') but it acts on
@@ -1169,10 +1169,17 @@ a clash check.
 Platform facts (verified against build 262 with `javap -v`):
 
 - **`ToolWindowManager.setMaximized(ToolWindow, Boolean)` and `isMaximized` are public and unannotated.** On a
-  DOCKED or SLIDING tool window `setMaximized(tw, true)` expands it over the whole content area and squeezes
-  the editor to zero; `setMaximized(tw, false)` restores the previous proportion **by itself**, so the plugin
-  stores no size. On FLOATING it maximizes the dialog and on WINDOWED the frame — a different meaning, hence
-  the `ACTIVATE_ONLY` branch.
+  DOCKED or SLIDING tool window `setMaximized(tw, true)` expands it over the content area; `setMaximized(tw,
+  false)` restores the previous proportion **by itself**, so the plugin stores no size. On FLOATING it
+  maximizes the dialog and on WINDOWED the frame — a different meaning, hence the `ACTIVATE_ONLY` branch.
+- **How far "maximized" reaches is the pane's geometry, not an argument we pass.** `ToolWindowPane` holds a
+  `verticalSplitter` and a `horizontalSplitter` and nests one inside the other according to
+  `UISettings.wideScreenSupport`: with it **off** (the default) the vertical splitter is outer —
+  `top / (left | editor | right) / bottom` — so a bottom tool window spans the full width and the Project view
+  sits *above* it, which is why maximizing the terminal takes the side tool windows' height with it. With
+  widescreen **on**, `horizontalSplitter.setInnerComponent(verticalSplitter)` puts the terminal inside the
+  editor's column and the side tool windows keep their full height. `setMaximized` merely calls the same
+  `stretch` the splitter uses either way. Decision 41.
 - `ToolWindow.activate(Runnable, Boolean, Boolean)`, `.show/.hide/.isVisible/.getType()`,
   `ToolWindowManager.getToolWindow/activateEditorComponent`, `ToolWindowType` and
   `AllIcons.General.ExpandComponent` are all public and unannotated.
@@ -1195,6 +1202,7 @@ Platform facts (verified against build 262 with `javap -v`):
 | J1.1 | `terminalMaximizeEnabled` setting + its own "Terminal size" group | ✅ | Its own `featureGroup`, not a row in the Terminal group: that group's master toggle gates the `open` shim, and switching the shim off must not take the maximize button with it |
 | J1.2 | `TerminalMaximizeToggleAction`: the toggle, and the pure `nextStep(state, wantMaximized)` behind it | ✅ | `ToggleAction`, BGT. Selected state is **read from the platform** every update, never stored — a flag would drift the moment someone drags the splitter or uses Ctrl+Shift+'. Maximizing happens inside `activate`'s callback so showing and maximizing do not race |
 | J1.3 | Registration: action + bindings in `plugin.xml`, title-bar button in `agenstorm-terminal.xml` | ✅ | The `<reference ref="…"><add-to-group group-id="TerminalToolwindowActionGroup"/></reference>` split keeps the action itself in the core descriptor, so it loads (hidden) in IDEs without the Terminal plugin |
+| J1.5 | Docs say what "maximize" actually reaches, and how to change it | ✅ | Added after Roman's first run: the README, the settings comment and the changelog claimed other tool windows stay put, which is only true under the widescreen layout. Corrected, with the layout switch named. Decision 41 |
 | J1.4 | Tests | ✅ | 8 cases: registration and text, the binding is **non-empty** (the only action test that asserts that), the tool-window id pinned to `TerminalToolWindowFactory.TOOL_WINDOW_ID`, `update()` hidden with the feature off and without a project, and every row of the state table |
 
 **Exit guardrails — Epic J**
@@ -1203,7 +1211,7 @@ Platform facts (verified against build 262 with `javap -v`):
 |-----------|----------------------|--------|----------------|
 | The toggle | Terminal closed → shortcut opens it maximized, editor gone; press again → terminal hidden, caret back in the editor | 🔲 | |
 | The dragged height | Drag the splitter, toggle twice → that height comes back | 🔲 | |
-| Scope | Project view and other tool windows unmoved throughout | 🔲 | |
+| Scope | With widescreen layout **on**, a maximized terminal leaves the side tool windows at full height; with it off it covers them, and that is the documented platform behaviour | 🔲 | |
 | Undocked | Floating terminal → activated, not maximized; moved to the editor area → nothing throws | 🔲 | |
 | Off switch | Feature off → button gone from the title bar, shortcut inert | 🔲 | |
 | Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
@@ -1303,6 +1311,7 @@ Platform facts (verified against build 262 with `javap -v`):
 | 38 | 2026-09-10 | The window title refreshes on toggle through `UISettings.fireUISettingsChanged()` | It is the platform's own path to `EditorsSplitters.updateFrameTitle`, which re-asks the `FrameTitleBuilder` service for both parts of the title. `IdeFrameEx.setFileTitle(null, null)`, the internal call it replaces, could only blank the file part — so switching the feature off used to leave the title project-only until the next editor switch, and now it does not | Roman |
 | 39 | 2026-09-10 | Epic B comes back on public API: Agenstorm's own `NewScratchFile` action in the platform's action slot, filtering languages rather than file types, with an "All Languages…" way out | Roman asked for the popup filtering back without internal API, and the only public path is owning the action. Owning it also removes the constraint decision 14 documented — the internal EP was handed a `FileType` and never saw the language, so dialects could not be separated; our own popup starts from languages. The escape hatch is the answer to the one real cost of filtering: a language you did not list is now one click away rather than a settings trip. Supersedes decision 35, which cut the feature, and retires decision 14's limitation | Roman |
 | 40 | 2026-09-10 | The terminal maximize toggle ships a default binding — ⌘⌥M on macOS, ⌥⇧F12 elsewhere — narrowing decision 12 to everything except this action | Decision 12 keeps Agenstorm's actions unbound as Marketplace etiquette, and the other five stay that way. This one is different in kind: its entire value is being one keystroke away, and an unbound toggle is a toggle nobody presses. The binding was checked against `$default`, `Mac OS X`, `Mac OS X 10.5+` and `macOS System Shortcuts` by enumerating the whole `meta alt` family rather than guessing a modifier order, plus a scan of every bundled plugin's `plugin.xml` for `first-keystroke`; neither keystroke appears anywhere. Known outside the IDE: ⌥⌘M is "Minimize All" in most native macOS apps, documented in the README | Roman |
+| 41 | 2026-09-10 | The maximize toggle does not touch `UISettings.wideScreenSupport`; how far the terminal grows is left to the user's own layout, and documented | Roman's first run showed the terminal covering the Project view, because in the default layout the bottom tool window spans the full width and the side windows sit above it — geometry, not a bug. Confining the terminal to the editor column requires the widescreen layout. Two alternatives were offered: switch it on with the feature (the nav-bar pattern of Epic E3, with a one-time balloon), or flip it only while maximized. Roman chose neither: a global appearance setting changed on a user's behalf is a bigger surprise than a terminal that fills the window, and flipping it per keystroke would reshape the side windows on every press. So the behaviour stands and the docs name the setting | Roman |
 
 ---
 
