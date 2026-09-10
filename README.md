@@ -39,6 +39,11 @@ IDE does not claim — flags, URLs, missing paths, binaries — reaches the real
 The shim shadows `open` inside IDE terminals only; every other shell on the machine is
 unaffected.
 
+### A terminal that fills the window
+
+One key makes the terminal the whole window and the same key gives the editor back. The other tool
+windows stay where they are.
+
 ### AI commit messages
 
 A subject and body streamed into the commit message field from the Anthropic API, any
@@ -255,6 +260,23 @@ Settings → Tools → Agenstorm → **Terminal** has the switch, the command na
 `edit` can shadow as well) and an option to let the IDE claim files it treats as binary. Terminals that are
 already running keep the environment they started with, so a change takes effect in the next terminal.
 Shells running over WSL or SSH are never shimmed; Windows is not supported yet.
+
+## Filling the window with the terminal
+
+**Maximize Terminal** (⌘⌥M on macOS, ⌥⇧F12 elsewhere) gives the terminal the editor's space as well as its
+own; pressing it again hides the terminal and puts the caret back where it was. The button sits in the
+terminal's title bar next to **+**, and the shortcut opens the terminal first if it is closed.
+
+Only the editor is squeezed — the Project view and every other tool window stay exactly where they are — and
+the height you dragged the terminal to is what comes back, because the IDE restores it itself. The toggle
+deliberately has no third state: the ordinary split view comes back the usual way, with ⌥F12 or by dragging.
+
+This is the one Agenstorm action that ships a keyboard binding; both keystrokes are free in every bundled
+keymap. Worth knowing on macOS: ⌥⌘M is "Minimize All" in the Window menu of most native apps, so the muscle
+memory points elsewhere even though nothing in the IDE claims it. Rebind it under Settings → Keymap, or turn
+the feature off under Settings → Tools → Agenstorm → **Terminal size**, which also removes the button.
+
+A floating or windowed terminal is its own window already, so there the action just brings it to the front.
 
 ## Development
 

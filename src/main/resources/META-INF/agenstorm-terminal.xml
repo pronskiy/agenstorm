@@ -6,4 +6,13 @@
              token in the environment. The EP is @ApiStatus.Experimental (SPEC.md §2 accepts that). -->
         <shellExecOptionsCustomizer implementation="com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer"/>
     </extensions>
+
+    <actions>
+        <!-- J1.3: the maximize toggle joins the terminal's title bar, next to "New Tab". The group belongs to
+             the Terminal plugin, so the button is registered here while the action itself stays in plugin.xml
+             and works (hidden) in IDEs without that plugin. -->
+        <reference ref="Agenstorm.ToggleTerminalMaximized">
+            <add-to-group group-id="TerminalToolwindowActionGroup" anchor="first"/>
+        </reference>
+    </actions>
 </idea-plugin>

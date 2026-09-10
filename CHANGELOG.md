@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Maximize Terminal** (⌘⌥M on macOS, ⌥⇧F12 elsewhere, and a button in the terminal's title bar): the terminal takes the editor's space as well as its own, and the same key hides it again and returns the caret to the editor. Other tool windows are untouched, the terminal opens first if it was closed, and the height you dragged it to is what comes back. This is the first Agenstorm action to ship a default binding — both keystrokes are free in every bundled keymap — and it can be switched off, button and all, under Tools → Agenstorm → Terminal size
+
 ## [1.2.0] - 2026-09-10
 
 ### Changed

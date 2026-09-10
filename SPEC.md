@@ -26,7 +26,7 @@
 
 ### Current focus
 
-**Now on:** **Release R7 — the internal-API rework, then re-submit.** The Marketplace review **rejected 1.1.0** for 15 `@ApiStatus.Internal` usages. The code side is done (2026-09-10, commits `b7db79d`…`f331c4b`): Epic B cut, the toolbar slot swapped with `ActionManager.replaceAction`, the branch widget rebuilt on git4idea's `GitBranchWidget`, the title refresh moved to `UISettings` — decisions 35–38, §2's internal-API row is now "none". `./gradlew check` green and `verifyPlugin` **Compatible on PS-262.10315.130 and IU-262.10315.125 with zero internal usages** (46 experimental, 2 deprecated). **Three things are left, all Roman's:** (1) ~~the guardrail run~~ — done 2026-09-10, Roman signed off on a 5 h 19 m session with a clean log; the feature toggles were not exercised, see R7; ~~(2) the version number~~ — **cut as 1.2.0 on 2026-09-10**, ZIP built and verified; (3) re-submit, which is R6 and needs the listing text plus a screenshot pass over the changed UI. Note the 1.1.0 draft GitHub release (id 385481892) sits on `12f3932` and its notes no longer match what will ship. R6's listing text and four screenshots still apply, except any that show the New Scratch File popup.
+**Now on:** **Release R7 — the internal-API rework, then re-submit.** The Marketplace review **rejected 1.1.0** for 15 `@ApiStatus.Internal` usages. The code side is done (2026-09-10, commits `b7db79d`…`f331c4b`): Epic B cut, the toolbar slot swapped with `ActionManager.replaceAction`, the branch widget rebuilt on git4idea's `GitBranchWidget`, the title refresh moved to `UISettings` — decisions 35–38, §2's internal-API row is now "none". `./gradlew check` green and `verifyPlugin` **Compatible on PS-262.10315.130 and IU-262.10315.125 with zero internal usages** (46 experimental, 2 deprecated). **Three things are left, all Roman's:** (1) ~~the guardrail run~~ — done 2026-09-10, Roman signed off on a 5 h 19 m session with a clean log; the feature toggles were not exercised, see R7; ~~(2) the version number~~ — **cut as 1.2.0 on 2026-09-10**, ZIP built and verified; (3) re-submit, which is R6 and needs the listing text plus a screenshot pass over the changed UI. **Epic J landed after the cut** (terminal ⇄ editor maximize toggle, decision 40): it is in `[Unreleased]`, not in 1.2.0, so it either waits for 1.3.0 or 1.2.0 is re-cut around it — Roman's call. Its own guardrail run is still open. Note the 1.1.0 draft GitHub release (id 385481892) sits on `12f3932` and its notes no longer match what will ship. R6's listing text and four screenshots still apply, except any that show the New Scratch File popup.
 
 **Superseded (kept for the trail):** **Now on:** **Release 1.1.0** → step **R6** (publish), Roman's. The version is cut and the ZIP builds; what it still needs is the listing text and the five screenshots R2 deferred — taken against 1.1.0's behaviour, which differs visibly from what 1.0.0 would have shown. R1–R5 are closed. **Corrected 2026-09-09:** `1.0.0` is not a draft — it was *published* on 2026-09-07 with its signed ZIP attached, so the note this pointer used to carry was stale. `main` is now pushed through `12f3932`, and a **draft release `1.1.0`** (id 385481892) sits on that commit with the changelog section as its notes and no assets. A draft fires nothing: `release.yml` runs on `released`/`prereleased`, so publishing that draft is what signs the ZIP and pushes it to the Marketplace. The four signing/publishing secrets are set. What it still needs from Roman is the listing text and the five screenshots R2 deferred.
 
@@ -1154,6 +1154,62 @@ Platform facts (verified against build 262):
 
 ---
 
+### Epic J — Terminal ⇄ editor maximize toggle  ·  after 1.2.0
+
+**Goal:** one key makes the terminal the whole window, and the same key gives the editor back.
+**Success metrics:** no size is remembered by the plugin (the platform restores the dragged height); other
+tool windows never move; zero internal API; the binding is free in every bundled keymap.
+
+Roman, 2026-09-10: the terminal can be moved into the editor area, which he does not want, and resizing it
+means dragging the splitter both ways. The IDE has `MaximizeToolWindow` (Ctrl+Shift+') but it acts on
+whatever tool window is focused, so it takes ⌥F12 first — two keys and a mental step. Scope settled with him:
+**other tool windows are left alone**, **one toggle** rather than two actions, and **a default binding** after
+a clash check.
+
+Platform facts (verified against build 262 with `javap -v`):
+
+- **`ToolWindowManager.setMaximized(ToolWindow, Boolean)` and `isMaximized` are public and unannotated.** On a
+  DOCKED or SLIDING tool window `setMaximized(tw, true)` expands it over the whole content area and squeezes
+  the editor to zero; `setMaximized(tw, false)` restores the previous proportion **by itself**, so the plugin
+  stores no size. On FLOATING it maximizes the dialog and on WINDOWED the frame — a different meaning, hence
+  the `ACTIVATE_ONLY` branch.
+- `ToolWindow.activate(Runnable, Boolean, Boolean)`, `.show/.hide/.isVisible/.getType()`,
+  `ToolWindowManager.getToolWindow/activateEditorComponent`, `ToolWindowType` and
+  `AllIcons.General.ExpandComponent` are all public and unannotated.
+- **Do not use** `MaximizeToolWindowAction`, `ResizeToolWindowAction`, `JumpToLastWindowAction` (all
+  `@ApiStatus.Internal`) or `ToolWindowManagerEx.getLayout/setLayout` (they traffic in the internal
+  `DesktopLayout`). `MaximizeToolWindowAction` also reads `PlatformDataKeys.TOOL_WINDOW` and disables itself
+  without it, so invoking it by id from a shortcut would not work anyway.
+- `ToolWindowManagerImpl` asserts EDT in seven methods; `getToolWindow`, `isMaximized` and `setMaximized` are
+  **not** among them, so `update()` can stay on BGT per the project's threading rule.
+- `TerminalToolWindowFactory.TOOL_WINDOW_ID` is `"Terminal"` and a compile-time constant. The action uses the
+  literal so its bytecode names nothing from the Terminal plugin; a test pins the two together.
+- The terminal's title-bar group is `TerminalToolwindowActionGroup` (it holds New Tab and the session
+  dropdown), declared in `plugins/terminal/lib/terminal.jar!/META-INF/plugin.xml`. The gear menu is
+  `Terminal.ToolWindowActions`.
+
+#### Phase J1 — The toggle
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| J1.1 | `terminalMaximizeEnabled` setting + its own "Terminal size" group | ✅ | Its own `featureGroup`, not a row in the Terminal group: that group's master toggle gates the `open` shim, and switching the shim off must not take the maximize button with it |
+| J1.2 | `TerminalMaximizeToggleAction`: the toggle, and the pure `nextStep(state, wantMaximized)` behind it | ✅ | `ToggleAction`, BGT. Selected state is **read from the platform** every update, never stored — a flag would drift the moment someone drags the splitter or uses Ctrl+Shift+'. Maximizing happens inside `activate`'s callback so showing and maximizing do not race |
+| J1.3 | Registration: action + bindings in `plugin.xml`, title-bar button in `agenstorm-terminal.xml` | ✅ | The `<reference ref="…"><add-to-group group-id="TerminalToolwindowActionGroup"/></reference>` split keeps the action itself in the core descriptor, so it loads (hidden) in IDEs without the Terminal plugin |
+| J1.4 | Tests | ✅ | 8 cases: registration and text, the binding is **non-empty** (the only action test that asserts that), the tool-window id pinned to `TerminalToolWindowFactory.TOOL_WINDOW_ID`, `update()` hidden with the feature off and without a project, and every row of the state table |
+
+**Exit guardrails — Epic J**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| The toggle | Terminal closed → shortcut opens it maximized, editor gone; press again → terminal hidden, caret back in the editor | 🔲 | |
+| The dragged height | Drag the splitter, toggle twice → that height comes back | 🔲 | |
+| Scope | Project view and other tool windows unmoved throughout | 🔲 | |
+| Undocked | Floating terminal → activated, not maximized; moved to the editor area → nothing throws | 🔲 | |
+| Off switch | Feature off → button gone from the title bar, shortcut inert | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Verifier | Still zero internal API usages | ✅ | 2026-09-10: Compatible on PS-262.10315.130 and IU-262.10315.125, **zero internal**, 50 experimental and 4 deprecated — all three counts unchanged from 1.2.0, so this epic added none |
+
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
@@ -1246,6 +1302,7 @@ Platform facts (verified against build 262):
 | 37 | 2026-09-10 | The status-bar branch widget extends git4idea's `GitBranchWidget` instead of building a widget beside it | Its `getWidgetPopup` is the `GitBranchesTreePopupOnBackend.create` call the verifier flagged, and it is `protected` on a class carrying no internal annotation — the platform's own extension seam. The widget still implements `CustomStatusBarWidget`, which the status bar honours over the inherited presentation, so the label can still move to the left corner; the branch icon now comes from the Git plugin too, arrows included. Roman chose this over performing the `Git.Branches` action, which shows its popup centred in the window | Roman |
 | 38 | 2026-09-10 | The window title refreshes on toggle through `UISettings.fireUISettingsChanged()` | It is the platform's own path to `EditorsSplitters.updateFrameTitle`, which re-asks the `FrameTitleBuilder` service for both parts of the title. `IdeFrameEx.setFileTitle(null, null)`, the internal call it replaces, could only blank the file part — so switching the feature off used to leave the title project-only until the next editor switch, and now it does not | Roman |
 | 39 | 2026-09-10 | Epic B comes back on public API: Agenstorm's own `NewScratchFile` action in the platform's action slot, filtering languages rather than file types, with an "All Languages…" way out | Roman asked for the popup filtering back without internal API, and the only public path is owning the action. Owning it also removes the constraint decision 14 documented — the internal EP was handed a `FileType` and never saw the language, so dialects could not be separated; our own popup starts from languages. The escape hatch is the answer to the one real cost of filtering: a language you did not list is now one click away rather than a settings trip. Supersedes decision 35, which cut the feature, and retires decision 14's limitation | Roman |
+| 40 | 2026-09-10 | The terminal maximize toggle ships a default binding — ⌘⌥M on macOS, ⌥⇧F12 elsewhere — narrowing decision 12 to everything except this action | Decision 12 keeps Agenstorm's actions unbound as Marketplace etiquette, and the other five stay that way. This one is different in kind: its entire value is being one keystroke away, and an unbound toggle is a toggle nobody presses. The binding was checked against `$default`, `Mac OS X`, `Mac OS X 10.5+` and `macOS System Shortcuts` by enumerating the whole `meta alt` family rather than guessing a modifier order, plus a scan of every bundled plugin's `plugin.xml` for `first-keystroke`; neither keystroke appears anywhere. Known outside the IDE: ⌥⌘M is "Minimize All" in most native macOS apps, documented in the README | Roman |
 
 ---
 

@@ -108,6 +108,11 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .comment(AgenstormBundle.message("settings.tabs.maxWidth.comment"))
             }
         }
+        featureGroup("settings.group.terminalMaximize", "settings.terminal.maximize.enabled", AgenstormSettings.State::terminalMaximizeEnabled) {
+            row {
+                comment(AgenstormBundle.message("settings.terminal.maximize.comment"))
+            }
+        }
         featureGroup("settings.group.markdown", "settings.markdown.liveMarkup.enabled", AgenstormSettings.State::liveMarkupEnabled, onApply = AgenstormSettingsListener::fire) {
             row {
                 checkBox(AgenstormBundle.message("settings.markdown.checkboxes"))
