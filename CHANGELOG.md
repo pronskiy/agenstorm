@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-10
+
 ### Changed
 
 - The plugin uses no internal platform API at all: the JetBrains Marketplace review rejected 1.1.0 over fifteen usages of it, and every one of them is gone. The window title refreshes through a UI settings change instead of `IdeFrameEx`; the status-bar branch widget extends the Git plugin's own widget instead of calling the internal branches popup; the project tabs take the main toolbar's project slot through `ActionManager.replaceAction` instead of subclassing the stock widget; and the New Scratch File popup is Agenstorm's own action rather than a filter plugged into the platform's. What each feature does is unchanged
@@ -37,6 +39,7 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.1.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.2.0...HEAD
+[1.2.0]: https://github.com/pronskiy/agenstorm/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/pronskiy/agenstorm/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/pronskiy/agenstorm/commits/1.0.0
