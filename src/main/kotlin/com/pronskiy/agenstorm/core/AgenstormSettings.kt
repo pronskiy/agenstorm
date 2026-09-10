@@ -43,6 +43,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var terminalMaximizeWideScreenByAgenstorm: Boolean = false,
         /** Epic J: set once the balloon explained that the tool window layout changed. */
         var terminalMaximizeNoticeShown: Boolean = false,
+        /** Epic J: set once the balloon explained that the toggle's shortcut wins over what else wanted it. */
+        var terminalMaximizeShortcutNoticeShown: Boolean = false,
         /**
          * Epic B: the languages that stay in the New Scratch File popup, in the order they are shown. Entries
          * name a language by id or display name; a file type name still resolves, which is what 1.0 wrote here.

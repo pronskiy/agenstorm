@@ -19,15 +19,14 @@ class TerminalMaximizeToggleActionTest : BasePlatformTestCase() {
 
     private val actionId = "Agenstorm.ToggleTerminalMaximized"
 
-    /** The one binding, kept in step with `plugin.xml` by the two keymap tests below. */
-    private val KEYSTROKE = "alt shift F12"
+    /** Kept in step with `plugin.xml` by the keymap tests below. */
+    private val MAC_KEYSTROKE = "meta alt M"
+    private val DEFAULT_KEYSTROKE = "alt shift F12"
 
-    /** Every keymap that decides what this keystroke does on a machine someone actually uses. */
-    private val KEYMAPS = listOf(
-        KeymapManager.DEFAULT_IDEA_KEYMAP,
-        KeymapManager.MAC_OS_X_10_5_PLUS_KEYMAP,
-        KeymapManager.MAC_OS_X_KEYMAP,
-        "macOS System Shortcuts",
+    private val BINDINGS = listOf(
+        KeymapManager.DEFAULT_IDEA_KEYMAP to DEFAULT_KEYSTROKE,
+        KeymapManager.MAC_OS_X_10_5_PLUS_KEYMAP to MAC_KEYSTROKE,
+        KeymapManager.MAC_OS_X_KEYMAP to MAC_KEYSTROKE,
     )
 
     override fun setUp() {
@@ -68,20 +67,38 @@ class TerminalMaximizeToggleActionTest : BasePlatformTestCase() {
      * the string ever appearing in a keymap file. A text search over the keymaps is what first picked ⌘⌥M
      * for this action. Asking the keymap itself is the only check that cannot miss it.
      */
-    fun testNothingElseClaimsTheBinding() {
-        for (name in KEYMAPS) {
+    fun testEachKeymapGetsTheBindingPluginXmlPromises() {
+        for ((name, stroke) in BINDINGS) {
             val keymap = KeymapManager.getInstance().getKeymap(name) ?: continue
-            val claimed = keymap.getActionIds(KeyStroke.getKeyStroke(KEYSTROKE)).toList()
-            assertEquals("$KEYSTROKE in the $name keymap", listOf(actionId), claimed)
+            val claimed = keymap.getActionIds(KeyStroke.getKeyStroke(stroke)).toList()
+            assertTrue("$stroke in the $name keymap is $claimed", actionId in claimed)
         }
     }
 
-    fun testTheBindingReachesEveryKeymapWithoutAnOverride() {
-        for (name in KEYMAPS - "macOS System Shortcuts") {
-            val keymap = KeymapManager.getInstance().getKeymap(name) ?: continue
-            val strokes = keymap.getShortcuts(actionId).map { it.toString() }
-            assertTrue("$actionId has no binding in the $name keymap: $strokes", strokes.isNotEmpty())
-        }
+    /**
+     * The macOS keystroke is shared, and that is a decision (46) rather than an oversight: ⌘⌥M is Extract
+     * Method, `TerminalMaximizeShortcutPromoter` decides who wins it, and this case fails the day the
+     * platform stops sharing it — at which point the promoter is dead weight and can go.
+     *
+     * The keymap is asked rather than searched, because a macOS keymap inherits `$default` with Ctrl and
+     * Meta swapped (`MacOSDefaultKeymapKt.mapModifiers`): `control alt M` *is* ⌘⌥M there, and no keymap file
+     * contains the string. A text search over the keymaps is what first called this keystroke free.
+     */
+    fun testTheMacKeystrokeIsTheOneTheRefactoringWants() {
+        val keymap = KeymapManager.getInstance().getKeymap(KeymapManager.MAC_OS_X_10_5_PLUS_KEYMAP) ?: return
+
+        val claimed = keymap.getActionIds(KeyStroke.getKeyStroke(MAC_KEYSTROKE)).toList()
+
+        assertTrue("$MAC_KEYSTROKE is claimed by $claimed", actionId in claimed)
+        assertTrue("the promoter exists for this: $claimed", "ExtractMethod" in claimed)
+    }
+
+    fun testTheDefaultKeystrokeIsClaimedByNothingElse() {
+        val keymap = KeymapManager.getInstance().getKeymap(KeymapManager.DEFAULT_IDEA_KEYMAP) ?: return
+
+        val claimed = keymap.getActionIds(KeyStroke.getKeyStroke(DEFAULT_KEYSTROKE)).toList()
+
+        assertEquals("$DEFAULT_KEYSTROKE in ${KeymapManager.DEFAULT_IDEA_KEYMAP}", listOf(actionId), claimed)
     }
 
     fun testTheToolWindowIdMatchesTheTerminalPlugin() {

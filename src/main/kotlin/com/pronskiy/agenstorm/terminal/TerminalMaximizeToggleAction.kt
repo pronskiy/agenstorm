@@ -92,6 +92,9 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
     }
 
     companion object {
+        /** What `plugin.xml` registers this action as; [TerminalMaximizeShortcutPromoter] reads its binding. */
+        const val ACTION_ID = "Agenstorm.ToggleTerminalMaximized"
+
         /**
          * `TerminalToolWindowFactory.TOOL_WINDOW_ID`, spelled out. That constant inlines, but naming the class
          * here would tie this action to the Terminal plugin; as a literal it loads in IDEs without it and the

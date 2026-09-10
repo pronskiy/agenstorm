@@ -306,8 +306,8 @@ SSH are never touched; Windows is not supported yet.
 
 ## Filling the window with the terminal
 
-**Maximize Terminal** (⌥⇧F12 — one Shift away from ⌥F12, which activates the terminal) gives the terminal
-the editor's space as well as its own; pressing it again hides the terminal and puts the caret back where it was. The button sits in the
+**Maximize Terminal** (⌘⌥M on macOS, ⌥⇧F12 elsewhere) gives the terminal the editor's space as well as its
+own; pressing it again hides the terminal and puts the caret back where it was. The button sits in the
 terminal's title bar next to **+**, and the shortcut opens the terminal first if it is closed.
 
 The terminal fills **the editor's area** — the Project view and any other tool window keep their place and
@@ -322,11 +322,16 @@ plugin — and says so once in a balloon. Switch the feature off under Settings 
 **Terminal size** and your layout goes back. A widescreen layout you turned on yourself is never claimed and
 never reverted.
 
-This is the one Agenstorm action that ships a keyboard binding, and it is the same one on every platform.
-⌥⇧F12 is free in the default, both macOS and the macOS system-shortcuts keymaps — a test asks the keymaps
-themselves rather than searching them, because a macOS keymap inherits the default one with Ctrl and Meta
-swapped, so a keystroke can be taken without appearing anywhere. Rebind it under Settings → Keymap, or turn
-the feature off under Settings → Tools → Agenstorm → **Terminal size**, which also removes the button.
+This is the one Agenstorm action that ships a keyboard binding. ⌥⇧F12 is free everywhere; **⌘⌥M on macOS
+is also Extract Method**, and while this feature is on, Maximize Terminal wins it. Nothing in your keymap is
+changed to arrange that — the plugin only says which of the two candidates the keystroke meant, so rebinding
+either action under Settings → Keymap, or switching the feature off under Settings → Tools → Agenstorm →
+**Terminal size**, gives ⌘⌥M straight back to the refactoring. The first time it changes hands, a balloon
+says so.
+
+(If you are wondering how a shortcut conflict got shipped: a macOS keymap inherits the default one with Ctrl
+and Meta swapped, so Extract Method's `control alt M` *is* ⌘⌥M without any keymap file containing the
+string. Searching the keymaps says it is free; asking them says otherwise, and a test now asks.)
 
 A floating or windowed terminal is its own window already, so there the action just brings it to the front.
 

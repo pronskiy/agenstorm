@@ -48,6 +48,11 @@
              keeps one line. Also gives the registry key back if Agenstorm 1.0 turned it off, and feeds the tabs model. -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.tabs.TabsStartupActivity"/>
 
+        <!-- terminal: ⌘⌥M is Extract Method in the macOS keymaps, so the dispatch needs to be told which of the
+             two the user meant. Ordering the candidates changes nothing in anyone's keymap — switch the feature
+             off, or rebind either action, and the keystroke is Extract Method's again. Decision 46. -->
+        <actionPromoter implementation="com.pronskiy.agenstorm.terminal.TerminalMaximizeShortcutPromoter"/>
+
         <!-- frame: window title without the file name. Service override allowed by SPEC.md §2; fails soft. -->
         <applicationService serviceInterface="com.intellij.openapi.wm.impl.FrameTitleBuilder"
                             serviceImplementation="com.pronskiy.agenstorm.frame.ProjectOnlyFrameTitleBuilder"
@@ -75,18 +80,19 @@
 
         <!-- terminal: fill the window with the terminal, and put the editor back. The button is added to the
              terminal's own title bar in agenstorm-terminal.xml, which loads only when that plugin is present.
-             This is the one action that ships a default binding (decision 40 narrows decision 12), and it is
-             the same one on every platform: ⌥⇧F12, one shift away from ⌥F12, which activates the terminal
-             everywhere. It carries no macOS override — `alt shift F12` needs none, since the Ctrl/Meta swap
-             the mac keymaps apply to inherited shortcuts leaves it alone.
-             TerminalMaximizeToggleActionTest asks the keymaps themselves whether anything else claims it. A
-             text search cannot answer that, and a search is what let the first version of this binding pick
-             ⌘⌥M, which fires Extract Method: `control alt M` in $default *is* ⌘⌥M on macOS, and the string
-             appears in no keymap file. Caught before it shipped. Decision 45. -->
+             This is the one action that ships a default binding (decision 40 narrows decision 12): ⌘⌥M on
+             macOS, ⌥⇧F12 elsewhere. ⌘⌥M is also Extract Method there — `control alt M` in $default *is* ⌘⌥M
+             once the mac keymaps swap Ctrl and Meta, which is why no keymap file contains the string and why
+             a text search said it was free (decision 45). Roman kept the keystroke and TerminalMaximizeShortcutPromoter
+             decides who wins it, rather than editing anyone's keymap. Decision 46.
+             TerminalMaximizeToggleActionTest asks the keymaps themselves what each binding is and who else
+             claims it, so the conflict is asserted rather than assumed. -->
         <action id="Agenstorm.ToggleTerminalMaximized"
                 class="com.pronskiy.agenstorm.terminal.TerminalMaximizeToggleAction"
                 icon="AllIcons.General.ExpandComponent">
             <keyboard-shortcut keymap="$default" first-keystroke="alt shift F12"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta alt M" replace-all="true"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt M" replace-all="true"/>
         </action>
 
         <!-- links: copies relpath:line[:col] for the caret / selection start / clicked gutter line. No default shortcut. -->
