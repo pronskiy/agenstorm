@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-11
+
 ### Added
 
 - **Notification popups that hide themselves.** Balloons fade after 5 seconds instead of the IDE's own 10 seconds (for a notification group set to Balloon) or 5 minutes (Sticky balloon), so a burst of them clears itself instead of stacking up in the corner. The countdown pauses while the IDE is in the background, so something that arrived while you were in another app is still there when you come back, and every notification stays in the Notifications tool window either way — only the popup goes. Errors keep the IDE's five-minute timer unless you opt them in. The delay and both switches live under Tools → Agenstorm → Notifications
@@ -50,7 +52,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.3.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.4.0...HEAD
+[1.4.0]: https://github.com/pronskiy/agenstorm/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/pronskiy/agenstorm/compare/1.2.0...1.3.0
 [1.2.0]: https://github.com/pronskiy/agenstorm/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/pronskiy/agenstorm/compare/1.0.0...1.1.0
