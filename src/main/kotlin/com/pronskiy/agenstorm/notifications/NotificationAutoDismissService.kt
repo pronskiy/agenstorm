@@ -19,11 +19,8 @@ import kotlinx.coroutines.launch
 /**
  * Epic L: gives a notification's balloon a shorter fadeout than the platform's.
  *
- * `Balloon.startFadeoutTimer(ms)` cancels whatever hide request is pending and schedules its own, so calling
- * it after the platform has armed its 10 s / 5 min timer simply replaces it. The balloon has already been
- * marked "smart" by `NotificationsManagerImpl`, and its `ApplicationActivationListener` recomputes the
- * remaining time from the delay we set — so the countdown keeps pausing while the IDE is in the background,
- * and a notification that arrived while you were in another app is still there when you come back.
+ * The balloon keeps its own fadeout machinery; all this does is replace the delay that machinery uses. The
+ * notification itself is never expired, so whatever we hide is still listed in the Notifications tool window.
  *
  * `BalloonImpl` carries no class-level `@ApiStatus`; the two members annotated `@ApiStatus.Internal` inside
  * it are `getShadowBorderProvider` and `setShadowBorderProvider`, neither of which is touched here. The
@@ -74,13 +71,18 @@ class NotificationAutoDismissService(private val scope: CoroutineScope) {
      * event with `if (mySmartFadeoutDelay > 0) startFadeoutTimer(mySmartFadeoutDelay)`. So arming only the
      * plain timer is undone by the first mouse move, which is what left the commit popup on screen.
      */
-    fun applyDelay(balloon: Balloon, delayMs: Int): Boolean {
+    fun applyDelay(
+        balloon: Balloon,
+        delayMs: Int,
+        startNow: Boolean = ApplicationManager.getApplication().isActive,
+    ): Boolean {
         val impl = balloon as? BalloonImpl ?: return false
         impl.startSmartFadeoutTimer(delayMs)
-        // With the user actually at the IDE, start counting now instead of waiting for that first event.
-        // While the application is in the background nothing is started — which is exactly what keeps a
-        // notification that arrived while you were elsewhere on screen until you come back to it.
-        if (ApplicationManager.getApplication().isActive) impl.startFadeoutTimer(delayMs)
+        // [startNow] is "the user is actually looking at the IDE": start counting instead of waiting for that
+        // first AWT event. With the application in the background nothing is started, which is what keeps a
+        // notification that arrived while you were elsewhere on screen until you come back to it — the AWT
+        // listener then starts it from the smart delay set above, so it is still ours and still five seconds.
+        if (startNow) impl.startFadeoutTimer(delayMs)
         return true
     }
 

@@ -56,5 +56,8 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true
-  }
+  },
+  "disabledMcpjsonServers": [
+    "idea"
+  ]
 }
