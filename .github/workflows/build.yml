@@ -169,7 +169,17 @@ jobs:
           RELEASE_NOTE="./build/tmp/release_note.txt"
           ./gradlew getChangelog --unreleased --no-header --quiet --console=plain --output-file=$RELEASE_NOTE
 
+          # A released version keeps its release; only drafts are refreshed. Without this, every push made
+          # while pluginVersion still names a published version fails here on "release already exists".
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            echo "::notice::release $VERSION already exists - not creating a draft for it"
+            exit 0
+          fi
+
+          # Drafted as a pre-release: publishing it uploads to the Marketplace, but the version is not
+          # installable until review passes, and Marketplace watch is what promotes it once it is.
           gh release create $VERSION \
             --draft \
+            --prerelease \
             --title $VERSION \
             --notes-file $RELEASE_NOTE

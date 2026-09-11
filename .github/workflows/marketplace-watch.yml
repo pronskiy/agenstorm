@@ -1,0 +1,64 @@
+# Marketplace watch: promotes a pre-release to a full release once JetBrains Marketplace actually serves it.
+#
+# publishPlugin succeeding means "uploaded and accepted", not "installable" — a new version sits in review
+# first, and for this plugin that review is real (1.1.0 was rejected). So releases are published as
+# pre-releases and this workflow promotes them when users can genuinely get the version.
+#
+# The signal is the update server list, which is what IDEs read. The API's per-update `approve` flag is not
+# usable for this: it read `true` for 1.4.0 while the update server was still serving 1.3.0 only.
+
+name: Marketplace watch
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+
+jobs:
+
+  promote:
+    name: Promote served pre-releases
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+
+      - name: Fetch Sources
+        uses: actions/checkout@v6
+
+      - name: Promote pre-releases the Marketplace is serving
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          PLUGIN_ID=$(grep -E '^pluginGroup' gradle.properties | cut -d '=' -f2 | tr -d ' ')
+          SERVED=$(curl -sf --max-time 30 "https://plugins.jetbrains.com/plugins/list/?pluginId=$PLUGIN_ID" \
+            | grep -oE '<version>[^<]*</version>' | sed -E 's#</?version>##g')
+
+          if [ -z "$SERVED" ]; then
+            echo "::warning::the update server returned no versions for $PLUGIN_ID - leaving every release alone"
+            exit 0
+          fi
+          echo "Marketplace is serving:"
+          printf '  %s\n' $SERVED
+
+          PENDING=$(gh release list --json tagName,isPrerelease,isDraft \
+            --jq '.[] | select(.isPrerelease and (.isDraft | not)) | .tagName')
+
+          if [ -z "$PENDING" ]; then
+            echo "no pre-releases waiting on review"
+            exit 0
+          fi
+
+          # `gh release list` is newest first, so the first one promoted is the one that becomes Latest.
+          LATEST_FLAG="--latest"
+          for TAG in $PENDING; do
+            if printf '%s\n' "$SERVED" | grep -qx "$TAG"; then
+              echo "::notice::$TAG is on the Marketplace - promoting it to a full release"
+              # shellcheck disable=SC2086
+              gh release edit "$TAG" --prerelease=false $LATEST_FLAG
+              LATEST_FLAG=""
+            else
+              echo "$TAG is not served yet - still in review"
+            fi
+          done

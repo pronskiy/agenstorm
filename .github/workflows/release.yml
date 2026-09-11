@@ -4,8 +4,13 @@
 
 name: Release
 on:
+  # `published` only, deliberately. Two reasons, both from the GitHub docs:
+  # - `prereleased` does NOT fire for a pre-release published from a draft, which is exactly how this repo
+  #   releases, so subscribing to it would silently never run.
+  # - `released` fires again when Marketplace watch promotes a pre-release to a release, which would re-run
+  #   publishPlugin against a version the Marketplace already has.
   release:
-    types: [ prereleased, released ]
+    types: [ published ]
 
 jobs:
 
@@ -56,8 +61,27 @@ jobs:
 
           ./gradlew patchChangelog --release-note-file=$RELEASE_NOTE
 
+      # Is this version already on the Marketplace? Publishing the same version twice fails the job, and a
+      # release can be re-run by hand. The update server list is the honest signal: an upload that is still
+      # under review is absent from it, while the API's `approve` flag is true long before users can install.
+      - name: Check Marketplace
+        id: marketplace
+        run: |
+          PLUGIN_ID=$(grep -E '^pluginGroup' gradle.properties | cut -d '=' -f2 | tr -d ' ')
+          VERSION="${{ github.event.release.tag_name }}"
+          SERVED=$(curl -sf --max-time 30 "https://plugins.jetbrains.com/plugins/list/?pluginId=$PLUGIN_ID" \
+            | grep -oE '<version>[^<]*</version>' | sed -E 's#</?version>##g' || true)
+          echo "Marketplace is serving: ${SERVED:-nothing}"
+          if printf '%s\n' "$SERVED" | grep -qx "$VERSION"; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$VERSION is already on the Marketplace - skipping publishPlugin"
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # Publish the plugin to JetBrains Marketplace
       - name: Publish Plugin
+        if: ${{ steps.marketplace.outputs.already != 'true' }}
         env:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
           CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
@@ -80,6 +104,14 @@ jobs:
           VERSION="${{ github.event.release.tag_name }}"
           BRANCH="changelog-update-$VERSION"
           LABEL="release changelog"
+
+          # Nothing to patch when the changelog was cut locally before the release, which is how this repo
+          # works: the [$VERSION] section already exists. Without this, `git commit -am` exits 1 and reds a
+          # run whose Marketplace publish has already succeeded.
+          if git diff --quiet; then
+            echo "::notice::CHANGELOG.md is unchanged - no pull request to open"
+            exit 0
+          fi
 
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
