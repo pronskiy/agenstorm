@@ -64,12 +64,28 @@ class NotificationAutoDismissService(private val scope: CoroutineScope) {
         return null
     }
 
+    /**
+     * Re-arms the balloon's own fadeout to [delayMs]. Returns false when the balloon is not a [BalloonImpl]
+     * and the caller has to fall back to hiding it itself.
+     *
+     * The delay that governs is the **smart** one. `NotificationsManagerImpl` hands a balloon
+     * `startSmartFadeoutTimer(10_000)` — or `300_000` for a `STICKY_BALLOON` group like the one the commit
+     * result uses — and starts no alarm at all; `BalloonImpl`'s own `AWTEventListener` starts it on the first
+     * event with `if (mySmartFadeoutDelay > 0) startFadeoutTimer(mySmartFadeoutDelay)`. So arming only the
+     * plain timer is undone by the first mouse move, which is what left the commit popup on screen.
+     */
+    fun applyDelay(balloon: Balloon, delayMs: Int): Boolean {
+        val impl = balloon as? BalloonImpl ?: return false
+        impl.startSmartFadeoutTimer(delayMs)
+        // With the user actually at the IDE, start counting now instead of waiting for that first event.
+        // While the application is in the background nothing is started — which is exactly what keeps a
+        // notification that arrived while you were elsewhere on screen until you come back to it.
+        if (ApplicationManager.getApplication().isActive) impl.startFadeoutTimer(delayMs)
+        return true
+    }
+
     private suspend fun rearm(balloon: Balloon, delayMs: Int) {
-        val impl = balloon as? BalloonImpl
-        if (impl != null) {
-            impl.startFadeoutTimer(delayMs)
-            return
-        }
+        if (applyDelay(balloon, delayMs)) return
         // Public API only. Unlike the platform's timer this one keeps running while the IDE is in the
         // background, so it is the fallback rather than the default.
         delay(delayMs.toLong())
