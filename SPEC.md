@@ -22,6 +22,7 @@
 | 2026-09-10 | **Epic K added:** the IDE becomes the terminal's `$EDITOR`, so Claude Code's Ctrl+G (and `git commit`, and everything else that reaches for an editor) opens in this project's window and blocks until the tab closes. Requested as IJPL-221866; decision 43 | Roman Pronskiy (decisions), Claude (investigation, text) |
 | 2026-09-10 | Epic J's ⌘⌥M was found firing Extract Method. The check became a test that asks the keymaps (decision 45); the keystroke itself stays ⌘⌥M and a new step J1.6 wins it with an `ActionPromoter` (decision 46) | Claude (investigation, text), Roman (report, decision) |
 | 2026-09-10 | **1.3.0 cut** — Epic J (terminal ⇄ editor maximize) and Epic K (the IDE as the terminal's `$EDITOR`) ship together. `check` green, ZIP built, verifier Compatible on both IDEs with zero internal API | Roman (decision), Claude (text) |
+| 2026-09-12 | **Epic M added:** the editor/preview layout buttons leave the top-right corner of Markdown editors, off by default. Decision 47; a new §7 entry records that `Markdown.Toolbar.Right` appears to be dead in build 262 | Roman (request), Claude (investigation, code, text) |
 
 ### Status legend
 
@@ -29,7 +30,9 @@
 
 ### Current focus
 
-**Now on:** **1.4.0 is released (2026-09-11).** `main` pushed through `8c0bdda`, the Build workflow prepared the draft, publishing it ran `release.yml`, and **`:signPlugin` → `:publishPlugin` → BUILD SUCCESSFUL**: the Marketplace upload was accepted. The GitHub release is Latest with the changelog section as its notes and both ZIPs attached. The public update list may still show 1.3.0 for a while — this plugin goes through review (1.1.0 was rejected), so going live lags the upload.
+**Now on:** **Epic M, Phase M1 — the guardrail run.** M1.1–M1.5 are built, documented, and `check` is green; what is left is one `runIde` pass against the six guardrails in the epic, which need a human looking at a Markdown editor. Decision 47 is waiting for Roman to confirm, and §7 has a new entry about `Markdown.Toolbar.Right` that wants the same run to settle it.
+
+**Before that:** **1.4.0 is released (2026-09-11).** `main` pushed through `8c0bdda`, the Build workflow prepared the draft, publishing it ran `release.yml`, and **`:signPlugin` → `:publishPlugin` → BUILD SUCCESSFUL**: the Marketplace upload was accepted. The GitHub release is Latest with the changelog section as its notes and both ZIPs attached. The public update list may still show 1.3.0 for a while — this plugin goes through review (1.1.0 was rejected), so going live lags the upload.
 
 **Two traps in the release pipeline, both hit, both now fixed (2026-09-11) — see the release-CI note below:**
 1. **`release.yml`'s Create Pull Request step fails whenever the changelog was cut locally.** It runs `patchChangelog` and then `git commit -am`, which exits 1 with *nothing to commit* because the `[1.4.0]` section already exists — turning an otherwise green run red **after** the Marketplace publish has succeeded. Nothing is left behind (it fails before `git push`, so no `changelog-update-1.4.0` branch). The 1.0.0 run is red for the same reason. Fix, when someone wants it: `git commit -am "..." || exit 0`, or gate the step on there being a diff.
@@ -1437,6 +1440,59 @@ Platform facts (verified against build 262 with `javap -c`):
 | Verifier | Still zero internal API usages | ✅ | 2026-09-10: Compatible on PS-262.10315.130 and IU-262.10315.125, **zero internal**, 50 experimental and 4 deprecated — all three unchanged from 1.3.0, so the `BalloonImpl` cast added none |
 
 
+### Epic M — Markdown editor chrome  ·  after 1.4.0
+
+**Goal:** the three editor/preview layout buttons leave the top-right corner of Markdown editors, so a file being
+edited with live markup looks like a document rather than like a preview tool.
+**Success metrics:** Markdown only — every other split editor keeps its buttons; reversible without a restart and
+without a restart-requiring registry flip; the layouts stay reachable; zero internal API.
+
+Roman, 2026-09-12, with a screenshot of the pill: "For markdown files, i want to hide these icons for
+preview/editor etc".
+
+Platform facts (verified against build 262 by decompiling the extracted PhpStorm 2026.2 in the Gradle cache):
+
+- **The buttons are three ordinary registered actions** — `TextEditorWithPreview.Layout.EditorOnly`,
+  `…EditorAndPreview`, `…PreviewOnly`, all `ChangePreviewLayoutAction` subclasses declared in
+  `idea/PlatformActions.xml` under the group `TextEditorWithPreview.LayoutGroup`.
+- **`isShowFloatingToolbar()` is not an off switch.** It reads the registry key
+  `ide.text.editor.with.preview.show.floating.toolbar`, whose own description is *"Show a floating toolbar with
+  layouts **instead of a permanent toolbar**"* — false swaps the pill for a permanent toolbar strip rather than
+  removing anything. It is also global, which Markdown-only rules out on its own.
+- **Nothing can be subclassed into answering `false`.** `MarkdownEditorWithPreview` is `final`, and
+  `MarkdownSplitEditorProvider` is `final` **and** `@ApiStatus.Internal`, so the provider cannot be replaced either.
+- **What is reachable is the component.** `TextEditorWithPreview$TextEditorWithPreviewUi` builds a
+  `LayoutActionsFloatingToolbar` (public, unannotated) and adds it to `MyEditorLayeredComponentWrapper`, a
+  `JBLayeredPane`, at `JLayeredPane.POPUP_LAYER`. Nothing re-adds it afterwards, and that wrapper's `doLayout`
+  positions the toolbar by `instanceof`, not by child index — so taking it out and putting it back is symmetric.
+- **`setVisible(false)` does not hold.** `AbstractFloatingToolbarComponent$ToolbarTransparentComponent` re-runs
+  `setVisible(isVisible && hasVisibleActions())` on every animation tick, so a hidden toolbar reappears on the next
+  mouse move. Detaching it from its parent is what survives.
+- **`Markdown.Toolbar.Right` is dead in 262.** The group is declared in the Markdown plugin's `plugin.xml` but is
+  referenced by **no class anywhere in the distribution** — every jar was scanned. See §7.
+
+#### Phase M1 — The layout buttons go away
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| M1.1 | `LayoutSwitcherHider`: find the floating toolbar under a `TextEditorWithPreview`, detach it, put it back | ✅ | Project `@Service`; `findLayoutToolbar` / `detachFrom` / `reattach` are the pieces carrying tests. What was taken is parked on the `FileEditor`'s own user data, so it dies with the editor and nothing outside the service holds a Swing reference |
+| M1.2 | Settings: `markdownHideLayoutSwitcher` (off) and the **Markdown editor** group | ✅ | Its own group rather than a row under *Markdown live markup*: the two are independent, and the existing group's title claims otherwise. Default off because the buttons are the only visible way to open the preview — the comment names Find Action as the way back |
+| M1.3 | Wiring: `LayoutSwitcherEditorListener` (`fileOpened`) and `LayoutSwitcherStartupActivity` (already-open editors + the settings topic) | ✅ | Same shape as Epic F's pair. The listener takes the project from `FileEditorManager.getProject()` rather than a constructor parameter, so it needs nothing injected |
+| M1.4 | Tests | ✅ | 5 cases in `LayoutSwitcherHiderTest`, against a **real** `LayoutActionsFloatingToolbar` rather than a stand-in — `findLayoutToolbar` matches on exactly that class, so a stand-in would keep passing on a build where the platform stopped using it. The round-trip case **caught a real bug before it shipped**: see decision 47 |
+| M1.5 | Docs: README, changelog | ✅ | A **Markdown editor** section of its own in the README, after live markup rather than inside it, since the two are independent; a `[Unreleased]` bullet in the changelog. The Marketplace description block is left alone — this is a setting, not one of the seven named features |
+
+**Exit guardrails — Epic M**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| It hides | Setting on → a Markdown editor's top-right corner is empty, nothing painted where the pill was | 🔲 | |
+| Markdown only | A non-Markdown split editor (an `.http` file, a Jupyter-style preview) still shows its layout buttons | 🔲 | |
+| No restart | Toggling the setting takes effect on the editors that are already open, both ways | 🔲 | |
+| Reachable | Find Action → "Preview Only" still switches the layout while the buttons are hidden | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Verifier | Still zero internal API usages | 🔲 | |
+
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
@@ -1536,6 +1592,7 @@ Platform facts (verified against build 262 with `javap -c`):
 | 44 | 2026-09-10 | The edit request is not answered until the saved bytes are on the file system, not merely in the VFS — polled against `VirtualFile.getLength()` for at most 2 s | Found by the K1.4 test, not by reasoning: `FileDocumentManager.saveDocument` returns once the VFS holds the new text, and the write reaches the file system a few milliseconds later. The caller reads the file the instant we answer, so those milliseconds are a window in which it reads an **empty** file and takes that for the edit — the plan, the prompt or the commit message silently gone, which is exactly the failure this epic exists to prevent. Measured: with the barrier removed, 3 of 6 runs of the terminal test package fail; with it, 0 of 6. Size against the VFS's own recorded length is the comparison that needs no charset or line separator guessed at, and the budget is bounded because a caller kept waiting forever would be worse than one reading a file the IDE could not flush | Claude (investigation), Roman (to confirm) |
 | 45 | 2026-09-10 | The maximize toggle's binding is **⌥⇧F12 on every platform** — the macOS override is dropped — and "free" is now decided by asking the keymaps, not by searching them. Supersedes decision 40 on the keystroke. **The keystroke half was itself superseded hours later by decision 46**, which keeps ⌘⌥M and wins it with a promoter; the "ask the keymap" half stands | Roman, editor focused, pressed ⌘⌥M and got "Cannot perform refactoring": ⌘⌥M is **Extract Method**. Decision 40's check enumerated the `meta alt` family across every bundled keymap and plugin and found nothing, because there is nothing to find — `MacOSDefaultKeymapKt.mapModifiers` swaps Ctrl and Meta for everything a macOS keymap inherits, so `control alt M` in `$default` *is* ⌘⌥M there and the string appears in no file. `Keymap.getActionIds(KeyStroke)` answers the real question, and a test now asks it for `$default`, `Mac OS X 10.5+`, `Mac OS X` and `macOS System Shortcuts` — it reproduces the bug when pointed at the old keystroke (`ExtractMethod`, `sql.ExtractFunctionAction`). ⌥⇧F12 is free in all four and needs no macOS override at all, since the swap leaves Alt and Shift alone; it also reads as "⌥F12, but bigger", ⌥F12 being what activates the terminal on every platform. ⌘⌥⇧T was the first replacement and lasted one test run: taken in the legacy `Mac OS X` keymap | Claude (investigation), Roman (to confirm the keystroke) |
 | 46 | 2026-09-10 | ⌘⌥M **stays** the macOS binding, and an `ActionPromoter` decides that Maximize Terminal wins it over Extract Method. Supersedes decision 45's keystroke; its lesson — ask the keymap, never search it — stands | Roman, on being shown ⌥⇧F12: "keep Cmd+opt+M, I never use that refactoring, who cares about it, just unassign that shortcut". Unassigning is the one thing not done: the macOS keymaps are read-only, so `Keymap.removeShortcut` forces `deriveKeymap` — the user's active keymap silently becomes a copy of itself — and the change would outlive the plugin. `com.intellij.actionPromoter` (public, unannotated, `dynamic="true"`) orders the candidates for one keystroke instead, storing nothing: the feature off, or either action rebound, and ⌘⌥M is Extract Method's again. Shaped after the platform's own `WindowActionPromoter`, which returns the whole list sorted rather than the winner alone. The keystroke changing hands is announced once, naming what it took, because "my Extract Method stopped working" otherwise leads nowhere near this plugin | Roman |
+| 47 | 2026-09-12 | Epic M hides the layout buttons by **detaching the floating toolbar from its parent, per Markdown editor**, rather than by flipping the registry key or by hiding the three actions globally | Three mechanisms were on the table. The registry key `ide.text.editor.with.preview.show.floating.toolbar` is out twice over: it is global, and its own description says it swaps the pill for a *permanent* toolbar strip rather than removing it. Replacing the three `ChangePreviewLayoutAction` ids through `ActionSlot` would be Markdown-aware and would make the platform hide the empty pill on its own (`ToolbarTransparentComponent` gates on `hasVisibleActions()`), but `TextEditorWithPreview.getShowEditorAction()` does `ActionUtil.getAction(id) as ToggleAction` with a hard null check, so every split editor in the IDE would depend on our wrapper keeping that exact shape — too much blast radius for a cosmetic setting. Detaching touches one editor and nothing else, uses only public classes, and is symmetric because `MyEditorLayeredComponentWrapper.doLayout` positions the toolbar by type rather than by child index. **`setVisible(false)` was rejected on evidence, not taste:** the animator re-runs `setVisible(isVisible && hasVisibleActions())` every tick and would undo it on the next mouse move. **The round-trip test then caught the one thing reasoning had missed** — from Kotlin, `add(component, JLayeredPane.POPUP_LAYER)` binds to `Container.add(Component, int)` and hands the layer over as a child *index*, so restoring would silently have put the toolbar on layer 0, under the splitter; the layer is now carried explicitly and restored with `JLayeredPane.putLayer` | Claude (investigation), Roman (to confirm) |
 
 ---
 
@@ -1556,6 +1613,7 @@ Platform facts (verified against build 262 with `javap -c`):
 - [ ] Should `Copy Location Link` also offer `path:line:col` relative to the *repository* root vs. content root when they differ (monorepos)? Default: content root; decide after use.
 - [x] ~~**Epic B, dialects:** the scratch popup lists *languages*, but `scratchLanguageFilter` filters by *file type*; JavaScript dialects map to the JavaScript file type and stay whenever JavaScript is allowed.~~ Resolved 2026-09-05: accept and document (decision 14). **Fixed 2026-09-10** (decision 39): the popup is ours and filters languages, so ActionScript and ECMAScript 6 stay out unless named.
 - [ ] **Auto-hiding notification balloons — feasibility settled 2026-09-10, nothing built.** Roman asked whether notification popups can be hidden automatically. The zero-code half: Settings | Appearance & Behavior | Notifications carries a global "Display balloon notifications" (`NotificationsConfigurationImpl.SHOW_BALLOONS`) and a per-group display type (`No popups` / `Balloon` / `Sticky balloon` / `Tool window`); `No popups` still logs the entry to the Notifications tool window, and `Balloon` fades by itself while `Sticky balloon` does not — which is the part that actually annoys. The plugin half is all public API: `NotificationsConfiguration.setDisplayType(groupId, NONE)` (the abstract class carries no ApiStatus at all, and `NotificationsConfigurationImpl` carries only `@State`, so neither is internal — same reasoning as the `ProjectUtil` row above), and for a timed auto-dismiss a `Notifications.TOPIC` subscriber calling `Notification.hideBalloon()` (popup gone, entry kept) or `expire()` (entry dropped) after a delay. Two traps to design around: `Notifications.TOPIC` is declared `BroadcastDirection.NONE` and `Notifications.Bus.doNotify` publishes project-scoped notifications on the project bus and the rest on the app bus, so a listener needs both an `applicationListeners` entry and a per-project subscription or it sees half of them; and at `notify()` time the balloon does not exist yet (`getBalloon()` is null), so the hide must be scheduled, never inline — "never show at all" belongs to the display type instead. The platform's own timer (`BalloonLayoutData.fadeoutTime` → `BalloonImpl.startSmartFadeoutTimer`) sits behind `NotificationsManagerImpl` and is not reachable, so a plugin schedules its own hide rather than retuning theirs. Roman chose the timed auto-dismiss the same day; it is **Epic L**, and the platform facts moved there.
+- [ ] **`Markdown.Toolbar.Right` looks dead in build 262 — found while surveying Epic M, 2026-09-12.** The Markdown plugin declares the group in its `plugin.xml` (holding `AutoScrollAction`), and `Agenstorm.ToggleLiveMarkup` is added to it, but the id is referenced by **no class in the whole distribution**: every jar under `lib/`, `plugins/*/lib/` and `plugins/*/lib/modules/` was scanned for the string and the only hits are that `plugin.xml` and the searchable-options index. `MarkdownEditorWithPreview` overrides neither `createLeftToolbarActionGroup` nor `createRightToolbarActionGroup`, which are what `TextEditorWithPreview` would consult, and its only overrides are `onLayoutChange`, `requestFocusForPreview` and the auto-scroll pair. If that is right, the Live Markup button never renders in the editor toolbar and only the context-menu entry works — which would also make `settings.markdown.bullets.comment` ("The Live Markup button in a Markdown editor's toolbar…") untrue. **Needs one look in the sandbox before anything is changed**; the fix, if confirmed, is to move the action to a group that is alive.
 
 ---
 

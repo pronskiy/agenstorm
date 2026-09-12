@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Hide the editor/preview layout buttons in Markdown editors.** The three buttons in the top-right corner of a Markdown editor can be switched off, so a file you are writing looks like a document rather than like a preview tool. Off by default, under Tools → Agenstorm → Markdown editor; it takes effect on the tabs that are already open, and only Markdown editors are touched — every other split editor keeps its buttons. The layouts stay reachable from Find Action (*Editor Only*, *Editor and Preview*, *Preview Only*)
+
 ## [1.4.0] - 2026-09-11
 
 ### Added

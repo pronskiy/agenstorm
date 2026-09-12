@@ -233,6 +233,14 @@ Limitations: heading sizes stay at the editor's single line height; images and r
 the code-block card has no rounded corners, language chip or copy button, and block quotes and thematic breaks
 render as written.
 
+## Markdown editor
+
+**Hide the editor/preview layout buttons** takes the three buttons out of the top-right corner of every Markdown
+editor, so a file you are writing looks like a document rather than like a preview tool. Off by default, under
+Settings → Tools → Agenstorm → Markdown editor; it applies to the tabs that are already open, and only to Markdown —
+every other split editor keeps its buttons. The layouts themselves stay where they were: Find Action → *Editor Only*,
+*Editor and Preview* or *Preview Only* still switches between them.
+
 ## Opening files from the terminal
 
 Inside an IDE terminal, `open` opens files in the window the terminal belongs to:

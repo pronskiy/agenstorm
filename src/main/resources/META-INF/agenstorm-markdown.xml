@@ -21,7 +21,16 @@
         <gotoDeclarationHandler implementation="com.pronskiy.agenstorm.markdown.LinkTextGotoDeclarationHandler"/>
         <!-- markdown (Epic F): applies the settings page to open editors; core/ cannot call this feature directly. -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.markdown.LiveMarkupStartupActivity"/>
+
+        <!-- markdown (Epic M): same two hooks for the editor/preview layout buttons. -->
+        <postStartupActivity implementation="com.pronskiy.agenstorm.markdown.LayoutSwitcherStartupActivity"/>
     </extensions>
+
+    <projectListeners>
+        <!-- markdown (Epic M): a Markdown file opening while the setting is on gets its layout buttons detached too. -->
+        <listener class="com.pronskiy.agenstorm.markdown.LayoutSwitcherEditorListener"
+                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+    </projectListeners>
 
     <actions resource-bundle="messages.AgenstormBundle">
         <!-- markdown (Epic F): per-editor on/off in the Markdown editor toolbar and the editor context menu. -->

@@ -98,6 +98,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupBlockQuotes: Boolean = true,
         /** Epic H (Phase H3): thematic breaks render as a full-width line, their `---` hidden. */
         var liveMarkupRules: Boolean = true,
+        /** Epic M: the editor/preview layout buttons leave the top-right corner of every Markdown editor. */
+        var markdownHideLayoutSwitcher: Boolean = false,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */
