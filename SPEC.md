@@ -31,7 +31,7 @@
 
 ### Current focus
 
-**Now on:** **one `runIde` pass covering Epic M's six guardrails and Epic N's seven.** Both epics are built, documented, committed and `check`-green, `verifyPlugin` is Compatible on both IDEs with zero internal API, and neither has been looked at yet — they are pure UI, so a human has to. Decisions 47 and 49 are waiting for Roman to confirm, and §7 has an entry about `Markdown.Toolbar.Right` looking dead in 262 that the same run can settle.
+**Now on:** **Epic M's six guardrails — one `runIde` pass, never yet done.** Epic N is signed off (Roman, 2026-09-13: "All good, leave as is") bar two lines nobody exercised, because the setting was never toggled during the run: *Both ways, no restart* and *Not greedy*, both covered by unit tests but unwatched. Its *No fight* fix (`73dca30`, 43 passes down to at most one pending) also wants a confirming run. Epic M has had none of this — it was built, committed and never looked at. Neither epic is in a released version yet.
 
 **Before that:** **1.4.0 is released (2026-09-11).** `main` pushed through `8c0bdda`, the Build workflow prepared the draft, publishing it ran `release.yml`, and **`:signPlugin` → `:publishPlugin` → BUILD SUCCESSFUL**: the Marketplace upload was accepted. The GitHub release is Latest with the changelog section as its notes and both ZIPs attached. The public update list may still show 1.3.0 for a while — this plugin goes through review (1.1.0 was rejected), so going live lags the upload.
 
@@ -1503,6 +1503,8 @@ way in; reversible without a restart; zero internal API.
 Roman, 2026-09-13: "I want to disable right side toolwindow bar entirely, as if i had all toolwindow icons hidden",
 and, asked what should become of the windows themselves, chose *keep them reachable*.
 
+**Every window anchored right is moved, not just the ones with familiar icons** — the first run moved seven (UI Theme Color Picker, Coverage, PHP Control Flow Viewer, AIAssistant, Database, Notifications, make), and Roman confirmed that is what he wants: "All good, leave as is".
+
 **The bar is emptied by moving its windows to the left, not by hiding their icons** — decision 49, after decision 48
 established that hiding the icons cannot be done without internal API. The visible result is the one that was asked
 for; the difference is that those windows now open on the left.
@@ -1546,11 +1548,11 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| It goes | Setting on → no bar down the right edge, and the editor reaches it | 🔄 | **The mechanism is proved; the pixels are not.** Sandbox run 2026-09-13 18:06–18:16 with the setting pre-set on: the first pass reported `moveLeft=[UI Theme Color Picker, Coverage, PHP Control Flow Viewer, AIAssistant, Database, Notifications, make]`, and every later pass saw nothing anchored right. So the stripe is empty, which is the condition the platform hides the bar on — what is left is one look confirming it is not painted |
-| Left bar works | The moved windows' icons are on the left bar, and opening one opens it on the left | 🔲 | |
-| Still reachable | Those windows still open from View \| Tool Windows and from their shortcuts | 🔲 | |
-| Both ways, no restart | Switching the setting off puts back exactly the windows that were on the right, without a restart | 🔲 | |
-| Not greedy | A window that was on the left before the feature went on is still on the left after it goes off | 🔲 | |
+| It goes | Setting on → no bar down the right edge, and the editor reaches it | ✅ | **Roman, 2026-09-13: "All good, leave as is"**, after ten minutes in the sandbox with the setting on. Sandbox run 2026-09-13 18:06–18:16 with the setting pre-set on: the first pass reported `moveLeft=[UI Theme Color Picker, Coverage, PHP Control Flow Viewer, AIAssistant, Database, Notifications, make]`, and every later pass saw nothing anchored right. So the stripe is empty, which is the condition the platform hides the bar on — what is left is one look confirming it is not painted |
+| Left bar works | The moved windows' icons are on the left bar, and opening one opens it on the left | ✅ | Covered by the same sign-off; the trade — those windows opening on the left — was named in the settings comment, the README and the question put to Roman before he signed |
+| Still reachable | Those windows still open from View \| Tool Windows and from their shortcuts | ✅ | Same sign-off |
+| Both ways, no restart | Switching the setting off puts back exactly the windows that were on the right, without a restart | 🔲 | **Not exercised.** `config/options/agenstorm.xml` came out of the run still reading `hideRightToolWindowBar="true"`, so the settings page was never applied during it. The reverse direction is the same `RightBarPlan.plan(…, clearRight = false)` the 9 unit tests cover, but nobody has watched it happen |
+| Not greedy | A window that was on the left before the feature went on is still on the left after it goes off | 🔲 | Not exercised, for the same reason. Pinned by `never moves a window it did not move` and `stops owing a window the user moved somewhere of their own choosing` |
 | No fight | Dragging a window onto the right while the feature is on does not loop or flicker, and `idea.log` shows a handful of `RightBarHider` passes per startup rather than one per moved window | 🔄 | **Defect found and fixed by the first run, 2026-09-13.** The armed debug line showed **43 passes** on one startup: each of our seven `setAnchor` calls raises `SetToolWindowAnchor`, the listener asks for a pass, and the `applying` guard cannot stop those because it is released before they run. The extra passes were no-ops, so nothing was visibly wrong — which is why it took the log to find. `applyLater` now collapses requests through an `AtomicBoolean`, so at most one pass is ever pending. **Needs the next run to confirm the count drops**; not unit-testable, since `apply()` cannot do anything against the headless stub |
 | Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | ✅ | Same run, a 1 998-line slice: **zero SEVERE/ERROR and zero `Plugin to blame` entries**. The 64 `com.pronskiy.agenstorm` lines are the armed debug traces for this feature and Epic L's |
 
