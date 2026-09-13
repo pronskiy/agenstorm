@@ -100,6 +100,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupRules: Boolean = true,
         /** Epic M: the editor/preview layout buttons leave the top-right corner of every Markdown editor. */
         var markdownHideLayoutSwitcher: Boolean = false,
+        /** Epic N: right-anchored tool windows move to the left, which empties the right bar and makes the IDE hide it. */
+        var hideRightToolWindowBar: Boolean = false,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */

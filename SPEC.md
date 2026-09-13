@@ -23,7 +23,7 @@
 | 2026-09-10 | Epic J's ⌘⌥M was found firing Extract Method. The check became a test that asks the keymaps (decision 45); the keystroke itself stays ⌘⌥M and a new step J1.6 wins it with an `ActionPromoter` (decision 46) | Claude (investigation, text), Roman (report, decision) |
 | 2026-09-10 | **1.3.0 cut** — Epic J (terminal ⇄ editor maximize) and Epic K (the IDE as the terminal's `$EDITOR`) ship together. `check` green, ZIP built, verifier Compatible on both IDEs with zero internal API | Roman (decision), Claude (text) |
 | 2026-09-12 | **Epic M added:** the editor/preview layout buttons leave the top-right corner of Markdown editors, off by default. Decision 47; a new §7 entry records that `Markdown.Toolbar.Right` appears to be dead in build 262 | Roman (request), Claude (investigation, code, text) |
-| 2026-09-13 | **Epic N attempted and reverted the same day:** emptying the right tool window bar needs `@ApiStatus.Internal` API in build 262 whichever way it is done, and §2 makes zero internal usages a release gate. `verifyPlugin` reported 3. The survey is kept in the epic, the code is not. Decision 48 records what was tried and the bad check that let it get as far as it did | Roman (request, and the call to gate it on the verifier), Claude (investigation, code, revert, text) |
+| 2026-09-13 | **Epic N added**, after one false start: emptying the right tool window bar by hiding stripe icons needs `@ApiStatus.Internal` API in build 262 (decision 48, code reverted), so it is done by moving those windows to the left instead (decision 49). Off by default; `verifyPlugin` green with zero internal usages | Roman (request, the gate, and the call between the remaining options), Claude (investigation, code, text) |
 
 ### Status legend
 
@@ -31,7 +31,7 @@
 
 ### Current focus
 
-**Now on:** **one `runIde` pass covering Epic M's six guardrails** — M1.1–M1.5 are built, documented and committed, and nothing has been looked at yet. **Epic N is ⏸️ blocked** and its code reverted: every way to empty the right tool window bar in build 262 is internal API, which §2 forbids. Decision 47 is waiting for Roman to confirm, and §7 has two entries the same sandbox run can settle — `Markdown.Toolbar.Right` looking dead in 262, and what to do about the right bar.
+**Now on:** **one `runIde` pass covering Epic M's six guardrails and Epic N's seven.** Both epics are built, documented, committed and `check`-green, `verifyPlugin` is Compatible on both IDEs with zero internal API, and neither has been looked at yet — they are pure UI, so a human has to. Decisions 47 and 49 are waiting for Roman to confirm, and §7 has an entry about `Markdown.Toolbar.Right` looking dead in 262 that the same run can settle.
 
 **Before that:** **1.4.0 is released (2026-09-11).** `main` pushed through `8c0bdda`, the Build workflow prepared the draft, publishing it ran `release.yml`, and **`:signPlugin` → `:publishPlugin` → BUILD SUCCESSFUL**: the Marketplace upload was accepted. The GitHub release is Latest with the changelog section as its notes and both ZIPs attached. The public update list may still show 1.3.0 for a while — this plugin goes through review (1.1.0 was rejected), so going live lags the upload.
 
@@ -1494,51 +1494,65 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 | Verifier | Still zero internal API usages | 🔲 | |
 
 
-### Epic N — The right tool window bar goes away  ·  ⏸️ blocked on internal API
+### Epic N — The right tool window bar goes away  ·  after 1.4.0
 
 **Goal:** the strip of tool window icons down the right edge disappears, and the editor reaches the window edge.
-**Status: built, then reverted the same day.** Every route to it in build 262 goes through `@ApiStatus.Internal`, and
-§2 makes zero internal usages a release gate. `verifyPlugin` is the evidence, not an opinion — see N1.6. The code is
-gone from the tree; what is kept here is the platform survey, so the next attempt starts from facts.
+**Success metrics:** the right side only — the left bar keeps working; the tool windows keep their content and every
+way in; reversible without a restart; zero internal API.
 
 Roman, 2026-09-13: "I want to disable right side toolwindow bar entirely, as if i had all toolwindow icons hidden",
 and, asked what should become of the windows themselves, chose *keep them reachable*.
+
+**The bar is emptied by moving its windows to the left, not by hiding their icons** — decision 49, after decision 48
+established that hiding the icons cannot be done without internal API. The visible result is the one that was asked
+for; the difference is that those windows now open on the left.
 
 Platform facts (verified against build 262 by decompiling the extracted PhpStorm 2026.2 in the Gradle cache):
 
 - **The bar hides itself when it is empty.** `ToolWindowPaneNewButtonManager.updateToolStripesVisibility` ends with
   `right.setVisible(showButtons && right.hasVisibleButtons())`, and `ToolWindowToolbar.hasVisibleButtons()` is
-  `hasButtons() || moreButton.isVisible`. The feature never had to touch the bar; it had to empty it.
-- **The ⋯ More button would not have kept it alive.** `MoreSquareStripeButton.isAvailable` requires
-  `ToolWindowManagerEx.getMoreButtonSide() == getSide()`, and that side defaults to the left.
-- **`ToolWindow.setShowStripeButton` is public and useless.** `ToolWindowManagerImpl.setShowStripeButton` opens with
-  `if (isNewUi) { LOG.info("…is ignored in the new UI"); return }`. It is a no-op in the only UI that ships.
-- **What the IDE itself uses is internal.** `ToolWindowImpl$RemoveStripeButtonAction` ("Remove from Sidebar") calls
-  `hideToolWindow(id, hideSide = false, moveFocus = false, removeFromStripe = true, source)`; the only way back that
-  does not also *open* the window is `setVisibleOnLargeStripe(id, true)`. Both are on `ToolWindowManagerImpl`, and
-  **the class and both methods carry `@ApiStatus.Internal`** — the verifier named all three.
-- **Every neighbouring route is internal too:** `ToolWindowToolbar` / `ToolWindowRightToolbar` for the bar itself, and
-  `DesktopLayout`, which is what rules out the otherwise public `ToolWindowManagerEx.getLayout()` / `setLayout()`.
-- **The public alternatives change more than the bar.** `ToolWindow.setAvailable(false)` empties the stripe cleanly but
-  also takes the windows out of View | Tool Windows; `setAnchor` moves them to another side; `UISettings.hideToolStripes`
-  is the IDE's own *View | Appearance | Tool Window Bars*, and hides **both** bars — which the user can already do
-  without a plugin. All three were declined as answers to what was actually asked.
-- **None of it can be exercised headlessly anyway.** `BasePlatformTestCase` installs `ToolWindowHeadlessManagerImpl`,
-  a stub that is not a `ToolWindowManagerImpl`, so every write and the `isShowStripeButton` read reach nothing. Any
-  assertion on stripe buttons in a unit test pins the stub and passes with the production code deleted.
+  `hasButtons() || moreButton.isVisible`. The feature never touches the bar; it empties it.
+- **The ⋯ More button does not keep it alive.** `MoreSquareStripeButton.isAvailable` requires
+  `ToolWindowManagerEx.getMoreButtonSide() == getSide()`, and that side comes from `ToolWindowManagerState.moreButton`,
+  which is the left by default.
+- **`setAnchor` is clean and it works.** On `com.intellij.openapi.wm.ToolWindow` only three members carry
+  `@ApiStatus.Internal` — `getStripeTitleProvider`, `getStripeShortTitleProvider`, `setTabsSplittingAllowed` — and
+  `setAnchor`/`getAnchor` are not among them. `ToolWindowManagerImpl.doSetAnchor` has an explicit New UI branch
+  (`removeStripeButton(anchor, isSplit)`), unlike `setShowStripeButton`, which the New UI ignores outright.
+- **Everything closer to the bar is internal**, which is what decision 48 is about: `ToolWindowToolbar` /
+  `ToolWindowRightToolbar`; `ToolWindowManagerImpl` and its `hideToolWindow(…, removeFromStripe = true)` and
+  `setVisibleOnLargeStripe`; and `DesktopLayout`, which rules out the otherwise public
+  `ToolWindowManagerEx.getLayout()` / `setLayout()`.
+- **The other public options change more than the bar.** `ToolWindow.setAvailable(false)` also removes the windows
+  from View | Tool Windows; `UISettings.hideToolStripes` hides **both** bars and is already
+  View | Appearance | Tool Window Bars; the experimental `NotRoamableUiSettings.experimentalSingleStripe` moves the
+  buttons into a *top* stripe, trading the right bar for a row of chrome — against the grain of Epic E.
+- **None of it can be exercised headlessly.** `BasePlatformTestCase` installs `ToolWindowHeadlessManagerImpl`, and for
+  this feature it is a stub in every direction: a window registered `RIGHT` or `LEFT` reports `bottom`, `setAnchor`
+  does nothing, and `toolWindowIds` does not list what was registered.
 
-#### Phase N1 — The bar is emptied  ·  ❌ reverted
+#### Phase N1 — The right side is emptied
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| N1.1 | `RightBarPlan`: what to switch off, what to give back, what is still owed | ❌ | Written and green (9 tests: the left bar untouched, nothing hidden twice, a window that moved side still owed, one that is gone forgotten, one the user turned back on no longer owed, one registered later caught on the next pass). Mechanism-independent, so it is the one piece worth resurrecting if a public lever ever appears |
-| N1.2 | `RightBarHider` + `HiddenStripeButtons`, and the three hooks | ❌ | The record was a project `@State` on `StoragePathMacros.WORKSPACE_FILE`, because `isShowStripeButton` is persisted per project and after a restart a button Agenstorm switched off is indistinguishable from one the user switched off |
-| N1.3 | Tests | ❌ | Cut to four cases once the headless stub was found; the mechanism half was never testable |
-| N1.4 | Settings: `hideRightToolWindowBar` (off) and the **Tool windows** group | ❌ | |
-| N1.5 | Docs: README, changelog | ❌ | |
-| N1.6 | `verifyPlugin`: still zero internal API | ❌ | **The gate, and it failed.** 2026-09-13 against PS-262.10315.130 and IU-262.10315.125: Compatible, but **Internal API usages (3)**, all in `RightBarHider.run` — the `ToolWindowManagerImpl` class reference, `hideToolWindow(String, boolean, boolean, boolean, ToolWindowEventSource)` and `setVisibleOnLargeStripe(String, boolean)`. That is the first internal usage since the 1.1.0 rejection was cleared, so the code was reverted the same hour. **The claim that the class was unannotated came from a broken check** — `javap` was pointed at a class file that had not been extracted, and the shell expanded `$Internal` out of the grep pattern, so an error and an empty pattern agreed on "no annotation". The verifier is the authority; decompiling is for understanding, never for clearing an API |
+| N1.1 | `RightBarPlan`: what to move off the right, what to put back, what is still owed | ✅ | The only logic in the epic and the only part testable in full, so it is kept clear of the platform — `ToolWindowSide(id, anchor)` in, three lists out. The debt exists because an anchor is persisted per project: after a restart a window Agenstorm moved is indistinguishable from one the user moved. A window the user has since docked somewhere of their own choosing stops being owed, so it is never yanked back to the right |
+| N1.2 | `RightBarHider` + `MovedToolWindows`, and the three hooks | ✅ | The record is a project `@State` on `StoragePathMacros.WORKSPACE_FILE`, where the layout it describes already lives; nothing lands in shared `.idea` config. Hooks: a `postStartupActivity` that also subscribes to the settings topic, a `ToolWindowManagerListener` for `RegisterToolWindow` / `ToolWindowAvailable` / `SetToolWindowAnchor` / `SetSideToolAndAnchor`, and a `DynamicPluginListener` that puts every window back before the plugin's classes go. Our own `setAnchor` raises `SetToolWindowAnchor` too, so re-entry is stopped by a guard on the service rather than by leaving that event unwatched — it is the one a user's drag raises, and the whole reason to listen |
+| N1.3 | Tests | ✅ | 13 cases. 9 in `RightBarPlanTest` carry the feature: the other three sides untouched, nothing moved twice, a window the user re-docked no longer owed, one that is gone forgotten, one dragged back to the right moved off again, one registered later caught on the next pass. `RightBarHiderTest` is 4 — against that stub any assertion on an anchor would pass with the production code deleted, so what it pins instead is that the service survives the stub, that the stub is still a stub, and which events the listener watches |
+| N1.4 | Settings: `hideRightToolWindowBar` (off) and the **Tool windows** group | ✅ | Off by default, and the comment says plainly that the windows move rather than vanish — a bar disappearing is exactly the kind of change that reads as breakage |
+| N1.5 | Docs: README, changelog | ✅ | Its own README section naming the trade; a `[Unreleased]` bullet. The Marketplace description block is left alone |
+| N1.6 | `verifyPlugin`: still zero internal API | ✅ | **The gate, and it passes.** 2026-09-13 against PS-262.10315.130 and IU-262.10315.125: **Compatible on both, no internal-API section at all**, 54 experimental and 6 deprecated. Both counts moved by exactly the known amount — Kotlin materialising `DynamicPluginListener`'s default methods for one more implementor (`RightBarUnloadListener`): `checkUnloadPlugin` deprecated ×2, `beforePluginsLoaded` / `pluginsLoaded` experimental ×4. Epic M added none of either |
 
-**Exit guardrails — Epic N** · not reached; the phase was reverted at N1.6.
+**Exit guardrails — Epic N**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| It goes | Setting on → no bar down the right edge, and the editor reaches it | 🔲 | |
+| Left bar works | The moved windows' icons are on the left bar, and opening one opens it on the left | 🔲 | |
+| Still reachable | Those windows still open from View \| Tool Windows and from their shortcuts | 🔲 | |
+| Both ways, no restart | Switching the setting off puts back exactly the windows that were on the right, without a restart | 🔲 | |
+| Not greedy | A window that was on the left before the feature went on is still on the left after it goes off | 🔲 | |
+| No fight | Dragging a window onto the right while the feature is on does not loop or flicker | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
 
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
@@ -1585,6 +1599,7 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 | Marketplace rejection for internal API usage | Low | Med | Warnings are tolerated; keep the list in §2 short and each usage guarded |
 | The two `@Experimental` terminal hooks (`ShellExecOptionsCustomizer`, `TerminalDataContextUtils.isReworkedTerminalEditor`) change shape in 263 | High | Med | Both sit behind the Epic G / Epic I toggles and a `LinkageError` catch; Epic I already ships the `consoleFilterProvider` path (stable API) as its floor, so only the folding refinement is exposed. The reworked terminal is new and JetBrains is still moving it — expect to re-verify at every platform bump |
 | Shadowing `open` surprises a user whose script depends on macOS `open` | Med | Med | The shim claims only bare existing paths: flags, URLs, missing paths and no-argument calls exec the real binary, and the router can decline with `409` so the real binary still runs. Off by one toggle, and a first-run balloon says so. Only inside IDE terminals — the user's own shells are untouched |
+| Epic N moves tool windows rather than hiding icons, so it rearranges a layout the user chose | Med | Low–Med | Off by default, the setting says plainly that windows move, and the ids moved are recorded in the workspace file so feature-off and plugin unload put back exactly those. A window the user re-docks while the feature is on stops being owed, so it is never yanked back. Decision 49 |
 | A user's enhancer regex makes the terminal crawl | Med | Med | Matching runs off the EDT against a deadline-checking `CharSequence`, so a catastrophic pattern is cancelled rather than survived; the offending rule is disabled for the session with one balloon. Guardrail I2 covers it with a deliberately hostile fixture |
 
 ---
@@ -1641,6 +1656,7 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 | 46 | 2026-09-10 | ⌘⌥M **stays** the macOS binding, and an `ActionPromoter` decides that Maximize Terminal wins it over Extract Method. Supersedes decision 45's keystroke; its lesson — ask the keymap, never search it — stands | Roman, on being shown ⌥⇧F12: "keep Cmd+opt+M, I never use that refactoring, who cares about it, just unassign that shortcut". Unassigning is the one thing not done: the macOS keymaps are read-only, so `Keymap.removeShortcut` forces `deriveKeymap` — the user's active keymap silently becomes a copy of itself — and the change would outlive the plugin. `com.intellij.actionPromoter` (public, unannotated, `dynamic="true"`) orders the candidates for one keystroke instead, storing nothing: the feature off, or either action rebound, and ⌘⌥M is Extract Method's again. Shaped after the platform's own `WindowActionPromoter`, which returns the whole list sorted rather than the winner alone. The keystroke changing hands is announced once, naming what it took, because "my Extract Method stopped working" otherwise leads nowhere near this plugin | Roman |
 | 47 | 2026-09-12 | Epic M hides the layout buttons by **detaching the floating toolbar from its parent, per Markdown editor**, rather than by flipping the registry key or by hiding the three actions globally | Three mechanisms were on the table. The registry key `ide.text.editor.with.preview.show.floating.toolbar` is out twice over: it is global, and its own description says it swaps the pill for a *permanent* toolbar strip rather than removing it. Replacing the three `ChangePreviewLayoutAction` ids through `ActionSlot` would be Markdown-aware and would make the platform hide the empty pill on its own (`ToolbarTransparentComponent` gates on `hasVisibleActions()`), but `TextEditorWithPreview.getShowEditorAction()` does `ActionUtil.getAction(id) as ToggleAction` with a hard null check, so every split editor in the IDE would depend on our wrapper keeping that exact shape — too much blast radius for a cosmetic setting. Detaching touches one editor and nothing else, uses only public classes, and is symmetric because `MyEditorLayeredComponentWrapper.doLayout` positions the toolbar by type rather than by child index. **`setVisible(false)` was rejected on evidence, not taste:** the animator re-runs `setVisible(isVisible && hasVisibleActions())` every tick and would undo it on the next mouse move. **The round-trip test then caught the one thing reasoning had missed** — from Kotlin, `add(component, JLayeredPane.POPUP_LAYER)` binds to `Container.add(Component, int)` and hands the layer over as a child *index*, so restoring would silently have put the toolbar on layer 0, under the splitter; the layer is now carried explicitly and restored with `JLayeredPane.putLayer` | Claude (investigation), Roman (to confirm) |
 | 48 | 2026-09-13 | **Epic N is not buildable within §2 in build 262, and is reverted.** Emptying the right tool window bar requires `ToolWindowManagerImpl.hideToolWindow(…, removeFromStripe = true)` and `setVisibleOnLargeStripe`, and the class and both methods are `@ApiStatus.Internal` | The public lever, `ToolWindow.setShowStripeButton`, is a no-op in the New UI — `ToolWindowManagerImpl` opens it with `if (isNewUi) { LOG.info("…is ignored in the new UI"); return }`. What the IDE's own *Remove from Sidebar* uses instead is internal, and so is every neighbour: `ToolWindowRightToolbar` for the bar, `DesktopLayout` for the otherwise public `ToolWindowManagerEx.getLayout()`/`setLayout()`. The feature was built anyway on a **wrong reading that the class was unannotated** — `javap` was pointed at a class file that had not been extracted, and the shell ate `$Internal` out of the grep pattern, so a silent error and an empty pattern agreed. `verifyPlugin`, which Roman had made the gate, reported **3 internal usages** and the code was reverted within the hour. **Two lessons kept:** an API is cleared by the verifier, never by decompiling; and a shell check that can return "clean" by failing is not a check. The public alternatives were all declined as answers to what was asked — `setAvailable(false)` also removes the windows from View \| Tool Windows, `setAnchor` moves them, and `UISettings.hideToolStripes` hides both bars and is already in the IDE's own View menu | Roman (gate), Claude (error, investigation, revert) |
+| 49 | 2026-09-13 | Epic N empties the right bar by **moving its tool windows to the left** with public `ToolWindow.setAnchor`, rather than by hiding their stripe icons. Supersedes decision 48's approach, not its finding | Offered the choice between this, asking JetBrains and dropping the epic, Roman took this one. It reaches the same visible result — an empty right stripe, which the platform hides by itself — through the one lever that is not internal: on `ToolWindow` only `getStripeTitleProvider`, `getStripeShortTitleProvider` and `setTabsSplittingAllowed` carry `@ApiStatus.Internal`, and `ToolWindowManagerImpl.doSetAnchor` has a real New UI branch, so unlike `setShowStripeButton` it works. `verifyPlugin` agrees: **zero internal usages**, and the +2 deprecated / +4 experimental are Kotlin materialising `DynamicPluginListener`'s default methods for one more implementor, the same effect already recorded for the other three unload listeners. **The cost, taken openly:** those windows now open on the **left**, and their icons join the left bar. The icon-hiding version had its own version of this — `showToolWindowImpl` restores a stripe button whenever a window is shown, so opening a right-side window would have popped the bar back while it was open — so the trade is not as one-sided as it looks | Roman |
 
 ---
 
@@ -1661,7 +1677,7 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 - [ ] Should `Copy Location Link` also offer `path:line:col` relative to the *repository* root vs. content root when they differ (monorepos)? Default: content root; decide after use.
 - [x] ~~**Epic B, dialects:** the scratch popup lists *languages*, but `scratchLanguageFilter` filters by *file type*; JavaScript dialects map to the JavaScript file type and stay whenever JavaScript is allowed.~~ Resolved 2026-09-05: accept and document (decision 14). **Fixed 2026-09-10** (decision 39): the popup is ours and filters languages, so ActionScript and ECMAScript 6 stay out unless named.
 - [ ] **Auto-hiding notification balloons — feasibility settled 2026-09-10, nothing built.** Roman asked whether notification popups can be hidden automatically. The zero-code half: Settings | Appearance & Behavior | Notifications carries a global "Display balloon notifications" (`NotificationsConfigurationImpl.SHOW_BALLOONS`) and a per-group display type (`No popups` / `Balloon` / `Sticky balloon` / `Tool window`); `No popups` still logs the entry to the Notifications tool window, and `Balloon` fades by itself while `Sticky balloon` does not — which is the part that actually annoys. The plugin half is all public API: `NotificationsConfiguration.setDisplayType(groupId, NONE)` (the abstract class carries no ApiStatus at all, and `NotificationsConfigurationImpl` carries only `@State`, so neither is internal — same reasoning as the `ProjectUtil` row above), and for a timed auto-dismiss a `Notifications.TOPIC` subscriber calling `Notification.hideBalloon()` (popup gone, entry kept) or `expire()` (entry dropped) after a delay. Two traps to design around: `Notifications.TOPIC` is declared `BroadcastDirection.NONE` and `Notifications.Bus.doNotify` publishes project-scoped notifications on the project bus and the rest on the app bus, so a listener needs both an `applicationListeners` entry and a per-project subscription or it sees half of them; and at `notify()` time the balloon does not exist yet (`getBalloon()` is null), so the hide must be scheduled, never inline — "never show at all" belongs to the display type instead. The platform's own timer (`BalloonLayoutData.fadeoutTime` → `BalloonImpl.startSmartFadeoutTimer`) sits behind `NotificationsManagerImpl` and is not reachable, so a plugin schedules its own hide rather than retuning theirs. Roman chose the timed auto-dismiss the same day; it is **Epic L**, and the platform facts moved there.
-- [ ] **The right tool window bar — what now? Opened 2026-09-13 by Epic N's revert.** Roman wants the right bar gone and the tool windows still reachable, and build 262 offers no way to have both without `@ApiStatus.Internal` API (decision 48). Three things could change that, none of them Agenstorm's to do alone: **(a)** ask JetBrains for a public lever — a per-side equivalent of `UISettings.hideToolStripes`, or a non-internal "remove from sidebar", which is a small, well-motivated request and the same route that produced IJPL-221866 for Epic K; **(b)** accept a lesser version — `UISettings.hideToolStripes` is one public line but hides **both** bars, and is already View | Appearance | Tool Window Bars, so it is a feature only if being switchable from Agenstorm's own settings is worth something; **(c)** wait for 263 and re-check, since the New UI's stripe code is still moving (`setShowStripeButton` already a no-op, `setVisibleOnLargeStripe` dead with zero callers). Default: (a), and nothing shipped until it lands.
+- [x] **The right tool window bar — settled 2026-09-13 as a trade, not a win.** Hiding the stripe icons in place is internal-API-only in build 262 (decision 48); Epic N ships the re-anchoring version instead (decision 49), which empties the bar but moves those windows to the left. **Still worth asking JetBrains** for a public per-side lever — a counterpart to `UISettings.hideToolStripes`, or a non-internal "remove from sidebar" — which would let the windows stay on the right with no icons; the same route produced IJPL-221866 for Epic K. Also worth a re-check on 263: the New UI's stripe code is still moving (`setShowStripeButton` already a no-op, `setVisibleOnLargeStripe` dead with zero callers).
 - [ ] **`Markdown.Toolbar.Right` looks dead in build 262 — found while surveying Epic M, 2026-09-12.** The Markdown plugin declares the group in its `plugin.xml` (holding `AutoScrollAction`), and `Agenstorm.ToggleLiveMarkup` is added to it, but the id is referenced by **no class in the whole distribution**: every jar under `lib/`, `plugins/*/lib/` and `plugins/*/lib/modules/` was scanned for the string and the only hits are that `plugin.xml` and the searchable-options index. `MarkdownEditorWithPreview` overrides neither `createLeftToolbarActionGroup` nor `createRightToolbarActionGroup`, which are what `TextEditorWithPreview` would consult, and its only overrides are `onLayoutChange`, `requestFocusForPreview` and the auto-scroll pair. If that is right, the Live Markup button never renders in the editor toolbar and only the context-menu entry works — which would also make `settings.markdown.bullets.comment` ("The Live Markup button in a Markdown editor's toolbar…") untrue. **Needs one look in the sandbox before anything is changed**; the fix, if confirmed, is to move the action to a group that is alive.
 
 ---

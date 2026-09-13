@@ -158,6 +158,11 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .comment(AgenstormBundle.message("settings.markdown.revealScope.comment"))
             }
         }
+        featureGroup("settings.group.toolWindows", "settings.toolWindows.hideRightBar", AgenstormSettings.State::hideRightToolWindowBar, onApply = AgenstormSettingsListener::fire) {
+            row {
+                comment(AgenstormBundle.message("settings.toolWindows.hideRightBar.comment"))
+            }
+        }
         featureGroup("settings.group.markdownEditor", "settings.markdown.hideLayoutSwitcher", AgenstormSettings.State::markdownHideLayoutSwitcher, onApply = AgenstormSettingsListener::fire) {
             row {
                 comment(AgenstormBundle.message("settings.markdown.hideLayoutSwitcher.comment"))

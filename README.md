@@ -241,6 +241,18 @@ Settings → Tools → Agenstorm → Markdown editor; it applies to the tabs tha
 every other split editor keeps its buttons. The layouts themselves stay where they were: Find Action → *Editor Only*,
 *Editor and Preview* or *Preview Only* still switches between them.
 
+## Tool windows
+
+**Hide the right tool window bar** clears the strip of icons down the right edge: the tool windows anchored there move
+to the left bar, and the IDE hides a bar with nothing on it, so the editor reaches the window edge. Off by default,
+under Settings → Tools → Agenstorm → Tool windows.
+
+The windows keep their content and every way in — View | Tool Windows, their own shortcuts, the ⋯ button on the left
+bar. What changes is that they now open on the **left**, alongside Project, instead of on the right; that is the trade,
+and it is why the setting is off until you ask for it. Switching it off moves back exactly the windows Agenstorm moved
+— one you had on the left already stays there, and one you re-docked yourself while the setting was on is left where
+you put it. Uninstalling the plugin puts them back too.
+
 ## Opening files from the terminal
 
 Inside an IDE terminal, `open` opens files in the window the terminal belongs to:

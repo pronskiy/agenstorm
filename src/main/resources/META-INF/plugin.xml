@@ -48,6 +48,10 @@
              keeps one line. Also gives the registry key back if Agenstorm 1.0 turned it off, and feeds the tabs model. -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.tabs.TabsStartupActivity"/>
 
+        <!-- toolwindows: right-anchored tool windows move to the left, which empties the right bar; the IDE hides an
+             empty bar by itself. MovedToolWindows is a light @Service (no XML registration needed). -->
+        <postStartupActivity implementation="com.pronskiy.agenstorm.toolwindows.RightBarStartupActivity"/>
+
         <!-- terminal: ⌘⌥M is Extract Method in the macOS keymaps, so the dispatch needs to be told which of the
              two the user meant. Ordering the candidates changes nothing in anyone's keymap — switch the feature
              off, or rebind either action, and the keystroke is Extract Method's again. Decision 46. -->
@@ -72,6 +76,8 @@
         <listener class="com.pronskiy.agenstorm.scratch.ScratchUnloadListener" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
         <!-- notifications: balloons fade after the configured delay instead of the platform's 10 s / 5 min. -->
         <listener class="com.pronskiy.agenstorm.notifications.NotificationAutoDismissListener" topic="com.intellij.notification.Notifications"/>
+        <!-- toolwindows: the windows Agenstorm moved off the right side go back before the plugin's classes do. -->
+        <listener class="com.pronskiy.agenstorm.toolwindows.RightBarUnloadListener" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
     </applicationListeners>
 
     <projectListeners>
