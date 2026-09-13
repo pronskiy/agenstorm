@@ -7,6 +7,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.startup.ProjectActivity
@@ -65,6 +66,14 @@ class RightBarHider(private val project: Project) : Disposable {
         }
 
         val plan = RightBarPlan.plan(windows, record.ids, clearRight)
+        // Guarded rather than `LOG.debug { … }`: the lambda overload is an inline extension compiled against a
+        // newer JVM target than this module's 21, which the compiler refuses.
+        if (LOG.isDebugEnabled) {
+            LOG.debug(
+                "clearRight=$clearRight saw=" + windows.joinToString { "${it.id}@${it.anchor}" } +
+                    " owed=${record.ids} moveLeft=${plan.moveLeft} moveBack=${plan.moveBack}",
+            )
+        }
         applying = true
         try {
             for (id in plan.moveLeft) manager.getToolWindow(id)?.setAnchor(ToolWindowAnchor.LEFT, null)
@@ -83,6 +92,8 @@ class RightBarHider(private val project: Project) : Disposable {
     override fun dispose() = Unit
 
     companion object {
+        private val LOG = logger<RightBarHider>()
+
         fun getInstance(project: Project): RightBarHider = project.service()
     }
 }
