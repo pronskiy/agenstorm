@@ -22,15 +22,15 @@
         <!-- markdown (Epic F): applies the settings page to open editors; core/ cannot call this feature directly. -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.markdown.LiveMarkupStartupActivity"/>
 
-        <!-- markdown (Epic M): same two hooks for the editor/preview layout buttons. -->
-        <postStartupActivity implementation="com.pronskiy.agenstorm.markdown.LayoutSwitcherStartupActivity"/>
     </extensions>
 
-    <projectListeners>
-        <!-- markdown (Epic M): a Markdown file opening while the setting is on gets its layout buttons detached too. -->
-        <listener class="com.pronskiy.agenstorm.markdown.LayoutSwitcherEditorListener"
-                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
-    </projectListeners>
+    <applicationListeners>
+        <!-- markdown (Epic M): the three TextEditorWithPreview.Layout.* actions are taken while the feature is on, so
+             the buttons go whether the platform renders them in the editor tab or in the floating pill; the IDE gets
+             its own actions back on feature-off and on unload. -->
+        <listener class="com.pronskiy.agenstorm.markdown.LayoutSwitcherLifecycleListener" topic="com.intellij.ide.AppLifecycleListener"/>
+        <listener class="com.pronskiy.agenstorm.markdown.LayoutSwitcherUnloadListener" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+    </applicationListeners>
 
     <actions resource-bundle="messages.AgenstormBundle">
         <!-- markdown (Epic F): per-editor on/off in the Markdown editor toolbar and the editor context menu. -->

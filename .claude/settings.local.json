@@ -53,11 +53,12 @@
       "Bash(gh search code:*)"
     ]
   },
+  "disabledMcpjsonServers": [
+    "idea"
+  ],
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true
   },
-  "disabledMcpjsonServers": [
-    "idea"
-  ]
+  "outputStyle": "Concise"
 }
