@@ -18,6 +18,7 @@ import com.intellij.openapi.wm.ex.ToolWindowManagerListener.ToolWindowManagerEve
 import com.pronskiy.agenstorm.core.AgenstormPlugin
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.AgenstormSettingsListener
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Epic N. Empties the right tool window bar by moving its tool windows to the left, which is what makes the platform
@@ -42,8 +43,15 @@ import com.pronskiy.agenstorm.core.AgenstormSettingsListener
 @Service(Service.Level.PROJECT)
 class RightBarHider(private val project: Project) : Disposable {
 
-    /** Guards the re-entry through [RightBarToolWindowListener]: our own `setAnchor` raises `SetToolWindowAnchor`. */
+    /** Guards re-entry within one pass: our own `setAnchor` raises `SetToolWindowAnchor` synchronously. */
     private var applying = false
+
+    /**
+     * Collapses the passes [RightBarToolWindowListener] asks for. Moving seven windows raises seven events, each
+     * queueing its own pass behind the one doing the moving — [applying] cannot stop those, because it is released
+     * before they run. One pending pass is enough: it sees the finished state.
+     */
+    private val scheduled = AtomicBoolean(false)
 
     /** Moves windows off the right side or puts them back, following the current setting. */
     fun apply() = run(AgenstormSettings.getInstance().state.hideRightToolWindowBar)
@@ -51,9 +59,13 @@ class RightBarHider(private val project: Project) : Disposable {
     /** Puts back every window Agenstorm moved, whatever the setting says. Feature-off and plugin unload. */
     fun restoreAll() = run(clearRight = false)
 
-    /** [apply] on the EDT, also while a modal dialog (the settings page) is open. */
+    /** [apply] on the EDT, at most one pass pending, also while a modal dialog (the settings page) is open. */
     fun applyLater() {
-        ApplicationManager.getApplication().invokeLater({ if (!project.isDisposed) apply() }, ModalityState.any())
+        if (!scheduled.compareAndSet(false, true)) return
+        ApplicationManager.getApplication().invokeLater({
+            scheduled.set(false)
+            if (!project.isDisposed) apply()
+        }, ModalityState.any())
     }
 
     private fun run(clearRight: Boolean) {
