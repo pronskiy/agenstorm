@@ -1546,13 +1546,13 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| It goes | Setting on → no bar down the right edge, and the editor reaches it | 🔲 | |
+| It goes | Setting on → no bar down the right edge, and the editor reaches it | 🔄 | **The mechanism is proved; the pixels are not.** Sandbox run 2026-09-13 18:06–18:16 with the setting pre-set on: the first pass reported `moveLeft=[UI Theme Color Picker, Coverage, PHP Control Flow Viewer, AIAssistant, Database, Notifications, make]`, and every later pass saw nothing anchored right. So the stripe is empty, which is the condition the platform hides the bar on — what is left is one look confirming it is not painted |
 | Left bar works | The moved windows' icons are on the left bar, and opening one opens it on the left | 🔲 | |
 | Still reachable | Those windows still open from View \| Tool Windows and from their shortcuts | 🔲 | |
 | Both ways, no restart | Switching the setting off puts back exactly the windows that were on the right, without a restart | 🔲 | |
 | Not greedy | A window that was on the left before the feature went on is still on the left after it goes off | 🔲 | |
 | No fight | Dragging a window onto the right while the feature is on does not loop or flicker, and `idea.log` shows a handful of `RightBarHider` passes per startup rather than one per moved window | 🔄 | **Defect found and fixed by the first run, 2026-09-13.** The armed debug line showed **43 passes** on one startup: each of our seven `setAnchor` calls raises `SetToolWindowAnchor`, the listener asks for a pass, and the `applying` guard cannot stop those because it is released before they run. The extra passes were no-ops, so nothing was visibly wrong — which is why it took the log to find. `applyLater` now collapses requests through an `AtomicBoolean`, so at most one pass is ever pending. **Needs the next run to confirm the count drops**; not unit-testable, since `apply()` cannot do anything against the headless stub |
-| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | ✅ | Same run, a 1 998-line slice: **zero SEVERE/ERROR and zero `Plugin to blame` entries**. The 64 `com.pronskiy.agenstorm` lines are the armed debug traces for this feature and Epic L's |
 
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
