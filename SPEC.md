@@ -1489,7 +1489,7 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 | Markdown only | A non-Markdown split editor (an `.http` file, a Jupyter-style preview) still shows its layout buttons | 🔲 | |
 | No restart | Toggling the setting takes effect on the editors that are already open, both ways | 🔲 | |
 | Reachable | Find Action → "Preview Only" still switches the layout while the buttons are hidden | 🔲 | |
-| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔄 | **Feature-off half done.** The M1 build ran in the sandbox 2026-09-12 23:07 → 2026-09-13 12:47 (13 h 40 m) with Roman's own projects open. That slice of `idea.log` has **zero SEVERE/ERROR and zero `Plugin to blame` entries**; the seven `com.pronskiy` lines are the startup JVM options, the Epic L debug categories, and two `NotificationAutoDismissService` traces. So the new `postStartupActivity` and `FileEditorManagerListener` are quiet with the setting off, which is the no-op-when-off property. What is **not** covered: the setting was never switched on — `config/options/agenstorm.xml` still has its 2026-09-11 mtime and no `markdownHideLayoutSwitcher` key — so nothing in this run exercised a detach |
 | Verifier | Still zero internal API usages | 🔲 | |
 
 
