@@ -2,11 +2,15 @@ package com.pronskiy.agenstorm.projectview
 
 import com.intellij.util.PathUtilRt
 
-/** What the inline field is naming. */
-enum class InlineNameKind {
-    NEW_FILE,
-    NEW_DIRECTORY,
-    RENAME,
+/**
+ * What the inline field is naming. [allowsPath] is whether separators in it mean folders: creating something
+ * can put it anywhere below the target folder, while renaming and duplicating only ever produce a name.
+ */
+enum class InlineNameKind(val allowsPath: Boolean) {
+    NEW_FILE(allowsPath = true),
+    NEW_DIRECTORY(allowsPath = true),
+    RENAME(allowsPath = false),
+    DUPLICATE(allowsPath = false),
 }
 
 /**
@@ -40,7 +44,7 @@ sealed interface NameVerdict {
 object InlineNamePolicy {
 
     const val ERROR_EMPTY: String = "projectview.error.empty"
-    const val ERROR_SLASH_IN_RENAME: String = "projectview.error.slashInRename"
+    const val ERROR_PATH_NOT_ALLOWED: String = "projectview.error.pathNotAllowed"
     const val ERROR_EMPTY_SEGMENT: String = "projectview.error.emptySegment"
     const val ERROR_DOT_SEGMENT: String = "projectview.error.dotSegment"
     const val ERROR_INVALID_NAME: String = "projectview.error.invalidName"
@@ -75,8 +79,8 @@ object InlineNamePolicy {
         val trimmed = typed.trim()
         if (trimmed.isEmpty()) return NameVerdict.Invalid(ERROR_EMPTY)
 
-        if (kind == InlineNameKind.RENAME && trimmed.any { it in SEPARATORS }) {
-            return NameVerdict.Invalid(ERROR_SLASH_IN_RENAME)
+        if (!kind.allowsPath && trimmed.any { it in SEPARATORS }) {
+            return NameVerdict.Invalid(ERROR_PATH_NOT_ALLOWED)
         }
 
         val path = split(trimmed)

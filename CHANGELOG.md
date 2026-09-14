@@ -11,6 +11,7 @@
   - `src/Http/Client.php` creates the folders on the way, the same as the dialog does.
   - Renaming runs the real refactoring, so a PHP class file's usages are still updated and one undo puts everything back. The Rename dialog goes; the refactoring's own follow-up questions stay.
   - Anything the row cannot handle keeps the dialog it has today: a module root, a library, the project folder, and a folder that is a PSR namespace.
+  - **Duplicate** in the project tree's context menu copies a file or folder next to itself, naming the copy the same way. No default shortcut, because ⌘D is Duplicate Line everywhere. Copy File… (F5) and ⌘C / ⌘V are untouched.
 
 ### Changed
 

@@ -40,13 +40,22 @@ class InlineNamePolicyTest : BasePlatformTestCase() {
         )
     }
 
-    fun testRenameRefusesASlash() {
-        for (typed in listOf("src/Client.php", "src\\Client.php")) {
-            assertEquals(
-                InlineNamePolicy.ERROR_SLASH_IN_RENAME,
-                invalid(InlineNamePolicy.validate(InlineNameKind.RENAME, typed, emptySet())).messageKey,
-            )
+    fun testRenameAndDuplicateRefuseASlash() {
+        for (kind in listOf(InlineNameKind.RENAME, InlineNameKind.DUPLICATE)) {
+            for (typed in listOf("src/Client.php", "src\\Client.php")) {
+                assertEquals(
+                    InlineNamePolicy.ERROR_PATH_NOT_ALLOWED,
+                    invalid(InlineNamePolicy.validate(kind, typed, emptySet())).messageKey,
+                )
+            }
         }
+    }
+
+    fun testOnlyCreationTakesAPath() {
+        assertTrue(InlineNameKind.NEW_FILE.allowsPath)
+        assertTrue(InlineNameKind.NEW_DIRECTORY.allowsPath)
+        assertFalse(InlineNameKind.RENAME.allowsPath)
+        assertFalse(InlineNameKind.DUPLICATE.allowsPath)
     }
 
     fun testEmptySegmentIsRejected() {

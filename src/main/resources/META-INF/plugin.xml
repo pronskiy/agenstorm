@@ -114,6 +114,14 @@
         </action>
 
         <!-- links: copies relpath:line[:col] for the caret / selection start / clicked gutter line. No default shortcut. -->
+        <!-- projectview: duplicate a file or folder, naming the copy in the tree. No default shortcut on
+             purpose: the obvious one, cmd-D, is EditorDuplicate everywhere (decision 57). -->
+        <action id="Agenstorm.DuplicateInline"
+                class="com.pronskiy.agenstorm.projectview.InlineDuplicateAction"
+                icon="AllIcons.Actions.Copy">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="CopyElement"/>
+        </action>
+
         <action id="Agenstorm.CopyLocationLink"
                 class="com.pronskiy.agenstorm.links.CopyLocationLinkAction"
                 icon="AllIcons.Actions.Copy">

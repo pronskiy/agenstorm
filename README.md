@@ -62,8 +62,8 @@ Markdown editors, and clear the right tool window bar so the editor reaches the 
 
 ### Names typed in the project tree
 
-New File, New Directory and Rename open an editable row in the tree instead of a dialog. Type,
-press Enter, done. `src/Http/Client.php` creates the folders on the way.
+New File, New Directory, Rename and Duplicate open an editable row in the tree instead of a dialog.
+Type, press Enter, done. `src/Http/Client.php` creates the folders on the way.
 
 ### A shorter New Scratch File popup
 
@@ -260,7 +260,12 @@ manager behaves.
   Trait, whose dialogs carry a namespace a single field cannot hold.
 - Anything the row cannot handle keeps the dialog it has today: a module root, a library, the project
   folder, and a folder that is a PSR namespace, where PhpStorm has namespace work to offer.
-- Switching it off gives New File, New Directory and Shift+F6 straight back, without a restart.
+- **Duplicate** in the same menu copies a file or folder next to itself, opening the row on `Client 2.php`
+  with `Client 2` selected. It has no shortcut out of the box, because ⌘D already means Duplicate Line
+  everywhere; bind one under Settings → Keymap if you want it.
+- Copy File… (F5) is untouched and keeps its target-directory browser. ⌘C / ⌘V in the tree are untouched too.
+- Switching it off gives New File, New Directory and Shift+F6 straight back, without a restart, and takes
+  Duplicate out of the menu.
 
 ## Tool windows
 
