@@ -34,7 +34,9 @@
 
 ### Current focus
 
-**Now on:** **1.5.0 is built and waiting on the new two-step release.** `pluginVersion = 1.5.0`, the ZIP builds at 660 KB (sha256 `516d9b14…`), `verifyPlugin` is **Compatible on PS-262.10315.130 and IU-262.10315.125 with zero internal API**, and `main` is pushed and green.
+**Now on:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
+
+**Next, in the order I would take them:** the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then the Find Action question — Epic M hides the layout actions everywhere, so while it is on there is no way to open the preview, currently documented rather than fixed; then Epic H Phase H2 (the rounded code-fence card, language chip, copy action), which is the smallest unbuilt thing left. Epic I (terminal output enhancers, 10 steps) is the biggest, and worth re-deciding before starting.
 
 **The release is now two deliberate steps (decision 51):** run the **Marketplace upload** workflow by hand, wait for review to land — the update server list is the signal, not the API's `approve` flag — then publish the `1.5.0` draft release. Both are Roman's.
 
