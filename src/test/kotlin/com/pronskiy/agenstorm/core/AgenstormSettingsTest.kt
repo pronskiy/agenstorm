@@ -41,6 +41,17 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
         assertTrue(state.commitEnabled)
         assertTrue(state.projectTabsEnabled)
         assertTrue(state.liveMarkupEnabled)
+        assertTrue(state.projectTreeInlineNamingEnabled)
+    }
+
+    fun testTheProjectTreeToggleRoundTripsThroughXml() {
+        val state = AgenstormSettings.State(projectTreeInlineNamingEnabled = false)
+
+        val element = XmlSerializer.serialize(state, SkipDefaultsSerializationFilter())
+        val options = element.getChildren("option").associate { it.getAttributeValue("name") to it.getAttributeValue("value") }
+
+        assertEquals(mapOf("projectTreeInlineNamingEnabled" to "false"), options)
+        assertEquals(state, XmlSerializer.deserialize(element, AgenstormSettings.State::class.java))
     }
 
     fun testStateIsStoredInAgenstormXml() {
