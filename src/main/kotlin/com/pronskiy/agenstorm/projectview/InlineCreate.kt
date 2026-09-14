@@ -1,8 +1,6 @@
 package com.pronskiy.agenstorm.projectview
 
 import com.intellij.ide.actions.CreateFileAction
-import com.intellij.ide.fileTemplates.FileTemplateManager
-import com.intellij.ide.fileTemplates.FileTemplateUtil
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.diagnostic.logger
@@ -46,7 +44,7 @@ object InlineCreate {
         WriteCommandAction.runWriteCommandAction(project, commandName, COMMAND_GROUP, Runnable {
             val directory = PsiManager.getInstance(project).findDirectory(targetDir) ?: return@Runnable
             try {
-                created = if (wantDirectory) makeDirectories(directory, path) else makeFile(project, directory, typed)
+                created = if (wantDirectory) makeDirectories(directory, path) else makeFile(directory, typed)
             } catch (e: Exception) {
                 failure = e
             }
@@ -73,18 +71,14 @@ object InlineCreate {
         return directory
     }
 
-    private fun makeFile(project: Project, parent: PsiDirectory, typed: String): PsiFileSystemItem {
+    /**
+     * Empty, which is what the stock action does: `CreateFileAction.create` is `directory.createFile(name)` and
+     * nothing more. Applying the extension's file template was tried and dropped — typing `Foo.php` into the
+     * IDE's own New | File gives an empty file too, and the inline row is meant to change where you type the
+     * name, not what you get. The `<?php` still comes from PhpStorm's *PHP File* entry, which is untouched.
+     */
+    private fun makeFile(parent: PsiDirectory, typed: String): PsiFileSystemItem {
         val mkdirs = CreateFileAction.MkDirs(typed, parent)
-        val template = InlineFileTemplates.templateFor(project, mkdirs.newName)
-        if (template != null) {
-            val fromTemplate = FileTemplateUtil.createFromTemplate(
-                template,
-                mkdirs.newName,
-                FileTemplateManager.getInstance(project).defaultProperties,
-                mkdirs.directory,
-            )
-            (fromTemplate as? PsiFileSystemItem)?.let { return it }
-        }
         return mkdirs.directory.createFile(mkdirs.newName)
     }
 }
