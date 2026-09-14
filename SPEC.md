@@ -1693,7 +1693,7 @@ cross-read from `idea-262.8665.258-sources.jar`):
 | Fallback | Shift+F6 on a module root still opens the platform's Rename dialog | 🔲 | |
 | Off switch | Feature off → New File, New Directory and Shift+F6 open the stock dialogs again, without a restart | 🔲 | |
 | Unload | Disabling the plugin puts the stock `NewFile` and `NewDir` actions back | 🔲 | |
-| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔄 | **Startup is clean.** Sandbox run 2026-09-14 22:47–22:49, a 1 156-line slice: zero SEVERE/ERROR and zero `Plugin to blame`, and `com.pronskiy.agenstorm` is in the loaded-plugin list, so the three slots were taken without complaint. The 210 `com.pronskiy.agenstorm` lines are Epic L's and Epic N's armed debug traces, none of them this epic's. **Nothing above was exercised** — the window opened and closed with nobody in it, so this stays 🔄 until a run that actually types a name |
 | Verifier | Still zero internal API usages | 🔲 | |
 
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
