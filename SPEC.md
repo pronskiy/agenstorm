@@ -1684,9 +1684,9 @@ cross-read from `idea-262.8665.258-sources.jar`):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| New file | Alt+Insert → File on a folder puts an editable row under it; `Client.php` + Enter creates an empty file there and opens it | 🔲 | |
+| New file | Alt+Insert → File on a folder puts an editable row under it; `Client.php` + Enter creates an empty file there and opens it | 🔄 | **Roman, 2026-09-14: "well, it somewhat works"** on the first run, with the two defects he then named being the rename preview (fixed, decision 56) and a menu length that turned out to be from another project of his, not this one. Not separately re-confirmed after the fix |
 | New folder | The same for Directory | 🔲 | |
-| Rename | Shift+F6 on `Client.php` in the tree edits in place with `Client` selected, not `Client.php`; a usage in another file is updated; one Undo puts both back | 🔲 | |
+| Rename | Shift+F6 on `Client.php` in the tree edits in place with `Client` selected, not `Client.php`; a usage in another file is updated; one Undo puts both back | ✅ | **Roman, 2026-09-14: "rename works now"**, after decision 56 took the usage preview off. The first run had it opening the refactoring in a tool window instead — "i thought it would be hidden by default" — which is what found the preview flag. The undo half is not separately confirmed; `InlineRenameTest` pins that the `require_once` follows the rename |
 | Nested | `src/Http/Client.php` creates the two folders and the file | 🔲 | |
 | Cancel | Esc leaves nothing behind — no file, no folder, no VFS event | 🔲 | |
 | Click-away | Clicking another row commits what was typed | 🔲 | |
