@@ -127,12 +127,11 @@ path/to/file.ext:LINE
 path/to/file.ext:LINE:COLUMN
 ```
 
-Line and column are 1-based, like every compiler and test runner. Paths resolve relative to the
-containing file, then the project root, then every content root; absolute paths work, and as a last
-resort a unique file name anywhere in the project matches.
-
-Locations that do not resolve stay plain text. Nothing is flagged as an error, because agents
-routinely refer to files they are about to create.
+- Line and column are 1-based, like every compiler and test runner.
+- Paths resolve relative to the containing file, then the project root, then every content root.
+  Absolute paths work, and as a last resort a unique file name anywhere in the project matches.
+- Locations that do not resolve stay plain text. Nothing is flagged as an error, because agents
+  routinely refer to files they are about to create.
 
 ### Getting agents to emit them
 
@@ -157,10 +156,10 @@ No default shortcut. `Ctrl+Alt+Shift+L` is free in the default keymaps (Settings
 The lightning button above the commit message field streams a subject and body for the included
 changes. Click again to stop.
 
-Undo removes the whole generation in one step. Text already in the field is treated as a hint: a
-multi-line draft is improved rather than replaced, and saved to the commit message history first.
-
-No default shortcut; `Ctrl+Alt+Shift+G` is free (Settings → Keymap, "Generate Commit Message").
+- Undo removes the whole generation in one step.
+- Text already in the field is treated as a hint: a multi-line draft is improved rather than
+  replaced, and saved to the commit message history first.
+- No default shortcut; `Ctrl+Alt+Shift+G` is free (Settings → Keymap, "Generate Commit Message").
 
 ### Backends
 
@@ -179,12 +178,11 @@ CLAUDE.md rules applied.
 
 ### Prompts and diffs
 
-Test Connection validates the values as typed. The prompt templates are editable: `{diff}`,
-`{stat}`, `{branch}`, `{hint}`, `{language}` and `{conventional}` are substituted, unknown
-placeholders are kept, and "Reset to Default" restores the built-in text.
-
-Lock files and generated output never enter the diff (`vendor/`, `node_modules/`, `dist/`, `build/`,
-`*.min.*`, `*.map`). Every file still appears in the stat.
+- Test Connection validates the values as typed.
+- Templates are editable: `{diff}`, `{stat}`, `{branch}`, `{hint}`, `{language}` and `{conventional}`
+  are substituted, unknown placeholders are kept, and "Reset to Default" restores the built-in text.
+- Lock files and generated output never enter the diff (`vendor/`, `node_modules/`, `dist/`,
+  `build/`, `*.min.*`, `*.map`). Every file still appears in the stat.
 
 ---
 
@@ -216,8 +214,11 @@ switch and the per-element options.
 Nothing is ever written to the file. It is folding: copying always copies raw Markdown, and the
 Markdown plugin's own folding, Expand All and Collapse All keep working.
 
-Limitations: heading sizes stay at one line height, images and reference-style links stay raw, and
-the code-block card has no rounded corners, language chip or copy button.
+Limitations:
+
+- Heading sizes stay at the editor's single line height.
+- Images and reference-style links stay raw.
+- The code-block card has no rounded corners, language chip or copy button.
 
 ---
 
@@ -241,13 +242,13 @@ document rather than a preview tool. Only Markdown; every other split editor kee
 Clears the strip of icons down the right edge: the tool windows anchored there move to the left bar,
 and the IDE hides a bar with nothing on it, so the editor reaches the window edge.
 
-The windows keep their content and every way in: View | Tool Windows, their own shortcuts, the ⋯
-button on the left bar. What changes is that they open on the left, alongside Project, instead of on
-the right. That is the trade, and it is why the setting is off until you ask for it.
-
-Switching it off moves back exactly the windows Agenstorm moved. One you already had on the left
-stays there, one you re-docked yourself is left where you put it, and uninstalling the plugin puts
-them back too.
+- The windows keep their content and every way in: View | Tool Windows, their own shortcuts, the ⋯
+  button on the left bar.
+- They now open on the left, alongside Project, instead of on the right. That is the trade, and it is
+  why the setting is off until you ask for it.
+- Switching it off moves back exactly the windows Agenstorm moved. One you already had on the left
+  stays there, one you re-docked yourself is left where you put it, and uninstalling the plugin puts
+  them back too.
 
 ---
 
@@ -309,9 +310,10 @@ open src/A.php src/B.php    # opens both
 open .                      # opens or focuses the directory
 ```
 
-This works inside IDE terminals only; every other shell on the machine is unaffected. Flags, URLs,
-missing paths and binaries reach the real `open` untouched, and a file belonging to another open
-project lands in that project's window. The shim announces itself once in a balloon.
+- Inside IDE terminals only; every other shell on the machine is unaffected.
+- Flags, URLs, missing paths and binaries reach the real `open` untouched.
+- A file belonging to another open project lands in that project's window.
+- The shim announces itself once in a balloon.
 
 Settings → Tools → Agenstorm → Terminal. You can change which command names the shim installs under,
 and whether the IDE claims file types it treats as binary.
@@ -323,17 +325,15 @@ and whether the IDE claims file types it treats as binary.
 `$EDITOR` and `$VISUAL` in an IDE terminal point at this IDE, so anything reaching for an editor opens
 a tab here and waits.
 
-Claude Code's <kbd>Ctrl</kbd>+<kbd>G</kbd>, `git commit` and `crontab -e` all behave the same way.
-The command stays blocked until the last tab for that file is closed, with what you typed on disk
-before it is let go. A maximized terminal steps aside for the file and takes its place back
-afterwards.
-
-Only one existing, writable file is ever claimed. An invocation with options, a missing path, a
-directory or a read-only file goes to your own editor, or to `vi`.
-
-Your rc file cannot break it: both variables are also set through the terminal's
-`_INTELLIJ_FORCE_SET_*` mechanism, which runs after your rc files, so the editor you exported becomes
-the fallback instead.
+- Claude Code's <kbd>Ctrl</kbd>+<kbd>G</kbd>, `git commit` and `crontab -e` all behave the same way.
+- The command stays blocked until the last tab for that file is closed, with what you typed on disk
+  before it is let go.
+- A maximized terminal steps aside for the file and takes its place back afterwards.
+- Only one existing, writable file is ever claimed. An invocation with options, a missing path, a
+  directory or a read-only file goes to your own editor, or to `vi`.
+- Your rc file cannot break it: both variables are also set through the terminal's
+  `_INTELLIJ_FORCE_SET_*` mechanism, which runs after your rc files, so the editor you exported
+  becomes the fallback instead.
 
 Settings → Tools → Agenstorm → Terminal editor.
 
@@ -368,9 +368,10 @@ Settings → Tools → Agenstorm → Terminal size.
 Balloons fade after 5 seconds instead of the IDE's own 10 seconds (Balloon groups) or 5 minutes
 (Sticky balloon groups).
 
-The countdown pauses while the IDE is in the background, so nothing that arrived while you were
-elsewhere is gone before you look. Every notification stays in the Notifications tool window; only
-the popup goes. Errors keep the five-minute timer unless you opt them in.
+- The countdown pauses while the IDE is in the background, so nothing that arrived while you were
+  elsewhere is gone before you look.
+- Every notification stays in the Notifications tool window; only the popup goes.
+- Errors keep the five-minute timer unless you opt them in.
 
 Settings → Tools → Agenstorm → Notifications holds the delay and both switches.
 
