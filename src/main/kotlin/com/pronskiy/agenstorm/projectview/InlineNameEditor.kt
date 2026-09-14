@@ -84,11 +84,14 @@ class InlineNameEditor private constructor(
         }
     }
 
-    private fun install(initialText: String) {
+    private fun install(initialText: String, selectionEnd: Int) {
         field.font = tree.font
         field.background = UIUtil.getTreeBackground()
         field.text = initialText
-        field.select(0, InlineNamePolicy.selectionEnd(initialText, isDirectory))
+        // A zero-width selection is a caret: that is how a template entry opens on `.php` with nothing selected
+        // and the caret in front of the dot, ready for the name.
+        field.select(0, selectionEnd.coerceIn(0, initialText.length))
+        if (selectionEnd == 0) field.caretPosition = 0
         updateIcon()
         validateNow()
 
@@ -260,13 +263,15 @@ class InlineNameEditor private constructor(
             initialText: String,
             isDirectory: Boolean,
             siblingNames: Set<String>,
+            /** How much of [initialText] is selected; `0` puts the caret at the front and selects nothing. */
+            selectionEnd: Int = InlineNamePolicy.selectionEnd(initialText, isDirectory),
             onCommit: (String) -> Unit,
         ): InlineNameEditor? {
             ClientProperty.get(tree, OPEN_EDITOR)?.commit()
             if (ProjectTreeAccess.boundsOf(tree, anchor) == null) return null
             val editor = InlineNameEditor(tree, anchor, placement, kind, isDirectory, siblingNames, onCommit)
             ClientProperty.put(tree, OPEN_EDITOR, editor)
-            editor.install(initialText)
+            editor.install(initialText, selectionEnd)
             return if (editor.closing) null else editor
         }
 

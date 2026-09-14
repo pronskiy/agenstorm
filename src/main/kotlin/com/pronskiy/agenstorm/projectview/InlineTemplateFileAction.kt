@@ -57,7 +57,7 @@ class InlineTemplateFileAction(
         if (project == null || !AgenstormSettings.getInstance().state.projectTreeInlineNamingEnabled) {
             return fallBack(e)
         }
-        if (templateOf(project) == null) return fallBack(e)
+        val template = templateOf(project) ?: return fallBack(e)
 
         val tree = ProjectTreeAccess.tree(project) ?: return fallBack(e)
         val context = e.getData(PlatformDataKeys.CONTEXT_COMPONENT)
@@ -67,15 +67,24 @@ class InlineTemplateFileAction(
         val target = InlineTarget.resolve(tree, fromTree = true) ?: return fallBack(e)
         val siblings = target.directory.children.mapTo(HashSet()) { child -> child.name }
 
+        // The row opens on the extension with the caret in front of it, so the entry says what it will make
+        // before a key is pressed: New | PHP File gives `.php` waiting for a name.
+        val extension = template.extension
+        val prefill = if (extension.isEmpty()) "" else ".$extension"
+
         val opened = InlineNameEditor.open(
             tree = tree,
             anchor = target.anchor,
             placement = target.placement,
             kind = InlineNameKind.NEW_FILE,
-            initialText = "",
+            initialText = prefill,
             isDirectory = false,
             siblingNames = siblings,
-        ) { typed -> commit(project, target.directory, typed) }
+            selectionEnd = 0,
+        ) { typed ->
+            // Enter on an untouched row would otherwise make a file called `.php`.
+            if (typed != prefill) commit(project, target.directory, typed)
+        }
 
         if (opened == null) fallBack(e)
     }
