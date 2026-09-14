@@ -106,10 +106,12 @@ intellijPlatform {
     }
 
     pluginVerification {
-        // Internal API usages are tolerated on purpose: SPEC.md §2 lists them (scratchLanguageFilter, the
-        // FrameTitleBuilder override with its IdeFrameEx title refresh) and each one is toggle-guarded and fail-soft.
+        // Zero internal API is a release gate, not a tolerance: the Marketplace rejected 1.1.0 over fifteen
+        // @ApiStatus.Internal usages (SPEC.md §2). INTERNAL_API_USAGES is in this list so the build says so,
+        // instead of the gate being someone reading the verifier's HTML report.
         failureLevel = listOf(
             VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+            VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES,
             VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
             VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
         )
