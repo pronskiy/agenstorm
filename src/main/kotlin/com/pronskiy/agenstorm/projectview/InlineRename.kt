@@ -7,6 +7,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.refactoring.rename.PlainDirectoryRenameHandler
 import com.intellij.refactoring.rename.PsiElementRenameHandler
+import com.intellij.refactoring.rename.RenameProcessor
+import com.intellij.refactoring.rename.RenamePsiElementProcessor
+import com.intellij.refactoring.rename.naming.AutomaticRenamerFactory
 
 /**
  * Step O1.4. Which elements may be renamed in the row, and the rename itself.
@@ -38,13 +41,37 @@ object InlineRename {
     }
 
     /**
-     * Runs the rename with the name already chosen. With a non-null name `PsiElementRenameHandler.rename`
-     * builds the Rename dialog and disposes it without showing it, so the element's own
-     * `RenamePsiElementProcessor` still runs — which is what keeps a PHP class file's usages correct — while
-     * the dialog nobody asked for never appears. The refactoring makes its own command, so this must not be
-     * wrapped in one: it is already a single undo step (decision 53).
+     * Runs the rename with the name already chosen, assembling the processor the way `RenameDialog` would:
+     * the element's own `RenamePsiElementProcessor` decides substitution and the search-in-comments and
+     * search-in-text flags, and every automatic renamer the user has enabled is added, so a PHP class file's
+     * usages are still updated and the refactoring's own follow-up questions still appear (decision 53).
+     *
+     * **The one thing taken away is the usage preview**, decision 56. This is why the processor is assembled
+     * here rather than left to `PsiElementRenameHandler.rename`: `RefactoringDialog` initialises its preview
+     * flag to `true` and only the dialog's own checkbox ever clears it, so a dialog that is built and disposed
+     * without being shown hands the processor `setPreviewUsages(true)` — the Find tool window opened on every
+     * inline rename. Setting it to `false` leaves `RenameProcessor.isPreviewUsages` with only its other
+     * trigger, `reportNonRegularUsages`: a rename that reaches into comments or plain text still shows its
+     * list first, and a rename that is only code references just happens.
+     *
+     * The refactoring makes its own command, so this must not be wrapped in one: it is already one undo step.
      */
     fun rename(project: Project, element: PsiElement, newName: String) {
-        PsiElementRenameHandler.rename(element, project, element, null, newName)
+        val elementProcessor = RenamePsiElementProcessor.forElement(element)
+        val target = elementProcessor.substituteElementToRename(element, null) ?: return
+        val processor = RenameProcessor(
+            project,
+            target,
+            newName,
+            elementProcessor.isToSearchInComments(target),
+            elementProcessor.isToSearchForTextOccurrences(target),
+        )
+        for (factory in AutomaticRenamerFactory.EP_NAME.extensionList) {
+            if (factory.isApplicable(target) && factory.optionName != null && factory.isEnabled) {
+                processor.addRenamerFactory(factory)
+            }
+        }
+        processor.setPreviewUsages(false)
+        processor.run()
     }
 }
