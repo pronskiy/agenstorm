@@ -35,7 +35,7 @@
 
 ### Current focus
 
-**Now on:** **Epic O — inline filename typing in the project tree.** Roman, 2026-09-14: the New File / New Directory / Rename dialogs go away and the name is typed in an editable row in the tree itself. Phase O1 (File, Directory, Rename) is the build; Phase O2 (duplicate / paste-a-copy) waits for O1's sandbox sign-off. Decision 52 settles the two mechanisms — an overlay field rather than a `TreeCellEditor`, and the `renameHandler` EP rather than an `ActionSlot` on `RenameElement`. Start at **O1.1**.
+**Now on:** **Epic O — inline filename typing in the project tree. Phase O1 is built; the guardrails are the only thing left.** All eight steps O1.0–O1.7 are ✅: `check` green, `verifyPlugin` **Compatible on both IDEs with zero internal API** — and now failing the build on it rather than filing a report (O1.0). What is unexercised is everything that needs looking at: the row's height, indent and icon, Enter/Escape/click-away, the nested path, the rename updating a usage in one undo, and the fallbacks. A sandbox is running with a demo project made for it. Decisions 52–55 record the four calls made along the way, two of which reversed something planned.
 
 **Before that:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
 
