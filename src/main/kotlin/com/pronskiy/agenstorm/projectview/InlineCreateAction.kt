@@ -4,8 +4,8 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.PlatformDataKeys
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -52,7 +52,9 @@ class InlineCreateAction(
         val tree = ProjectTreeAccess.tree(project) ?: return fallBack(e)
         val target = resolveTarget(tree, e.getData(PlatformDataKeys.CONTEXT_COMPONENT)) ?: return fallBack(e)
 
-        val siblings = runReadAction { target.directory.children.mapTo(HashSet()) { it.name } }
+        // On the EDT, where an action runs, read access is already held, so no read action is needed — and
+        // both of these are lookups, which is the limit of what may happen on this thread at all.
+        val siblings = target.directory.children.mapTo(HashSet()) { child -> child.name }
         val opened = InlineNameEditor.open(
             tree = tree,
             anchor = target.anchor,
@@ -77,8 +79,12 @@ class InlineCreateAction(
         }, project.disposed)
     }
 
+    /**
+     * `AnAction.actionPerformed` is `@ApiStatus.OverrideOnly`; `ActionUtil.performAction` is the sanctioned way
+     * to run someone else's action, and the verifier says so.
+     */
     private fun fallBack(e: AnActionEvent) {
-        delegate?.actionPerformed(e)
+        delegate?.let { ActionUtil.performAction(it, e) }
     }
 
     /** Where the field goes and which folder the result lands in. */

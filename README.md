@@ -60,6 +60,11 @@ tool window; only the popup goes.
 Two switches that are **off** until you ask for them: hide the editor/preview layout buttons in
 Markdown editors, and clear the right tool window bar so the editor reaches the window edge.
 
+### Names typed in the project tree
+
+New File, New Directory and Rename open an editable row in the tree instead of a dialog. Type,
+press Enter, done. `src/Http/Client.php` creates the folders on the way.
+
 ### A shorter New Scratch File popup
 
 Only the languages on your allow-list, in your order, with "All Languages…" at the bottom.
@@ -85,6 +90,7 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 | [Window title without file names](#window-title) | on | Window title |
 | [Terminal fills the window](#filling-the-window-with-the-terminal) | on | Terminal size |
 | [Self-hiding notifications](#notifications) | on | Notifications |
+| [Names typed in the project tree](#project-tree) | on | Project tree |
 | [Shorter New Scratch File popup](#scratch-files) | on | Scratch files |
 | [Hide Markdown layout buttons](#markdown-editor) | **off** | Markdown editor |
 | [Hide the right tool window bar](#tool-windows) | **off** | Tool windows |
@@ -234,6 +240,27 @@ document rather than a preview tool. Only Markdown; every other split editor kee
 > the IDE offers them, Find Action included. Switch the setting off to get the preview back.
 
 ---
+
+## Project tree
+
+**Type names in the tree, not in a dialog.** On by default, under Settings → Tools → Agenstorm →
+Project tree.
+
+New File, New Directory and Rename put an editable row in the project tree and let you type the name
+there. Enter commits, Escape cancels, clicking elsewhere accepts what you typed, the way a file
+manager behaves.
+
+- The row appears directly below the row you clicked, indented to where the file or folder will land.
+- `src/Http/Client.php` creates the two folders on the way, the same as the dialog does.
+- Renaming runs the real refactoring, so a PHP class file's usages are still updated, in one undo step.
+  What goes away is the dialog, not the refactoring. If it wants to rename inheritors or parameters as
+  well, it still asks.
+- The new file is empty, exactly as `New | File` makes it today. The `<?php` still comes from
+  PhpStorm's own PHP File entry, which this does not touch. Neither are PHP Class, Interface and
+  Trait, whose dialogs carry a namespace a single field cannot hold.
+- Anything the row cannot handle keeps the dialog it has today: a module root, a library, the project
+  folder, and a folder that is a PSR namespace, where PhpStorm has namespace work to offer.
+- Switching it off gives New File, New Directory and Shift+F6 straight back, without a restart.
 
 ## Tool windows
 

@@ -5,7 +5,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.PlatformDataKeys
-import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFileSystemItem
 import com.pronskiy.agenstorm.core.AgenstormSettings
@@ -49,14 +49,15 @@ class InlineRenameAction(private val delegate: AnAction?) : AnAction() {
 
         val anchor = ProjectTreeAccess.selectedPath(tree) ?: return fallBack(e)
         val element = e.getData(CommonDataKeys.PSI_ELEMENT) as? PsiFileSystemItem ?: return fallBack(e)
-        if (!runReadAction { InlineRename.canRenameInline(project, element) }) return fallBack(e)
+        // On the EDT, where an action runs, read access is already held; this and the sibling names below are
+        // lookups, which is the limit of what may happen on this thread at all.
+        if (!InlineRename.canRenameInline(project, element)) return fallBack(e)
 
         val file = element.virtualFile ?: return fallBack(e)
         val currentName = file.name
         // The element's own name is not a collision with itself.
-        val siblings = runReadAction {
-            file.parent?.children.orEmpty().mapNotNullTo(HashSet()) { it.name.takeIf { n -> n != currentName } }
-        }
+        val siblings = file.parent?.children.orEmpty()
+            .mapNotNullTo(HashSet()) { child -> child.name.takeIf { it != currentName } }
 
         val opened = InlineNameEditor.open(
             tree = tree,
@@ -73,7 +74,11 @@ class InlineRenameAction(private val delegate: AnAction?) : AnAction() {
         if (opened == null) fallBack(e)
     }
 
+    /**
+     * `AnAction.actionPerformed` is `@ApiStatus.OverrideOnly`; `ActionUtil.performAction` is the sanctioned way
+     * to run someone else's action, and the verifier says so.
+     */
     private fun fallBack(e: AnActionEvent) {
-        delegate?.actionPerformed(e)
+        delegate?.let { ActionUtil.performAction(it, e) }
     }
 }
