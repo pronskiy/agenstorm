@@ -1,0 +1,97 @@
+# Marketplace upload: the deliberate half of a release, run by hand.
+#
+# Uploading is what starts JetBrains' review, and review is the long pole — hours, sometimes longer. So it
+# happens here, before the GitHub release is published, rather than after it. By the time you publish the
+# draft the version is already approved, and "released" on GitHub means the same thing as "installable".
+#
+# It is a workflow_dispatch on purpose. The draft release in build.yml is refreshed on every push to main,
+# so it is not a decision; this is. **Uploading burns the version number** — a version the Marketplace has
+# cannot be replaced, only superseded — which is exactly why it takes a button press.
+
+name: Marketplace upload
+on:
+  workflow_dispatch:
+    inputs:
+      attachToDraft:
+        description: "Attach the signed ZIP to the draft GitHub release"
+        type: boolean
+        default: true
+
+concurrency:
+  group: marketplace-upload
+  cancel-in-progress: false
+
+jobs:
+
+  upload:
+    name: Sign and upload
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+
+      - name: Maximize Build Space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          large-packages: false
+
+      - name: Fetch Sources
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      # The update server list is the honest signal: an upload still under review is absent from it, while
+      # the API's `approve` flag reads true long before anyone can install the version.
+      - name: Check Marketplace
+        id: marketplace
+        run: |
+          VERSION=$(./gradlew properties --property version --quiet --console=plain | tail -n 1 | cut -f2- -d ' ')
+          PLUGIN_ID=$(grep -E '^pluginGroup' gradle.properties | cut -d '=' -f2 | tr -d ' ')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          SERVED=$(curl -sf --max-time 30 "https://plugins.jetbrains.com/plugins/list/?pluginId=$PLUGIN_ID" \
+            | grep -oE '<version>[^<]*</version>' | sed -E 's#</?version>##g' || true)
+          echo "Marketplace is serving: ${SERVED:-nothing}"
+
+          if printf '%s\n' "$SERVED" | grep -qx "$VERSION"; then
+            echo "::error::$VERSION is already on the Marketplace. Bump pluginVersion; an uploaded version cannot be replaced."
+            exit 1
+          fi
+
+      - name: Publish Plugin
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+        run: ./gradlew publishPlugin
+
+      # The draft is where the ZIP belongs: publishing the draft later turns it into the release asset without
+      # another build. A missing draft is not fatal — the upload that matters has already happened.
+      - name: Attach ZIP to the draft release
+        if: ${{ inputs.attachToDraft }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.marketplace.outputs.version }}
+        run: |
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            gh release upload "$VERSION" ./build/distributions/*.zip --clobber
+          else
+            echo "::warning::no draft release named $VERSION - the Marketplace upload succeeded anyway"
+          fi
+
+      - name: What happens next
+        env:
+          VERSION: ${{ steps.marketplace.outputs.version }}
+        run: |
+          echo "::notice::$VERSION uploaded and in review. Publish the '$VERSION' draft release once the Marketplace is serving it."

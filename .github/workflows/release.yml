@@ -1,14 +1,14 @@
-# GitHub Actions Workflow created for handling the release process based on the draft release prepared with the Build workflow.
-# Running the publishPlugin task requires all the following secrets to be provided: PUBLISH_TOKEN, PRIVATE_KEY, PRIVATE_KEY_PASSWORD, CERTIFICATE_CHAIN.
-# See https://plugins.jetbrains.com/docs/intellij/plugin-signing.html for more information.
+# Release workflow: runs when the draft release is published.
+#
+# It does NOT upload to the Marketplace. That happens earlier and by hand, in marketplace-upload.yml, so
+# that review is already done by the time a release is published — publishing here means the version is
+# genuinely installable. All this does is keep CHANGELOG.md in step and say so if the version is not
+# actually being served yet.
 
 name: Release
 on:
-  # `published` only, deliberately. Two reasons, both from the GitHub docs:
-  # - `prereleased` does NOT fire for a pre-release published from a draft, which is exactly how this repo
-  #   releases, so subscribing to it would silently never run.
-  # - `released` fires again when Marketplace watch promotes a pre-release to a release, which would re-run
-  #   publishPlugin against a version the Marketplace already has.
+  # `published` fires for a draft being published, which is how this repo releases. `prereleased` does not
+  # fire in that case at all, and `released` would fire a second time on any later edit.
   release:
     types: [ published ]
 
@@ -16,7 +16,7 @@ jobs:
 
   # Prepare and publish the plugin to JetBrains Marketplace repository
   release:
-    name: Publish Plugin
+    name: Finish release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -61,11 +61,9 @@ jobs:
 
           ./gradlew patchChangelog --release-note-file=$RELEASE_NOTE
 
-      # Is this version already on the Marketplace? Publishing the same version twice fails the job, and a
-      # release can be re-run by hand. The update server list is the honest signal: an upload that is still
-      # under review is absent from it, while the API's `approve` flag is true long before users can install.
+      # The upload happened in marketplace-upload.yml. This only reports whether review has landed, so a
+      # release published too early is visible as a warning rather than as a silent lie.
       - name: Check Marketplace
-        id: marketplace
         run: |
           PLUGIN_ID=$(grep -E '^pluginGroup' gradle.properties | cut -d '=' -f2 | tr -d ' ')
           VERSION="${{ github.event.release.tag_name }}"
@@ -73,27 +71,10 @@ jobs:
             | grep -oE '<version>[^<]*</version>' | sed -E 's#</?version>##g' || true)
           echo "Marketplace is serving: ${SERVED:-nothing}"
           if printf '%s\n' "$SERVED" | grep -qx "$VERSION"; then
-            echo "already=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::$VERSION is already on the Marketplace - skipping publishPlugin"
+            echo "::notice::$VERSION is being served - this release is installable"
           else
-            echo "already=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::$VERSION is NOT being served yet. Either it was never uploaded (run Marketplace upload) or review is still running."
           fi
-
-      # Publish the plugin to JetBrains Marketplace
-      - name: Publish Plugin
-        if: ${{ steps.marketplace.outputs.already != 'true' }}
-        env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-        run: ./gradlew publishPlugin
-
-      # Upload an artifact as a release asset
-      - name: Upload Release Asset
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.event.release.tag_name }} ./build/distributions/*
 
       # Create a pull request
       - name: Create Pull Request

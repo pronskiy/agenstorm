@@ -2,7 +2,8 @@
 # - build the plugin ZIP and keep it as an artifact
 # - run `./gradlew check` (compile, tests, Kover)
 # - run the IntelliJ Plugin Verifier against the recommended IDEs
-# - on main, refresh the draft GitHub release from CHANGELOG.md (the Release workflow publishes it)
+# - on main, refresh the draft GitHub release from CHANGELOG.md (you publish it, after the Marketplace
+#   upload has been approved - see marketplace-upload.yml)
 
 name: Build
 on:
@@ -176,10 +177,10 @@ jobs:
             exit 0
           fi
 
-          # Drafted as a pre-release: publishing it uploads to the Marketplace, but the version is not
-          # installable until review passes, and Marketplace watch is what promotes it once it is.
+          # A plain draft, not a pre-release. The Marketplace upload happens before this is published
+          # (see marketplace-upload.yml), so by publish time the version is approved and installable —
+          # there is nothing to promote afterwards.
           gh release create $VERSION \
             --draft \
-            --prerelease \
             --title $VERSION \
             --notes-file $RELEASE_NOTE
