@@ -11,10 +11,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.pronskiy.agenstorm.core.AgenstormSettings
-import java.awt.Component
-import javax.swing.JTree
 import javax.swing.SwingUtilities
-import javax.swing.tree.TreePath
 
 /**
  * Step O1.3. The action in the `NewFile` and `NewDir` slots: instead of a dialog, an editable row on the tree.
@@ -50,7 +47,9 @@ class InlineCreateAction(
             return fallBack(e)
         }
         val tree = ProjectTreeAccess.tree(project) ?: return fallBack(e)
-        val target = resolveTarget(tree, e.getData(PlatformDataKeys.CONTEXT_COMPONENT)) ?: return fallBack(e)
+        val context = e.getData(PlatformDataKeys.CONTEXT_COMPONENT)
+        val fromTree = context === tree || (context != null && SwingUtilities.isDescendingFrom(context, tree))
+        val target = InlineTarget.resolve(tree, fromTree) ?: return fallBack(e)
 
         // On the EDT, where an action runs, read access is already held, so no read action is needed — and
         // both of these are lookups, which is the limit of what may happen on this thread at all.
@@ -87,34 +86,4 @@ class InlineCreateAction(
         delegate?.let { ActionUtil.performAction(it, e) }
     }
 
-    /** Where the field goes and which folder the result lands in. */
-    private data class Target(val anchor: TreePath, val placement: Placement, val directory: VirtualFile)
-
-    /**
-     * Decision 53: directly below the row that was clicked, and the folder's last child when the action came
-     * from somewhere other than the tree — a menu, or Search Everywhere, where there was no click to be below.
-     */
-    private fun resolveTarget(tree: JTree, context: Component?): Target? {
-        val selected = ProjectTreeAccess.selectedPath(tree) ?: return null
-        val file = ProjectTreeAccess.virtualFileOf(selected) ?: return null
-        val fromTree = context === tree || (context != null && SwingUtilities.isDescendingFrom(context, tree))
-
-        if (file.isDirectory) {
-            // The row below a collapsed folder is its next sibling, which is the wrong place for its child.
-            tree.expandPath(selected)
-            if (!fromTree) {
-                ProjectTreeAccess.lastVisibleDescendant(tree, selected)
-                    ?.let { return Target(it, Placement.AS_SIBLING, file) }
-            }
-            return Target(selected, Placement.AS_CHILD, file)
-        }
-
-        val parent = file.parent ?: return null
-        if (!fromTree) {
-            val parentPath = selected.parentPath ?: return Target(selected, Placement.AS_SIBLING, parent)
-            ProjectTreeAccess.lastVisibleDescendant(tree, parentPath)
-                ?.let { return Target(it, Placement.AS_SIBLING, parent) }
-        }
-        return Target(selected, Placement.AS_SIBLING, parent)
-    }
 }

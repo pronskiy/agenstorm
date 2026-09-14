@@ -260,6 +260,11 @@ manager behaves.
   Trait, whose dialogs carry a namespace a single field cannot hold.
 - Anything the row cannot handle keeps the dialog it has today: a module root, a library, the project
   folder, and a folder that is a PSR namespace, where PhpStorm has namespace work to offer.
+- The New menu's typed entries go inline too: **PHP File**, **HTML File**, **JavaScript File**,
+  **TypeScript File**. You type the name in the tree and the file arrives with its template body, so
+  `Client` becomes `Client.php` starting with `<?php`. An entry with no template of its own name, such as
+  composer.json File, keeps its dialog. PHP Class, Interface and Trait keep theirs too, because a namespace
+  does not fit in one field. The plain **File** entry still makes an empty file, exactly as it does today.
 - **Duplicate** in the same menu copies a file or folder next to itself, opening the row on `Client 2.php`
   with `Client 2` selected. It has no shortcut out of the box, because ⌘D already means Duplicate Line
   everywhere; bind one under Settings → Keymap if you want it.
