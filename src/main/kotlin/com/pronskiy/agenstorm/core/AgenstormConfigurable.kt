@@ -22,6 +22,7 @@ import com.intellij.ui.dsl.builder.rows
 import com.pronskiy.agenstorm.commit.CommitSettingsPanel
 import com.pronskiy.agenstorm.frame.FrameTitleRefresher
 import com.pronskiy.agenstorm.notifications.AutoDismissPolicy
+import com.pronskiy.agenstorm.projectview.ProjectViewActionInstaller
 import com.pronskiy.agenstorm.scratch.ScratchActionInstaller
 import com.pronskiy.agenstorm.tabs.NativeTabStrip
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
@@ -158,6 +159,17 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .comment(AgenstormBundle.message("settings.markdown.revealScope.comment"))
             }
         }
+        featureGroup(
+            "settings.group.projectTree",
+            "settings.projectTree.inlineNaming",
+            AgenstormSettings.State::projectTreeInlineNamingEnabled,
+            onApply = ProjectViewActionInstaller::sync,
+        ) {
+            row {
+                comment(AgenstormBundle.message("settings.projectTree.inlineNaming.comment"))
+            }
+        }
+
         featureGroup("settings.group.toolWindows", "settings.toolWindows.hideRightBar", AgenstormSettings.State::hideRightToolWindowBar, onApply = AgenstormSettingsListener::fire) {
             row {
                 comment(AgenstormBundle.message("settings.toolWindows.hideRightBar.comment"))

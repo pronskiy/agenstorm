@@ -110,6 +110,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var terminalOpenNoticeShown: Boolean = false,
         /** Epic K: set once the first-run balloon explained that `$EDITOR` opens in this IDE. */
         var terminalEditorNoticeShown: Boolean = false,
+        /** Epic O: New File, New Directory and Rename name the element in an editable row in the project tree. */
+        var projectTreeInlineNamingEnabled: Boolean = true,
         /** Epic L: notification balloons fade out after [notificationsAutoDismissSeconds] instead of the platform's 10 s / 5 min. */
         var notificationsAutoDismissEnabled: Boolean = true,
         /** Epic L: how long a balloon stays on screen, in seconds; clamped to `AutoDismissPolicy.SECONDS_RANGE`. */
