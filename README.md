@@ -10,15 +10,15 @@ Agenstorm closes the gaps, one small feature at a time. Every feature has its ow
 
 ### Clickable file locations
 
-`src/Foo.php:42:7` becomes a link — in Markdown, in comments of every language, and in PHP strings.
+`src/Foo.php:42:7` becomes a link in Markdown, in comments of every language, and in PHP strings.
 It is the format compilers, test runners and agents already emit, so nothing has to change on the
 other side. **Copy Location Link** puts such a token on the clipboard, ready to paste back to an agent.
 
 ### `open` in the IDE terminal
 
 `open src/Foo.php:42` opens that file in the window the terminal belongs to, caret on line 42,
-instead of handing it to the OS. Everything the IDE does not claim — flags, URLs, missing paths,
-binaries — reaches the real `open` untouched.
+instead of handing it to the OS. Anything the IDE does not claim (flags, URLs, missing paths,
+binaries) reaches the real `open` untouched.
 
 ### The IDE as your terminal's editor
 
@@ -30,13 +30,13 @@ that reaches for `$EDITOR` behaves the same way.
 
 A subject and body streamed into the commit message field from the Anthropic API, any
 OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, OpenRouter, Groq), or the local `claude` CLI,
-which needs no API key. No SDK and no bundled jars — just the platform's own HTTP client.
+which needs no API key. No SDK and no bundled jars: just the platform's own HTTP client.
 
 ### Markdown live markup
 
 Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bullets show their
 result until the caret reaches them. Fenced code blocks and block quotes sit on a card. It is
-folding only — the file on disk never changes, and copying always copies raw Markdown.
+folding only: the file on disk never changes, and copying always copies raw Markdown.
 
 ### One header row instead of two
 
@@ -51,7 +51,7 @@ tool windows keep their place.
 
 ### Notification popups that hide themselves
 
-Balloons fade after a few seconds instead of the IDE's 10 seconds — or 5 minutes for sticky ones.
+Balloons fade after a few seconds instead of the IDE's 10 seconds, or 5 minutes for sticky ones.
 The countdown pauses while the IDE is in the background, and everything stays in the Notifications
 tool window; only the popup goes.
 
@@ -127,11 +127,12 @@ path/to/file.ext:LINE
 path/to/file.ext:LINE:COLUMN
 ```
 
-- **1-based**, like every compiler and test runner.
-- **Paths resolve** relative to the containing file, then the project root, then every content root.
-  Absolute paths work. As a last resort, a unique file name anywhere in the project matches.
-- **Unresolved locations stay plain text** — nothing is flagged as an error, because agents routinely
-  refer to files they are about to create.
+Line and column are 1-based, like every compiler and test runner. Paths resolve relative to the
+containing file, then the project root, then every content root; absolute paths work, and as a last
+resort a unique file name anywhere in the project matches.
+
+Locations that do not resolve stay plain text. Nothing is flagged as an error, because agents
+routinely refer to files they are about to create.
 
 ### Getting agents to emit them
 
@@ -146,8 +147,8 @@ Add a line like this to your `CLAUDE.md`, `AGENTS.md` or system prompt:
 In the editor and gutter context menus. Puts a token for the caret (or selection start) on the
 clipboard, plus a Markdown-link flavor (`[Foo.php:42](src/Foo.php:42:7)`).
 
-No default shortcut. `Ctrl+Alt+Shift+L` is free in the default keymaps — Settings → Keymap, search
-"Copy Location Link".
+No default shortcut. `Ctrl+Alt+Shift+L` is free in the default keymaps (Settings → Keymap, search
+"Copy Location Link").
 
 ---
 
@@ -156,10 +157,10 @@ No default shortcut. `Ctrl+Alt+Shift+L` is free in the default keymaps — Setti
 The lightning button above the commit message field streams a subject and body for the included
 changes. Click again to stop.
 
-- **Undo** removes the whole generation in one step.
-- **Existing text is a hint** — a multi-line draft is improved rather than replaced, and saved to the
-  commit message history first.
-- No default shortcut; `Ctrl+Alt+Shift+G` is free (Settings → Keymap, "Generate Commit Message").
+Undo removes the whole generation in one step. Text already in the field is treated as a hint: a
+multi-line draft is improved rather than replaced, and saved to the commit message history first.
+
+No default shortcut; `Ctrl+Alt+Shift+G` is free (Settings → Keymap, "Generate Commit Message").
 
 ### Backends
 
@@ -171,18 +172,19 @@ Settings → Tools → Agenstorm → Commit messages.
 | **OpenAI-compatible** | optional | OpenAI, Ollama (`http://localhost:11434/v1`, no key), LM Studio, OpenRouter, Groq. Model id required |
 | **Claude CLI** | no | Runs `claude -p` with your Claude Code login. Default model `haiku` |
 
-**About the CLI backend:** it runs with extended thinking off and in safe mode, so your CLAUDE.md,
-plugins, skills, hooks and MCP servers stay out of it — about 3 s instead of 20–50 s, and roughly
-800 prompt tokens instead of 6,000. Remove `--safe-mode` from "Extra arguments" if you want your
+The CLI backend runs with extended thinking off and in safe mode, so your CLAUDE.md, plugins,
+skills, hooks and MCP servers stay out of it: about 3 s instead of 20–50 s, and roughly 800 prompt
+tokens instead of 6,000. Remove `--safe-mode` from "Extra arguments" if you want your
 CLAUDE.md rules applied.
 
 ### Prompts and diffs
 
-- **Test Connection** validates the values as typed.
-- **Templates are editable.** `{diff}`, `{stat}`, `{branch}`, `{hint}`, `{language}` and
-  `{conventional}` are substituted; unknown placeholders are kept; "Reset to Default" restores them.
-- **Noise never enters the diff**: `vendor/`, `node_modules/`, `dist/`, `build/`, `*.min.*`, `*.map`.
-  Every file still appears in the stat.
+Test Connection validates the values as typed. The prompt templates are editable: `{diff}`,
+`{stat}`, `{branch}`, `{hint}`, `{language}` and `{conventional}` are substituted, unknown
+placeholders are kept, and "Reset to Default" restores the built-in text.
+
+Lock files and generated output never enter the diff (`vendor/`, `node_modules/`, `dist/`, `build/`,
+`*.min.*`, `*.map`). Every file still appears in the stat.
 
 ---
 
@@ -190,17 +192,17 @@ CLAUDE.md rules applied.
 
 Obsidian-style editing: the syntax hides itself until the caret reaches the line.
 
-- **Inline markers** — `**bold**`, `*italic*`, `~~strike~~`, `` `code` `` show only their text. Markers
+- **Inline markers.** `**bold**`, `*italic*`, `~~strike~~`, `` `code` `` show only their text. Markers
   return for the element the caret touches and under a selection, so what you see is what you copy.
   A setting switches to revealing the whole caret line instead.
-- **Headings, task boxes, bullets** — `#` marks hidden; `- [ ]` / `- [x]` become ☐ / ☑ and toggle on
+- **Headings, task boxes, bullets.** `#` marks are hidden; `- [ ]` / `- [x]` become ☐ / ☑ and toggle on
   click; `-`, `*`, `+` show as •.
 - **Block quotes and GitHub alerts** (`> [!NOTE]`, `> [!WARNING]`, …) lose their `>` markers and get a
   card with an accent bar. Nesting still reads as indent. An alert's `[!…]` title stays as written.
 - **Thematic breaks** (`---`, `***`, `___`) become a full-width rule.
 - **Fenced code blocks** lose their ``` lines and sit on a full-width card; highlighting inside is
   untouched.
-- **Links** — `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B follows the destination:
+- **Links.** `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B follows the destination:
   files, `path:line:col` locations, `#headings` and URLs.
 
 ### Turning it off
@@ -211,20 +213,21 @@ switch and the per-element options.
 
 ### Good to know
 
-- **Nothing is ever written to the file.** It is folding; copying always copies raw Markdown; the
-  Markdown plugin's own folding, Expand All and Collapse All keep working.
-- **Limitations:** heading sizes stay at one line height; images and reference-style links stay raw;
-  the code-block card has no rounded corners, language chip or copy button.
+Nothing is ever written to the file. It is folding: copying always copies raw Markdown, and the
+Markdown plugin's own folding, Expand All and Collapse All keep working.
+
+Limitations: heading sizes stay at one line height, images and reference-style links stay raw, and
+the code-block card has no rounded corners, language chip or copy button.
 
 ---
 
 ## Markdown editor
 
-**Hide the editor/preview layout buttons** — off by default, Settings → Tools → Agenstorm →
+**Hide the editor/preview layout buttons.** Off by default, under Settings → Tools → Agenstorm →
 Markdown editor.
 
 Takes the three layout buttons out of Markdown editors, so a file you are writing looks like a
-document rather than a preview tool. Only Markdown — every other split editor keeps its buttons.
+document rather than a preview tool. Only Markdown; every other split editor keeps its buttons.
 
 > **While this is on, there is no way to open the preview.** The three actions are hidden everywhere
 > the IDE offers them, Find Action included. Switch the setting off to get the preview back.
@@ -233,47 +236,47 @@ document rather than a preview tool. Only Markdown — every other split editor 
 
 ## Tool windows
 
-**Hide the right tool window bar** — off by default, Settings → Tools → Agenstorm → Tool windows.
+**Hide the right tool window bar.** Off by default, under Settings → Tools → Agenstorm → Tool windows.
 
-Clears the strip of icons down the right edge: the tool windows anchored there move to the **left**
-bar, and the IDE hides a bar with nothing on it, so the editor reaches the window edge.
+Clears the strip of icons down the right edge: the tool windows anchored there move to the left bar,
+and the IDE hides a bar with nothing on it, so the editor reaches the window edge.
 
-- **The windows keep everything else** — their content, and every way in: View | Tool Windows, their
-  own shortcuts, the ⋯ button on the left bar.
-- **The trade:** they now open on the left, alongside Project, instead of on the right. That is why
-  the setting is off until you ask for it.
-- **Reversible.** Switching it off moves back exactly the windows Agenstorm moved. One you already had
-  on the left stays there; one you re-docked yourself is left where you put it. Uninstalling the
-  plugin puts them back too.
+The windows keep their content and every way in: View | Tool Windows, their own shortcuts, the ⋯
+button on the left bar. What changes is that they open on the left, alongside Project, instead of on
+the right. That is the trade, and it is why the setting is off until you ask for it.
+
+Switching it off moves back exactly the windows Agenstorm moved. One you already had on the left
+stays there, one you re-docked yourself is left where you put it, and uninstalling the plugin puts
+them back too.
 
 ---
 
 ## Project tabs
 
 On macOS, open projects appear as tabs inside the main toolbar, where the project widget normally
-sits — so the window has one header row instead of two.
+sits, so the window has one header row instead of two.
 
-- **Click** a tab to switch, **middle-click** or **×** to close.
-- **"+"** opens the usual recent-projects popup (New Project, Open, Clone).
-- **Right-click** for Close, Close Others, Copy Path.
-- **Drag** to reorder; order is remembered per project in `agenstorm-tabs.xml`.
-- **Narrow toolbar:** tabs shrink to icons, then a "…" button lists the rest.
+- Click a tab to switch, middle-click or × to close.
+- "+" opens the usual recent-projects popup (New Project, Open, Clone).
+- Right-click for Close, Close Others, Copy Path.
+- Drag to reorder; order is remembered per project in `agenstorm-tabs.xml`.
+- When the toolbar gets narrow, tabs shrink to icons, then a "…" button lists the rest.
 
 ### One window, not many
 
-That is the platform's own macOS window tabs doing the work — Agenstorm leaves them on and hides only
+That is the platform's own macOS window tabs doing the work: Agenstorm leaves them on and hides only
 their separate row, so switching a tab does not raise a second window.
 
 > Agenstorm 1.0 switched those window tabs off, which is why every tab was its own window. Installs
 > left that way are put right on first start, with a balloon offering the restart it needs.
 
-**Windows and Linux** have no window merging to build on, so the strip switches between windows
+Windows and Linux have no window merging to build on, so there the strip switches between windows
 instead; the "move the other window onto this one's position and size" option exists for that case.
 
 ### The Git branch
 
-With tabs on, the VCS widget next to them is hidden and the branch shows **bottom-left in the status
-bar**, where the navigation bar was. Click it for the branches popup. The navigation bar comes back
+With tabs on, the VCS widget next to them is hidden and the branch shows bottom-left in the status
+bar, where the navigation bar was. Click it for the branches popup. The navigation bar comes back
 when the option is turned off, provided Agenstorm was the one that hid it.
 
 ### Options and shortcuts
@@ -306,10 +309,9 @@ open src/A.php src/B.php    # opens both
 open .                      # opens or focuses the directory
 ```
 
-- **Only inside IDE terminals.** Every other shell on the machine is unaffected.
-- **Pass-through:** flags, URLs, missing paths and binaries reach the real `open` untouched.
-- **Other projects:** a file belonging to another open project lands in that project's window.
-- **Announced once** in a balloon the first time it happens.
+This works inside IDE terminals only; every other shell on the machine is unaffected. Flags, URLs,
+missing paths and binaries reach the real `open` untouched, and a file belonging to another open
+project lands in that project's window. The shim announces itself once in a balloon.
 
 Settings → Tools → Agenstorm → Terminal. You can change which command names the shim installs under,
 and whether the IDE claims file types it treats as binary.
@@ -321,15 +323,17 @@ and whether the IDE claims file types it treats as binary.
 `$EDITOR` and `$VISUAL` in an IDE terminal point at this IDE, so anything reaching for an editor opens
 a tab here and waits.
 
-- **Claude Code's <kbd>Ctrl</kbd>+<kbd>G</kbd>**, `git commit`, `crontab -e` — all the same.
-- **The command stays blocked** until the last tab for that file is closed, with what you typed on
-  disk before it is let go.
-- **Only one existing, writable file** is ever claimed. An invocation with options, a missing path, a
-  directory or a read-only file goes to your own editor, or to `vi`.
-- **Your rc file cannot break it.** Both variables are also set through the terminal's
-  `_INTELLIJ_FORCE_SET_*` mechanism, which runs after your rc files; the editor you exported becomes
-  the fallback instead.
-- **A maximized terminal steps aside** for the file and takes its place back when the tab closes.
+Claude Code's <kbd>Ctrl</kbd>+<kbd>G</kbd>, `git commit` and `crontab -e` all behave the same way.
+The command stays blocked until the last tab for that file is closed, with what you typed on disk
+before it is let go. A maximized terminal steps aside for the file and takes its place back
+afterwards.
+
+Only one existing, writable file is ever claimed. An invocation with options, a missing path, a
+directory or a read-only file goes to your own editor, or to `vi`.
+
+Your rc file cannot break it: both variables are also set through the terminal's
+`_INTELLIJ_FORCE_SET_*` mechanism, which runs after your rc files, so the editor you exported becomes
+the fallback instead.
 
 Settings → Tools → Agenstorm → Terminal editor.
 
@@ -346,13 +350,14 @@ button in the terminal's title bar.
 
 ### Two things it changes, and gives back
 
-- **Widescreen layout.** Confining the terminal to the editor's column is what the IDE's Widescreen
-  tool window layout does, so Agenstorm turns it on the first time you *use* the toggle — never on
-  install — says so once in a balloon, and puts your layout back when the feature is switched off. A
-  widescreen layout you chose yourself is never claimed.
-- **⌘⌥M is Extract Method** in the macOS keymaps. While this feature is on, Maximize Terminal wins
-  that keystroke. Nothing in your keymap is changed to arrange it, a balloon says so the first time,
-  and rebinding either action — or switching the feature off — gives it back.
+**Widescreen layout.** Confining the terminal to the editor's column is what the IDE's Widescreen
+tool window layout does, so Agenstorm turns it on the first time you *use* the toggle (never on
+install), says so once in a balloon, and puts your layout back when the feature is switched off. A
+widescreen layout you chose yourself is never claimed.
+
+**⌘⌥M is Extract Method** in the macOS keymaps. While this feature is on, Maximize Terminal wins that
+keystroke. Nothing in your keymap is changed to arrange it, a balloon says so the first time, and
+rebinding either action or switching the feature off gives it back.
 
 Settings → Tools → Agenstorm → Terminal size.
 
@@ -363,9 +368,9 @@ Settings → Tools → Agenstorm → Terminal size.
 Balloons fade after 5 seconds instead of the IDE's own 10 seconds (Balloon groups) or 5 minutes
 (Sticky balloon groups).
 
-- **The countdown pauses** while the IDE is in the background.
-- **Nothing is lost** — every notification stays in the Notifications tool window; only the popup goes.
-- **Errors keep the five-minute timer** unless you opt them in.
+The countdown pauses while the IDE is in the background, so nothing that arrived while you were
+elsewhere is gone before you look. Every notification stays in the Notifications tool window; only
+the popup goes. Errors keep the five-minute timer unless you opt them in.
 
 Settings → Tools → Agenstorm → Notifications holds the delay and both switches.
 
@@ -374,7 +379,7 @@ Settings → Tools → Agenstorm → Notifications holds the delay and both swit
 ## Scratch files
 
 The New Scratch File popup lists only the languages on your allow-list, in your order, ending with an
-"All Languages…" entry — so a language you left out is one click further away rather than out of reach.
+"All Languages…" entry, so a language you left out is one click further away rather than out of reach.
 
 Default list: `Plain text`, `Markdown`, `PHP`, `JavaScript`, `HTML`. Buttons add the current file's
 language or pick from every registered one.

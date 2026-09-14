@@ -7,7 +7,7 @@
 ### Added
 
 - **Hide the right tool window bar.** Clears the strip of icons down the right edge, so the editor reaches the window edge. Off by default, under Tools → Agenstorm → Tool windows.
-  - The tool windows anchored right move to the **left** bar — they keep their content and still open from View | Tool Windows, their shortcuts and the ⋯ button; they just open on the left now.
+  - The tool windows anchored right move to the left bar. They keep their content and still open from View | Tool Windows, their shortcuts and the ⋯ button; they just open on the left now.
   - Switching it off moves back exactly the ones Agenstorm moved. One already on the left stays there; one you re-docked yourself is left where you put it.
 - **Hide the editor/preview layout buttons in Markdown editors.** The three layout buttons come off Markdown editors, so a file you are writing looks like a document rather than a preview tool. Off by default, under Tools → Agenstorm → Markdown editor.
   - Only Markdown — every other split editor keeps its buttons.
