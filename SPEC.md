@@ -27,6 +27,7 @@
 | 2026-09-13 | **Epic M rebuilt on its second mechanism.** Detaching the floating toolbar did nothing wherever editor tabs are visible, because the buttons are rendered as tab actions there; the three platform actions are taken with `ActionSlot` instead. Decision 50; Phase M1 marked superseded, Phase M2 added | Roman (report, sign-off), Claude (investigation, code, text) |
 | 2026-09-14 | **1.5.0 cut** — Epic M (Markdown layout buttons) and Epic N (the right tool window bar) ship together, both off by default. `check` green, ZIP built, verifier Compatible on both IDEs with zero internal API. README reworked for scanning and de-slopped | Roman (decision), Claude (text) |
 | 2026-09-14 | **Release process reordered:** the Marketplace upload is now a manual *Marketplace upload* workflow run before the GitHub release is published, instead of a side-effect of publishing it. Decision 51 | Roman (decision), Claude (workflows, text) |
+| 2026-09-14 | **Epic O added:** naming a file, a folder or a rename happens in the project tree itself instead of in a modal dialog. Decision 52 | Roman (request, the four calls on scope and behaviour), Claude (investigation, text) |
 
 ### Status legend
 
@@ -34,9 +35,11 @@
 
 ### Current focus
 
-**Now on:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
+**Now on:** **Epic O — inline filename typing in the project tree.** Roman, 2026-09-14: the New File / New Directory / Rename dialogs go away and the name is typed in an editable row in the tree itself. Phase O1 (File, Directory, Rename) is the build; Phase O2 (duplicate / paste-a-copy) waits for O1's sandbox sign-off. Decision 52 settles the two mechanisms — an overlay field rather than a `TreeCellEditor`, and the `renameHandler` EP rather than an `ActionSlot` on `RenameElement`. Start at **O1.1**.
 
-**Next, in the order I would take them:** the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then the Find Action question — Epic M hides the layout actions everywhere, so while it is on there is no way to open the preview, currently documented rather than fixed; then Epic H Phase H2 (the rounded code-fence card, language chip, copy action), which is the smallest unbuilt thing left. Epic I (terminal output enhancers, 10 steps) is the biggest, and worth re-deciding before starting.
+**Before that:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
+
+**Next, after Epic O, in the order I would take them:** the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then the Find Action question — Epic M hides the layout actions everywhere, so while it is on there is no way to open the preview, currently documented rather than fixed; then Epic H Phase H2 (the rounded code-fence card, language chip, copy action), which is the smallest unbuilt thing left. Epic I (terminal output enhancers, 10 steps) is the biggest, and worth re-deciding before starting.
 
 **The release is now two deliberate steps (decision 51):** run the **Marketplace upload** workflow by hand, wait for review to land — the update server list is the signal, not the API's `approve` flag — then publish the `1.5.0` draft release. Both are Roman's.
 
@@ -89,7 +92,7 @@ Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an a
 | Build | IntelliJ Platform Gradle Plugin 2.x, Gradle Kotlin DSL, `phpstorm("2026.2")` as the target | Standard toolchain; `verifyPlugin` and `runIde` come for free |
 | Target IDE | PhpStorm 2026.2, `since-build="262"`, `until-build="262.*"` | Matches the platform branch the spec was researched against; every EP referenced exists there |
 | Plugin id / package | `com.pronskiy.agenstorm` | Author's namespace |
-| Module layout | One Gradle module, one plugin, feature packages `links`, `scratch`, `frame`, `commit`, `tabs`, `markdown`, `terminal`; optional dependencies wired through `<depends optional="true" config-file="…">` | Keeps a single artifact while letting the plugin load in IDEA/WebStorm without PHP/Markdown/Terminal |
+| Module layout | One Gradle module, one plugin, feature packages `links`, `scratch`, `frame`, `commit`, `tabs`, `markdown`, `terminal`, `notifications`, `toolwindows`, `projectview`; optional dependencies wired through `<depends optional="true" config-file="…">` | Keeps a single artifact while letting the plugin load in IDEA/WebStorm without PHP/Markdown/Terminal |
 | Dependencies | `com.intellij.modules.platform`, `com.intellij.modules.lang` (declares `referenceProviderType`), `com.intellij.modules.vcs`; optional: `com.jetbrains.php`, `org.intellij.plugins.markdown`, `Git4Idea`, `org.jetbrains.plugins.terminal` | Only what each feature needs; no third-party runtime libraries |
 | HTTP / JSON | `java.net.http.HttpClient` (SSE via `BodyHandlers.ofLines()`); JSON via `kotlinx.serialization.json` bundled with the platform (`compileOnly`), Gson as fallback if the bundled artifact is unavailable | Zero extra jars; this is the whole reason not to use langchain4j |
 | Secrets | `PasswordSafe` via `CredentialAttributes(generateServiceName("Agenstorm", backendId))` | Never put API keys into `PersistentStateComponent` XML |
@@ -145,6 +148,11 @@ Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an a
                        │             EnhancerRules + BlockDetector                │
                        │             TerminalEnhancerController (fold regions)    │
                        │             TerminalEnhancerFilterProvider ──────────────│──▶ consoleFilterProvider
+                       │                                                          │
+                       │  projectview/ InlineNamePolicy (name → verdict)          │
+                       │             InlineNameEditor (field drawn on the tree)   │
+                       │             InlineCreateAction  ◀── ActionSlot: NewFile/NewDir│
+                       │             InlineRenameHandler ────────────────────────│──▶ renameHandler EP
                        └──────────────────────────────────────────────────────────┘
 ```
 
@@ -1586,6 +1594,91 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 | No fight | Dragging a window onto the right while the feature is on does not loop or flicker, and `idea.log` shows a handful of `RightBarHider` passes per startup rather than one per moved window | 🔄 | **Defect found and fixed by the first run, 2026-09-13.** The armed debug line showed **43 passes** on one startup: each of our seven `setAnchor` calls raises `SetToolWindowAnchor`, the listener asks for a pass, and the `applying` guard cannot stop those because it is released before they run. The extra passes were no-ops, so nothing was visibly wrong — which is why it took the log to find. `applyLater` now collapses requests through an `AtomicBoolean`, so at most one pass is ever pending. **Needs the next run to confirm the count drops**; not unit-testable, since `apply()` cannot do anything against the headless stub |
 | Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | ✅ | Same run, a 1 998-line slice: **zero SEVERE/ERROR and zero `Plugin to blame` entries**. The 64 `com.pronskiy.agenstorm` lines are the armed debug traces for this feature and Epic L's |
 
+### Epic O — Inline filename typing in the project tree  ·  after 1.5.0
+
+**Goal:** naming a file, a folder or a rename happens in the project tree itself, in an editable row, instead of in a
+modal dialog.
+**Success metrics:** Enter commits and Esc leaves nothing behind; a renamed PHP class still has its usages updated, in
+one undo step; anything the inline path cannot handle still opens the dialog it opens today; reversible without a
+restart; zero internal API.
+
+Roman, 2026-09-14: "when I create a new file or a folder, or rename it, I can see additional popup to type in a name.
+but this is so ridiculous and unconvenient. let's make it right in the project tree without any additional popups."
+
+**Only *File* and *Directory* go inline.** PhpStorm's New popup also offers PHP Class, PHP Interface, PHP Trait and the
+template-driven web entries, and each of those dialogs carries a namespace or a template choice that a single text field
+cannot hold. Taking `NewFile` and `NewDir` leaves every one of them exactly as it is.
+
+**Rename is taken through the `renameHandler` extension point, not through `ActionSlot`** — decision 52. The platform
+asks its handlers in order and runs the first one that says it is available, so a handler that declines gives the
+dialog back for free: no slot to restore, and the fallback for module roots, libraries and everything else is the
+absence of code rather than a branch in it.
+
+**The editor is an overlay field, not a `TreeCellEditor`** — also decision 52, and the reason is that creation has no
+row to edit.
+
+Platform facts (verified against build 262 with `javap -p -v` on the extracted PhpStorm in the Gradle cache, sources
+cross-read from `idea-262.8665.258-sources.jar`):
+
+- **The tree is reachable without internal API.** `ProjectView.getInstance(project)` → `getCurrentProjectViewPane()` →
+  `getTree(): JTree` — none of the three carries an `@ApiStatus` annotation, and `ProjectViewTree → DnDAwareTree →
+  com.intellij.ui.treeStructure.Tree → JTree` makes it an ordinary Swing `Container` with a null layout.
+- **A phantom "new file" row cannot be inserted.** The model is `AsyncTreeModel` over a `StructureTreeModel` (or, behind
+  the `ide.project.view.coroutines` registry key, the `@Experimental` `TreeSwingModel`); both are structure-driven and
+  `valueForPathChanged` forwards into a sink that ignores it. `ProjectViewPaneSupport`, which installs the model, is
+  `@ApiStatus.Internal`. So the field that names a file has to be drawn, not modelled.
+- **`RenameHandler` is public and has a project-view precedent.** `com.intellij.renameHandler`, plain interface, no
+  annotation; `RenameModuleHandler` is the platform's own handler that claims Shift+F6 only inside the project view.
+- **The creation primitives are public.** `CreateFileAction.MkDirs(newName, directory)` (public static final, no
+  annotation) is the platform's own splitter for `a/b/c.php`, `~` and `..`; `PsiDirectory.createFile` /
+  `createSubdirectory` / `checkCreateFile` are clean; `FileTemplateManager`, `FileTemplateUtil.createFromTemplate` and
+  `CreateFileFromTemplateAction.createFileFromTemplate` are clean.
+- **The rename primitives are public.** `RefactoringFactory.getInstance(project).createRename(element, newName).run()`,
+  `RenameProcessor` and `RenameUtil.isValidName` carry no annotation. Only `RenameUtil.registerUndoableRename` is
+  internal, and nothing here needs it.
+- **`NewFile` and `NewDir` live inside `<group id="NewGroup">`** (`LangActions.xml` in
+  `intellij.platform.ide.impl.jar`), so taking those two ids covers the Alt+Insert popup, File → New and the project
+  view's context menu in one move. `NewElement` itself is registered per product, in PhpStorm's own
+  `phpstorm-customization.xml`, and is left alone.
+- **Do not use:** `CreateDirectoryOrPackageAction` and `RenameFileAction` are `@ApiStatus.Internal` — and the latter is
+  `final` — which is exactly what `ActionSlot` is for: the displaced action is held as a plain `AnAction` and never
+  named by type. Also internal and avoided: `PlatformPackageUtil` (→ `com.intellij.ide.util.DirectoryUtil`),
+  `IdeViewForProjectViewPane` (→ `LangDataKeys.IDE_VIEW`), `AbstractProjectViewPane.selectWithCallback` (→
+  `ProjectView.selectCB`), `ProjectViewPaneSupport`, and `xdebugger`'s `InplaceEditor`, whose subclass
+  `TreeInplaceEditor` is clean but whose base is not — its bounds arithmetic is reimplemented rather than extended.
+- **The tree already has four handlers installed on it** — `EditSourceOnDoubleClickHandler`,
+  `EditSourceOnEnterKeyHandler`, a tree speed search and `PsiCopyPasteManager.EscapeHandler`. An overlay that owns focus
+  never lets them see a key; a `TreeCellEditor` would have to defuse and restore each one on a component shared with
+  the rest of the IDE.
+
+#### Phase O1 — New File, New Directory, Rename
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| O1.1 | `InlineNamePolicy`: validation, path splitting, initial selection range | 🔲 | The one piece of pure logic in the epic and the only part testable in full, so it is kept clear of the platform — typed text plus the sibling names in, a verdict out |
+| O1.2 | `ProjectTreeAccess` + `InlineNameEditor`: the overlay field | 🔲 | `ProjectTreeAccess` is the only file that names a project-view type, so the platform surface is one import list. The field is added as a child of the tree and positioned absolutely, which is how Swing mounts its own editing container; it scrolls with the tree because it is in it |
+| O1.3 | `InlineCreateAction` + `ProjectViewActionInstaller` + the two lifecycle listeners | 🔲 | One action serving both slots, told apart by which id it was invoked under. Commit is one `WriteCommandAction` so Undo is one step |
+| O1.4 | `InlineRenameHandler` on the `renameHandler` EP | 🔲 | `isAvailableOnDataContext` is the whole gate: feature on, project-view context, one selected `PsiFile` or `PsiDirectory`. Everything else declines and the platform's dialog runs |
+| O1.5 | Settings: `projectTreeInlineNamingEnabled` (on) and the **Project tree** group; tests | 🔲 | On by default, unlike Epics M and N: this replaces a dialog with a field rather than removing something from the IDE, and the dialog is one setting away |
+| O1.6 | Docs: README, changelog, this epic, decision 52 | 🔲 | |
+| O1.7 | `verifyPlugin`: still zero internal API | 🔲 | **The gate.** |
+
+**Exit guardrails — Epic O**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| New file | Alt+Insert → File on a folder puts an editable row under it; `Client.php` + Enter creates the file with the PHP template applied and opens it | 🔲 | |
+| New folder | The same for Directory | 🔲 | |
+| Rename | Shift+F6 on `Client.php` in the tree edits in place with `Client` selected, not `Client.php`; a usage in another file is updated; one Undo puts both back | 🔲 | |
+| Nested | `src/Http/Client.php` creates the two folders and the file | 🔲 | |
+| Cancel | Esc leaves nothing behind — no file, no folder, no VFS event | 🔲 | |
+| Click-away | Clicking another row commits what was typed | 🔲 | |
+| Fallback | Shift+F6 on a module root still opens the platform's Rename dialog | 🔲 | |
+| Off switch | Feature off → New File, New Directory and Shift+F6 open the stock dialogs again, without a restart | 🔲 | |
+| Unload | Disabling the plugin puts the stock `NewFile` and `NewDir` actions back | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Verifier | Still zero internal API usages | 🔲 | |
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
@@ -1691,11 +1784,13 @@ Platform facts (verified against build 262 by decompiling the extracted PhpStorm
 | 49 | 2026-09-13 | Epic N empties the right bar by **moving its tool windows to the left** with public `ToolWindow.setAnchor`, rather than by hiding their stripe icons. Supersedes decision 48's approach, not its finding | Offered the choice between this, asking JetBrains and dropping the epic, Roman took this one. It reaches the same visible result — an empty right stripe, which the platform hides by itself — through the one lever that is not internal: on `ToolWindow` only `getStripeTitleProvider`, `getStripeShortTitleProvider` and `setTabsSplittingAllowed` carry `@ApiStatus.Internal`, and `ToolWindowManagerImpl.doSetAnchor` has a real New UI branch, so unlike `setShowStripeButton` it works. `verifyPlugin` agrees: **zero internal usages**, and the +2 deprecated / +4 experimental are Kotlin materialising `DynamicPluginListener`'s default methods for one more implementor, the same effect already recorded for the other three unload listeners. **The cost, taken openly:** those windows now open on the **left**, and their icons join the left bar. The icon-hiding version had its own version of this — `showToolWindowImpl` restores a stripe button whenever a window is shown, so opening a right-side window would have popped the bar back while it was open — so the trade is not as one-sided as it looks | Roman |
 | 50 | 2026-09-13 | Epic M hides the layout buttons by **taking the three `TextEditorWithPreview.Layout.*` actions** through `core/ActionSlot`, not by detaching the floating toolbar. Supersedes decision 47 | Roman: "hiding markdown buttons doesn't work" — with `markdownHideLayoutSwitcher` already `true`, so a real defect and not a switched-off feature. Cause: `isShowActionsInTabs()` is `NewUI && UISettings.editorTabPlacement != 0`, so with editor tabs visible the buttons render as **tab actions** and the floating toolbar's group is wrapped in `ConditionalActionGroup { !isShowActionsInTabs() }` — empty. Decision 47 read the floating-toolbar construction and never checked the branch condition above it, so the feature detached an empty component and its five tests passed the whole time, being aimed at the same wrong component. Both render paths read the same ids through `createViewActionGroup()`, so replacing the actions covers the tab, the pill and anywhere else. Replacements must be `ToggleAction`s — `getShowEditorAction()` casts with a hard null check — and they hide only for Markdown files, so every other split editor keeps its buttons. `verifyPlugin`: zero internal. **Lesson kept: a green test proves the code under it works, not that it is the code that matters** | Roman (report and sign-off: "works now") |
 | 51 | 2026-09-14 | **The Marketplace upload moves before the GitHub release, and becomes a manual `workflow_dispatch`.** `marketplace-upload.yml` signs and uploads; `release.yml` no longer runs `publishPlugin`; the draft is no longer a pre-release; `marketplace-watch.yml` is deleted | Roman: "we need to push to marketplace when we create draft, and when it's reviewed, then when we publish it". The mismatch it fixes is real and was visible on 1.4.0: publishing the GitHub release marked it released while review was still running, so for about an hour the release existed and nobody could install it. Review is the long pole, so it starts first. **The trigger had to be a button, not the draft** — `build.yml` drafts on every push to main, so wiring the upload there would publish on every version bump, and **an uploaded version cannot be replaced, only superseded**. With the upload done first, publishing the draft means the version is genuinely installable, which is why the draft stops being a pre-release and the watcher that promoted it has nothing left to do. `release.yml` keeps the changelog PR and now warns when the published version is not being served, so a release published too early is visible rather than silent | Roman |
+| 52 | 2026-09-14 | Epic O names files in **an overlay text field drawn on the tree**, not in a `TreeCellEditor`, and takes Shift+F6 through the **`renameHandler` extension point**, not through `core/ActionSlot` | Two findings forced the pair. First, the project view's model is `AsyncTreeModel` over a `StructureTreeModel` and its `valueForPathChanged` forwards into a sink that ignores it, so there is no way to insert the phantom row a *new* file would be typed into — the platform's own inline-rename precedent, the Shelf tool window's `tree.isEditable = true; tree.cellEditor = …`, can only edit rows that already exist. Creation needs a drawn field whatever rename does, and one mechanism beats two. Second, `setEditable`/`setCellEditor` mutate a component shared with the whole IDE, and the project tree already carries `EditSourceOnDoubleClickHandler`, `EditSourceOnEnterKeyHandler`, a speed search and `PsiCopyPasteManager.EscapeHandler` — four handlers to defuse and restore, where a focused overlay simply never lets them see a key. The `renameHandler` half is the same instinct applied to the fallback: a handler that declines gives the stock dialog back with no slot to restore and no branch to write, which is how `RenameModuleHandler` already works. `NewFile` and `NewDir` still go through `ActionSlot`, because creation has no equivalent EP | Roman |
 
 ---
 
 ## 7. Open questions
 
+- [ ] **Epic O, Phase O2 (duplicate / paste-a-copy):** through the `com.intellij.refactoring.copyHandler` EP (`CopyHandlerDelegate`, public interface, verified present in 262) or through an `ActionSlot` on `CopyElement`? The EP is the cleaner half of decision 52's reasoning, but copy takes a *target directory* as well as a name, which one field cannot hold. Default: the EP, declining whenever the target is not the element's own folder. Decide when O2 starts.
 - [ ] Default models per backend at implementation time (Anthropic and OpenAI model ids change; pick the current mid-tier default and keep it a free-text setting).
 - [ ] Should `DiffCollector` honour a project-level ignore file (e.g. `.aiignore` / `.agenstormignore`) for files that must never leave the machine? Default: no, keep v1 simple; revisit after daily use.
 - [ ] Does `claude -p` on the author's machine accept `--max-turns 1` / `--tools ""` style flags to guarantee a tool-free single response? Verify during D2.3; otherwise rely on the prompt.
