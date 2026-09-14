@@ -154,13 +154,16 @@ jobs:
         with:
           cache-read-only: true
 
+      # Stale drafts from earlier versions go; the draft for the *current* version stays, because the
+      # Marketplace upload attaches the signed ZIP to it and deleting it would throw that away.
       - name: Remove Old Release Drafts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION=$(./gradlew properties --property version --quiet --console=plain | tail -n 1 | cut -f2- -d ' ')
           gh api repos/{owner}/{repo}/releases \
-            --jq '.[] | select(.draft == true) | .id' \
-            | xargs -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
+            --jq ".[] | select(.draft == true) | select(.name != \"$VERSION\") | .id" \
+            | xargs -r -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
 
       - name: Create Release Draft
         env:
@@ -172,6 +175,14 @@ jobs:
 
           # A released version keeps its release; only drafts are refreshed. Without this, every push made
           # while pluginVersion still names a published version fails here on "release already exists".
+          # A draft for this version is refreshed in place, so any asset already attached to it survives.
+          # A *published* release is left alone entirely.
+          if gh release view "$VERSION" --json isDraft --jq .isDraft 2>/dev/null | grep -qx true; then
+            echo "::notice::refreshing the existing $VERSION draft"
+            gh release edit "$VERSION" --notes-file $RELEASE_NOTE
+            exit 0
+          fi
+
           if gh release view "$VERSION" > /dev/null 2>&1; then
             echo "::notice::release $VERSION already exists - not creating a draft for it"
             exit 0

@@ -84,8 +84,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.marketplace.outputs.version }}
         run: |
+          SIGNED=$(ls ./build/distributions/*-signed.zip 2>/dev/null | head -n 1)
+          if [ -z "$SIGNED" ]; then
+            echo "::error::no signed ZIP in build/distributions - signPlugin did not run"
+            exit 1
+          fi
+
+          # The signed ZIP only. The unsigned one is a build artifact, and offering both invites someone to
+          # download the wrong one.
           if gh release view "$VERSION" > /dev/null 2>&1; then
-            gh release upload "$VERSION" ./build/distributions/*.zip --clobber
+            gh release upload "$VERSION" "$SIGNED" --clobber
           else
             echo "::warning::no draft release named $VERSION - the Marketplace upload succeeded anyway"
           fi
