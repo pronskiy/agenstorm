@@ -10,7 +10,7 @@ import com.pronskiy.agenstorm.core.AgenstormPlugin
 import com.pronskiy.agenstorm.core.AgenstormSettings
 
 /**
- * Step O1.3. Holds the two creation slots while the feature is on, and gives them back when it is off.
+ * Step O1.3. Holds the three slots the feature borrows while it is on, and gives them back when it is off.
  *
  * `NewFile` and `NewDir` are declared inside `<group id="NewGroup">` in the platform's `LangActions.xml`, which
  * is what the Alt+Insert popup, File | New and the project view's context menu all render — so taking the two
@@ -23,10 +23,12 @@ object ProjectViewActionInstaller {
 
     const val NEW_FILE_ACTION_ID: String = "NewFile"
     const val NEW_DIR_ACTION_ID: String = "NewDir"
+    const val RENAME_ACTION_ID: String = "RenameElement"
 
     private val slots = listOf(
         ActionSlot(NEW_FILE_ACTION_ID) { InlineCreateAction(InlineNameKind.NEW_FILE, stockAction(NEW_FILE_ACTION_ID)) },
         ActionSlot(NEW_DIR_ACTION_ID) { InlineCreateAction(InlineNameKind.NEW_DIRECTORY, stockAction(NEW_DIR_ACTION_ID)) },
+        ActionSlot(RENAME_ACTION_ID) { InlineRenameAction(stockAction(RENAME_ACTION_ID)) },
     )
 
     /** Whatever is in the slot right now, which is the platform's own until the slot is taken. */
