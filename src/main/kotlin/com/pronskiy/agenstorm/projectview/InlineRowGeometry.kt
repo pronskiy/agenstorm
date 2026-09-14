@@ -26,9 +26,9 @@ enum class Placement {
 object InlineRowGeometry {
 
     /**
-     * @param anchor    bounds of the row the field is placed against, from `JTree.getPathBounds`. Its height is
-     *                  the row height — never `JTree.getRowHeight()`, which is 0 in the variable-height mode
-     *                  IntelliJ trees run in.
+     * @param anchor    bounds of the row the field is placed against, from `JTree.getPathBounds`.
+     * @param rowHeight one natural row, measured before the spacer doubled the anchor — never
+     *                  `JTree.getRowHeight()`, which is 0 in the variable-height mode IntelliJ trees run in.
      * @param viewport  the tree's visible rectangle, so the field stops at the right edge instead of running
      *                  off into the horizontal scroll.
      */
@@ -39,14 +39,19 @@ object InlineRowGeometry {
         viewport: Rectangle,
         rightGap: Int,
         minWidth: Int,
+        rowHeight: Int,
     ): Rectangle {
         val x = when (placement) {
             Placement.AS_CHILD -> anchor.x + indentPerLevel
             Placement.AS_SIBLING, Placement.OVER_ANCHOR -> anchor.x
         }
-        val y = if (placement == Placement.OVER_ANCHOR) anchor.y else anchor.y + anchor.height
+        // A new element sits in the second half of the anchor's row, which the spacer renderer has just made
+        // twice as tall — so the rows below have already moved down and nothing is covered. Without the
+        // spacer the same arithmetic lands it immediately below the anchor, which is where it used to sit.
+        val y = if (placement == Placement.OVER_ANCHOR) anchor.y else anchor.y + rowHeight
+        val height = if (placement == Placement.OVER_ANCHOR) anchor.height else rowHeight
         val available = viewport.x + viewport.width - x - rightGap
-        return Rectangle(x, y, maxOf(available, minWidth), anchor.height)
+        return Rectangle(x, y, maxOf(available, minWidth), height)
     }
 
     /**

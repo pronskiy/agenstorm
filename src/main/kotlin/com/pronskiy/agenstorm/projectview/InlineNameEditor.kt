@@ -62,6 +62,12 @@ class InlineNameEditor private constructor(
     /** Set before any commit or cancel, so the focus listener cannot re-enter while a refactoring runs. */
     private var closing = false
 
+    /** One natural row, measured before the spacer doubles the anchor's height. */
+    private var rowHeight = 0
+
+    /** The tree's own renderer, put back when the field closes. Null while no gap is open. */
+    private var displacedRenderer: javax.swing.tree.TreeCellRenderer? = null
+
     private val viewportListener = javax.swing.event.ChangeListener { repositionOrCancel() }
 
     private val modelListener = object : TreeModelListener {
@@ -102,12 +108,37 @@ class InlineNameEditor private constructor(
         tree.model?.addTreeModelListener(modelListener)
         viewportOf()?.addChangeListener(viewportListener)
 
+        rowHeight = ProjectTreeAccess.boundsOf(tree, anchor)?.height ?: 0
+        if (rowHeight <= 0) {
+            cancel()
+            return
+        }
+        openTheGap()
+
         tree.add(row)
         if (!reposition()) {
             cancel()
             return
         }
         focusTheField()
+    }
+
+    /**
+     * Doubles the anchor's row so the rows below move down and the field has somewhere to be. A rename edits
+     * the anchor's own row, so it needs no gap.
+     */
+    private fun openTheGap() {
+        if (placement == Placement.OVER_ANCHOR) return
+        val current = tree.cellRenderer ?: return
+        displacedRenderer = current
+        tree.cellRenderer = SpacerRenderer(current, anchor, rowHeight)
+    }
+
+    /** Closes the gap again. Safe to call when none was opened. */
+    private fun closeTheGap() {
+        val original = displacedRenderer ?: return
+        displacedRenderer = null
+        if (tree.cellRenderer is SpacerRenderer) tree.cellRenderer = original
     }
 
     /**
@@ -137,6 +168,7 @@ class InlineNameEditor private constructor(
             viewport = tree.visibleRect,
             rightGap = JBUI.scale(8),
             minWidth = JBUI.scale(120),
+            rowHeight = rowHeight,
         )
         row.bounds = bounds
         tree.scrollRectToVisible(bounds)
@@ -196,6 +228,7 @@ class InlineNameEditor private constructor(
     override fun dispose() {
         closing = true
         field.removeFocusListener(focusListener)
+        closeTheGap()
         tree.model?.removeTreeModelListener(modelListener)
         viewportOf()?.removeChangeListener(viewportListener)
         if (row.parent === tree) {
