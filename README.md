@@ -12,7 +12,8 @@ Agenstorm closes the gaps, one small feature at a time. Every feature has its ow
 
 Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bullets show their
 result until the caret reaches them. Fenced code blocks and block quotes sit on a card. It is
-folding only: the file on disk never changes, and copying always copies raw Markdown.
+folding only: the file on disk never changes, and copying always copies raw Markdown. An optional
+switch also hides the editor/preview layout buttons.
 
 ### Clickable file locations
 
@@ -57,8 +58,8 @@ tool window; only the popup goes.
 
 ### Less chrome, on request
 
-Two switches that are **off** until you ask for them: hide the editor/preview layout buttons in
-Markdown editors, and clear the right tool window bar so the editor reaches the window edge.
+A switch that is **off** until you ask for it: clear the right tool window bar so the editor
+reaches the window edge.
 
 ### Names typed in the project tree
 
@@ -92,7 +93,6 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 | [Self-hiding notifications](#notifications) | on | Notifications |
 | [Names typed in the project tree](#project-tree) | on | Project tree |
 | [Shorter New Scratch File popup](#scratch-files) | on | Scratch files |
-| [Hide Markdown layout buttons](#markdown-editor) | **off** | Markdown editor |
 | [Hide the right tool window bar](#tool-windows) | **off** | Tool windows |
 
 `SPEC.md` is the plan and the task list; `CHANGELOG.md` records what each version shipped.
@@ -139,6 +139,9 @@ Obsidian-style editing: the syntax hides itself until the caret reaches the line
   untouched.
 - **Links.** `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B follows the destination:
   files, `path:line:col` locations, `#headings` and URLs.
+- **Layout buttons, if you want them gone.** A separate switch, off by default under Settings → Tools →
+  Agenstorm → Markdown editor, hides the editor/preview buttons in Markdown editors. While it is on the
+  preview cannot be opened at all, Find Action included.
 
 ### Turning it off
 
@@ -225,19 +228,6 @@ CLAUDE.md rules applied.
   are substituted, unknown placeholders are kept, and "Reset to Default" restores the built-in text.
 - Lock files and generated output never enter the diff (`vendor/`, `node_modules/`, `dist/`,
   `build/`, `*.min.*`, `*.map`). Every file still appears in the stat.
-
----
-
-## Markdown editor
-
-**Hide the editor/preview layout buttons.** Off by default, under Settings → Tools → Agenstorm →
-Markdown editor.
-
-Takes the three layout buttons out of Markdown editors, so a file you are writing looks like a
-document rather than a preview tool. Only Markdown; every other split editor keeps its buttons.
-
-> **While this is on, there is no way to open the preview.** The three actions are hidden everywhere
-> the IDE offers them, Find Action included. Switch the setting off to get the preview back.
 
 ---
 
