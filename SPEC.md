@@ -1713,7 +1713,7 @@ cross-read from `idea-262.8665.258-sources.jar`):
 | Cancel | Esc leaves nothing behind — no file, no folder, no VFS event | 🔲 | |
 | Click-away | Clicking another row commits what was typed | 🔲 | |
 | Fallback | Shift+F6 on a module root still opens the platform's Rename dialog | 🔲 | |
-| Typed entries | New → PHP File / HTML File / JavaScript File opens the row, not a dialog, and the file arrives with its template body | 🔲 | |
+| Typed entries | New → PHP File / HTML File / JavaScript File opens the row, not a dialog, and the file arrives with its template body | 🔄 | **Roman, 2026-09-16: "works now"**, on New → PHP File from `shmest.md` after decision 61 — the row appears directly under the clicked file and the rows below move down. The template body on commit is not separately confirmed |
 | Typed fallback | New → composer.json File and EditorConfig File still open their own dialogs, because no template answers to their name | 🔲 | |
 | Duplicate | Right-click a file → Duplicate: a row appears below it reading `Client 2.php` with `Client 2` selected; Enter makes the copy next to the original | 🔲 | |
 | Duplicate a folder | The same on `Http` copies the folder with `Request.php` and `Response.php` in it, and one Undo removes all of it | 🔲 | |
@@ -1721,7 +1721,7 @@ cross-read from `idea-262.8665.258-sources.jar`):
 | Off switch | Feature off → New File, New Directory and Shift+F6 open the stock dialogs again, and Duplicate disappears from the menu, without a restart | 🔲 | |
 | Unload | Disabling the plugin puts the stock `NewFile` and `NewDir` actions back | 🔲 | |
 | Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔄 | **Startup is clean, twice.** Sandbox runs 2026-09-14 22:47 and 23:05, 1 156 and 1 015 lines: zero SEVERE/ERROR and zero `Plugin to blame` in both, and `com.pronskiy.agenstorm` in the loaded-plugin list, so the three slots are taken without complaint. The `com.pronskiy.agenstorm` lines are Epic L's and Epic N's armed debug traces; this epic logs nothing. **Neither run exercised anything above** — both windows opened and closed with nobody in them, so this stays 🔄 until a run that types a name |
-| Verifier | Still zero internal API usages | 🔲 | |
+| Verifier | Still zero internal API usages | ✅ | Build-enforced since O1.0. Last run 2026-09-16 after decision 61: **Compatible** on PS-262.10315.130 and IU-262.10315.125, no internal-API or override-only section, 65 experimental and 10 deprecated. On the way it caught two override-only calls (`AnAction.actionPerformed`, `ActionGroup.getChildren(AnActionEvent)`) and two deprecated read actions |
 
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
