@@ -9,7 +9,7 @@
 - **Type file and folder names in the project tree.** New File, New Directory and Rename open an editable row in the tree instead of a dialog. Enter commits, Escape cancels, clicking elsewhere accepts what you typed. On by default, under Tools → Agenstorm → Project tree.
   - The row appears directly below the row you clicked, indented to where the element will land.
   - `src/Http/Client.php` creates the folders on the way, the same as the dialog does.
-  - Renaming runs the real refactoring, so a PHP class file's usages are still updated and one undo puts everything back. The Rename dialog goes; the refactoring's own follow-up questions stay.
+  - Renaming runs the real refactoring, so a PHP class file's usages are still updated and one undo puts everything back. No dialog along the way: a class named after its file is renamed with it, as pressing OK in PhpStorm's own dialog would. A rename that reaches into comments or plain text still shows its list first.
   - Anything the row cannot handle keeps the dialog it has today: a module root, a library, the project folder, and a folder that is a PSR namespace.
   - The New menu's typed entries go inline as well: PHP File, HTML File, JavaScript File, TypeScript File. The file arrives with its template body. An entry with no template of its own name keeps its dialog, and so do PHP Class, Interface and Trait. The plain File entry still makes an empty file.
   - **Duplicate** in the project tree's context menu copies a file or folder next to itself, naming the copy the same way. No default shortcut, because ⌘D is Duplicate Line everywhere. Copy File… (F5) and ⌘C / ⌘V are untouched.

@@ -253,8 +253,9 @@ manager behaves.
 - The row appears directly below the row you clicked, indented to where the file or folder will land.
 - `src/Http/Client.php` creates the two folders on the way, the same as the dialog does.
 - Renaming runs the real refactoring, so a PHP class file's usages are still updated, in one undo step.
-  What goes away is the dialog, not the refactoring. If it wants to rename inheritors or parameters as
-  well, it still asks.
+  Nothing asks along the way: when `Client.php` holds class `Client`, the class is renamed with the file,
+  exactly as pressing OK in PhpStorm's own "rename the class too?" dialog would. A rename that reaches into
+  comments or plain text still shows you the list first.
 - The new file is empty, exactly as `New | File` makes it today. The `<?php` still comes from
   PhpStorm's own PHP File entry, which this does not touch. Neither are PHP Class, Interface and
   Trait, whose dialogs carry a namespace a single field cannot hold.

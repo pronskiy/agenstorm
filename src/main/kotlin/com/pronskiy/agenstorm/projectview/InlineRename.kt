@@ -7,7 +7,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.refactoring.rename.PlainDirectoryRenameHandler
 import com.intellij.refactoring.rename.PsiElementRenameHandler
-import com.intellij.refactoring.rename.RenameProcessor
 import com.intellij.refactoring.rename.RenamePsiElementProcessor
 import com.intellij.refactoring.rename.naming.AutomaticRenamerFactory
 
@@ -59,7 +58,7 @@ object InlineRename {
     fun rename(project: Project, element: PsiElement, newName: String) {
         val elementProcessor = RenamePsiElementProcessor.forElement(element)
         val target = elementProcessor.substituteElementToRename(element, null) ?: return
-        val processor = RenameProcessor(
+        val processor = AcceptingRenameProcessor(
             project,
             target,
             newName,

@@ -72,4 +72,14 @@ class InlineRenameTest : BasePlatformTestCase() {
         // A preview would have parked the rename in a usage view and left the file alone.
         assertEquals("Renamed.php", file.virtualFile.name)
     }
+
+    fun testRenamingAClassFileRenamesTheClassWithoutAsking() {
+        // Decision 62: the automatic-renaming question is answered the way OK would answer it.
+        val file = myFixture.addFileToProject("root/Client.php", "<?php\nclass Client {}\n")
+
+        InlineRename.rename(project, file, "HttpClient.php")
+
+        assertEquals("HttpClient.php", file.virtualFile.name)
+        assertTrue("the class should follow the file: " + file.text, file.text.contains("class HttpClient"))
+    }
 }
