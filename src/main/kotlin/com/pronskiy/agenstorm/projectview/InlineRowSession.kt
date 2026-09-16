@@ -5,6 +5,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiManager
 import javax.swing.JTree
 import javax.swing.Timer
+import javax.swing.tree.TreePath
+import javax.swing.event.TreeExpansionEvent
+import javax.swing.event.TreeExpansionListener
 import javax.swing.event.TreeModelEvent
 import javax.swing.event.TreeModelListener
 
@@ -21,6 +24,17 @@ internal object InlineRowSession {
 
     /** Long enough for a busy async model, short enough that a pane which will never show the row is not a hang. */
     private const val WAIT_MS = 2_000
+
+    /**
+     * Expanding from inside a model event is re-entrant, so it is queued; the expansion listener picks up the row it
+     * reveals. A no-op for a placeholder whose folder is already open.
+     */
+    private fun JTree.expandLater(path: TreePath?, stillWaiting: () -> Boolean) {
+        if (path == null || isExpanded(path)) return
+        ApplicationManager.getApplication().invokeLater {
+            if (stillWaiting() && !isExpanded(path)) expandPath(path)
+        }
+    }
 
     fun start(
         project: Project,
@@ -44,13 +58,17 @@ internal object InlineRowSession {
 
         var settled = false
         lateinit var listener: TreeModelListener
+        lateinit var expansionListener: TreeExpansionListener
         lateinit var timer: Timer
 
         fun stopWaiting() {
             settled = true
             timer.stop()
             tree.model?.removeTreeModelListener(listener)
+            tree.removeTreeExpansionListener(expansionListener)
         }
+
+        fun expandTheFolder() = tree.expandLater(target.folderPath) { !settled }
 
         fun removePlaceholder() {
             InlinePlaceholders.clear(placeholder)
@@ -61,7 +79,11 @@ internal object InlineRowSession {
 
         fun openOn() {
             if (settled) return
-            val row = ProjectTreeAccess.placeholderRow(tree, placeholder) ?: return
+            val row = ProjectTreeAccess.placeholderRow(tree, placeholder)
+            if (row == null) {
+                expandTheFolder()
+                return
+            }
             stopWaiting()
             val editor = InlineNameEditor.open(
                 tree = tree,
@@ -89,6 +111,13 @@ internal object InlineRowSession {
             override fun treeNodesRemoved(e: TreeModelEvent) = openOn()
             override fun treeStructureChanged(e: TreeModelEvent) = openOn()
         }
+        // The row of a placeholder inside a folder that was empty only exists once that folder is expanded, and the
+        // folder could not be expanded while it had no children. The model listener sees the child arrive; this sees
+        // the expansion that makes its row visible.
+        expansionListener = object : TreeExpansionListener {
+            override fun treeExpanded(event: TreeExpansionEvent) = openOn()
+            override fun treeCollapsed(event: TreeExpansionEvent) = Unit
+        }
         timer = Timer(WAIT_MS) {
             if (settled) return@Timer
             stopWaiting()
@@ -99,6 +128,7 @@ internal object InlineRowSession {
         }.apply { isRepeats = false }
 
         tree.model?.addTreeModelListener(listener)
+        tree.addTreeExpansionListener(expansionListener)
         timer.start()
         openOn()
     }

@@ -3,12 +3,18 @@ package com.pronskiy.agenstorm.projectview
 import com.intellij.ide.projectView.ProjectViewNode
 import com.intellij.openapi.vfs.VirtualFile
 import javax.swing.JTree
+import javax.swing.tree.TreePath
 
 /** Which folder a new element lands in, and where the row being named sits among that folder's children. */
 internal data class InlineTarget(
     val directory: VirtualFile,
     val position: PlaceholderPosition,
     val anchor: ProjectViewNode<*>?,
+    /**
+     * The clicked folder's row, when the placeholder goes inside it. An empty folder is a leaf until the placeholder
+     * arrives, and expanding a leaf does nothing — so the session has to expand this again once the child is there.
+     */
+    val folderPath: TreePath? = null,
 ) {
 
     companion object {
@@ -26,7 +32,12 @@ internal data class InlineTarget(
             if (file.isDirectory) {
                 // The placeholder is the folder's child, so the folder has to be open for its row to exist.
                 tree.expandPath(selected)
-                return InlineTarget(file, if (fromTree) PlaceholderPosition.FIRST else PlaceholderPosition.LAST, anchor = null)
+                return InlineTarget(
+                    file,
+                    if (fromTree) PlaceholderPosition.FIRST else PlaceholderPosition.LAST,
+                    anchor = null,
+                    folderPath = selected,
+                )
             }
             val parent = file.parent ?: return null
             return if (fromTree) {
