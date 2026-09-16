@@ -31,6 +31,7 @@
 | 2026-09-16 | Epic M's Find Action gap skipped for now and Epic H Phase H2 skipped until there is feedback; both marked ⏸️ rather than cut. Decision 60 | Roman (decision), Claude (text) |
 | 2026-09-16 | Epic O's typing row becomes a real, temporary tree node placed directly below the clicked row; decision 58's spacer is removed as never having worked. Decision 61 | Roman (report, the position), Claude (root cause, code, text) |
 | 2026-09-16 | Epic O's inline rename answers the automatic-renaming question as OK would, commits write-safely, and stops flagging an empty field. Decision 62 | Roman (request, the rename call), Claude (investigation, code, text) |
+| 2026-09-16 | **1.6.0 cut** — Epic O (names typed in the project tree) and the build-enforced verifier gate. `check` green, ZIP built, verifier Compatible on both IDEs with zero internal API and zero override-only | Roman (decision), Claude (text) |
 
 ### Status legend
 
@@ -38,7 +39,7 @@
 
 ### Current focus
 
-**Now on:** **Release 1.6.0.** Epic O is built and through its guardrail pass (2026-09-16): 14 of 16 ✅, and the two 🔄 are the parts that need a real human — a click away with a mouse, and a real dynamic unload — both covered by their code paths in the same pass. The pass found and fixed one defect (New File on an empty folder fell back to the stock popup) and recorded four harness-only *Write-unsafe context* SEVEREs that Roman's real-keystroke log does not have. `pluginVersion` is already 1.6.0 and `[Unreleased]` holds Epic O and the O1.0 verifier gate; the release is decision 51's two steps, both Roman's.
+**Now on:** **1.6.0 is cut and waiting to be published.** `pluginVersion = 1.6.0`, `patchChangelog` moved `[Unreleased]` into `[1.6.0]`, `agenstorm-1.6.0.zip` builds at 746 KB, and `verifyPlugin` is **Compatible on both IDEs with zero internal and zero override-only usages**. What is left is decision 51's two steps plus the push that starts them, all Roman's: push `main` so `build.yml` refreshes the draft release; run the **Marketplace upload** workflow by hand and wait for review, where the update-server list is the signal; then publish the `1.6.0` draft, which runs `release.yml`.
 
 **Before that:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
 
@@ -1702,6 +1703,8 @@ cross-read from `idea-262.8665.258-sources.jar`):
 | O3.2 | `InlineTemplateFileAction` | ✅ | **The row opens on the extension with the caret in front of it** — New \| PHP File gives `.php` waiting for a name, so the entry says what it will make before a key is pressed, and the file-type icon is already the right one. Enter on an untouched row does nothing rather than making a file called `.php`. Resolves its template by the entry's own name at invocation, and hands the event back to the entry's own dialog when the name resolves to nothing — which is what happens to `NewComposerJsonFile` and `CreateEditorConfigFile`, so five of the seven actually change. The template's extension is added when the typed name has none, as the dialog does |
 | O3.3 | Tests | ✅ | 4 in `TemplateEntryScanTest`: something is found, the feature's own three ids and the scratch popup are not taken twice, nothing named `… Class` / `… Interface` / `… Trait` is taken, and an unresolvable template is a fallback rather than a throw |
 | O3.4 | Docs: README, changelog | ✅ | The README bullet names what is taken, what keeps its dialog and why, and that the plain *File* entry is unchanged |
+
+**1.6.0 (2026-09-16).** Epic O ships **on by default**, with the O1.0 verifier gate. `patchChangelog` moved `[Unreleased]` into a `[1.6.0]` section; `build/distributions/agenstorm-1.6.0.zip` is 746 KB, sha256 `8888ae5f…`. `verifyPlugin`: **Compatible** on PS-262.10315.130 and IU-262.10315.125, **zero internal and zero override-only usages** — now failing the build rather than filing a report — 65 experimental and 10 deprecated. The experimental count is up by exactly `NodeSortOrder` and `NodeSortSettings` for the placeholder's sort pinning, plus the `DynamicPluginListener` default-method materialisation for one more unload listener. Minor rather than patch because it adds a feature. **Carried knowingly:** the two 🔄 guardrails need a person — a click away with a real mouse and a real dynamic unload — and their code paths passed in the guardrail pass.
 
 **Exit guardrails — Epic O**
 
