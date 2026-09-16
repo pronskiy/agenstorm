@@ -8,6 +8,12 @@
 Coding agents changed what a working day looks like, and the IDE was not built for that rhythm.
 Agenstorm closes the gaps, one small feature at a time. Every feature has its own on/off switch.
 
+### Markdown live markup
+
+Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bullets show their
+result until the caret reaches them. Fenced code blocks and block quotes sit on a card. It is
+folding only: the file on disk never changes, and copying always copies raw Markdown.
+
 ### Clickable file locations
 
 `src/Foo.php:42:7` becomes a link in Markdown, in comments of every language, and in PHP strings.
@@ -31,12 +37,6 @@ that reaches for `$EDITOR` behaves the same way.
 A subject and body streamed into the commit message field from the Anthropic API, any
 OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, OpenRouter, Groq), or the local `claude` CLI,
 which needs no API key. No SDK and no bundled jars: just the platform's own HTTP client.
-
-### Markdown live markup
-
-Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bullets show their
-result until the caret reaches them. Fenced code blocks and block quotes sit on a card. It is
-folding only: the file on disk never changes, and copying always copies raw Markdown.
 
 ### One header row instead of two
 
@@ -81,11 +81,11 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 
 | Feature | Default | Settings group |
 |---|---|---|
+| [Markdown live markup](#markdown-live-markup-1) | on | Markdown live markup |
 | [Clickable file locations](#clickable-file-locations-1) | on | Location links |
 | [`open` in the terminal](#opening-files-from-the-terminal) | on | Terminal |
 | [IDE as `$EDITOR`](#the-ide-as-your-terminals-editor-1) | on | Terminal editor |
 | [AI commit messages](#ai-commit-messages-1) | on | Commit messages |
-| [Markdown live markup](#markdown-live-markup-1) | on | Markdown live markup |
 | [Project tabs in the toolbar](#project-tabs) | on | Project tabs |
 | [Window title without file names](#window-title) | on | Window title |
 | [Terminal fills the window](#filling-the-window-with-the-terminal) | on | Terminal size |
@@ -120,6 +120,42 @@ Everything lives under <kbd>Settings</kbd> → <kbd>Tools</kbd> → <kbd>Agensto
 feature. Most features are on by default; the two marked **off** in the table above are not.
 
 Settings are stored in `agenstorm.xml` in the IDE config directory, so they roam with Settings Sync.
+
+---
+
+## Markdown live markup
+
+Obsidian-style editing: the syntax hides itself until the caret reaches the line.
+
+- **Inline markers.** `**bold**`, `*italic*`, `~~strike~~`, `` `code` `` show only their text. Markers
+  return for the element the caret touches and under a selection, so what you see is what you copy.
+  A setting switches to revealing the whole caret line instead.
+- **Headings, task boxes, bullets.** `#` marks are hidden; `- [ ]` / `- [x]` become ☐ / ☑ and toggle on
+  click; `-`, `*`, `+` show as •.
+- **Block quotes and GitHub alerts** (`> [!NOTE]`, `> [!WARNING]`, …) lose their `>` markers and get a
+  card with an accent bar. Nesting still reads as indent. An alert's `[!…]` title stays as written.
+- **Thematic breaks** (`---`, `***`, `___`) become a full-width rule.
+- **Fenced code blocks** lose their ``` lines and sit on a full-width card; highlighting inside is
+  untouched.
+- **Links.** `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B follows the destination:
+  files, `path:line:col` locations, `#headings` and URLs.
+
+### Turning it off
+
+The **Live Markup** entry in the editor context menu turns it off or on for one editor, overriding
+the global switch for that tab. Settings → Tools → Agenstorm → Markdown live markup has the global
+switch and the per-element options.
+
+### Good to know
+
+Nothing is ever written to the file. It is folding: copying always copies raw Markdown, and the
+Markdown plugin's own folding, Expand All and Collapse All keep working.
+
+Limitations:
+
+- Heading sizes stay at the editor's single line height.
+- Images and reference-style links stay raw.
+- The code-block card has no rounded corners, language chip or copy button.
 
 ---
 
@@ -189,42 +225,6 @@ CLAUDE.md rules applied.
   are substituted, unknown placeholders are kept, and "Reset to Default" restores the built-in text.
 - Lock files and generated output never enter the diff (`vendor/`, `node_modules/`, `dist/`,
   `build/`, `*.min.*`, `*.map`). Every file still appears in the stat.
-
----
-
-## Markdown live markup
-
-Obsidian-style editing: the syntax hides itself until the caret reaches the line.
-
-- **Inline markers.** `**bold**`, `*italic*`, `~~strike~~`, `` `code` `` show only their text. Markers
-  return for the element the caret touches and under a selection, so what you see is what you copy.
-  A setting switches to revealing the whole caret line instead.
-- **Headings, task boxes, bullets.** `#` marks are hidden; `- [ ]` / `- [x]` become ☐ / ☑ and toggle on
-  click; `-`, `*`, `+` show as •.
-- **Block quotes and GitHub alerts** (`> [!NOTE]`, `> [!WARNING]`, …) lose their `>` markers and get a
-  card with an accent bar. Nesting still reads as indent. An alert's `[!…]` title stays as written.
-- **Thematic breaks** (`---`, `***`, `___`) become a full-width rule.
-- **Fenced code blocks** lose their ``` lines and sit on a full-width card; highlighting inside is
-  untouched.
-- **Links.** `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B follows the destination:
-  files, `path:line:col` locations, `#headings` and URLs.
-
-### Turning it off
-
-The **Live Markup** entry in the editor context menu turns it off or on for one editor, overriding
-the global switch for that tab. Settings → Tools → Agenstorm → Markdown live markup has the global
-switch and the per-element options.
-
-### Good to know
-
-Nothing is ever written to the file. It is folding: copying always copies raw Markdown, and the
-Markdown plugin's own folding, Expand All and Collapse All keep working.
-
-Limitations:
-
-- Heading sizes stay at the editor's single line height.
-- Images and reference-style links stay raw.
-- The code-block card has no rounded corners, language chip or copy button.
 
 ---
 
