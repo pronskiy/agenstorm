@@ -151,4 +151,19 @@ class InlineNamePolicyTest : BasePlatformTestCase() {
     fun testDirectoryIsSelectedWholeEvenWithADot() {
         assertEquals("some.dir".length, InlineNamePolicy.selectionEnd("some.dir", isDirectory = true))
     }
+
+    // --- flagging -------------------------------------------------------------------------------------
+
+    fun testAnEmptyFieldIsNotFlagged() {
+        assertFalse(InlineNamePolicy.flags(InlineNamePolicy.validate(InlineNameKind.NEW_FILE, "", emptySet())))
+    }
+
+    fun testARealProblemIsFlagged() {
+        assertTrue(InlineNamePolicy.flags(InlineNamePolicy.validate(InlineNameKind.NEW_FILE, "a:b", emptySet())))
+        assertTrue(InlineNamePolicy.flags(InlineNamePolicy.validate(InlineNameKind.NEW_FILE, "A.md", setOf("A.md"))))
+    }
+
+    fun testAUsableNameIsNotFlagged() {
+        assertFalse(InlineNamePolicy.flags(InlineNamePolicy.validate(InlineNameKind.NEW_FILE, "A.md", emptySet())))
+    }
 }

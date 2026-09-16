@@ -4,6 +4,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.CommonShortcuts
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
@@ -165,26 +166,31 @@ class InlineNameEditor private constructor(
     private fun verdict(): NameVerdict = InlineNamePolicy.validate(kind, field.text, siblingNames)
 
     private fun validateNow() {
-        when (val v = verdict()) {
-            is NameVerdict.Ok -> {
-                field.foreground = UIUtil.getTreeForeground()
-                field.toolTipText = null
-            }
-
-            is NameVerdict.Invalid -> {
-                field.foreground = JBColor.RED
-                field.toolTipText = AgenstormBundle.message(v.messageKey, v.arg ?: "")
-            }
+        val v = verdict()
+        if (InlineNamePolicy.flags(v) && v is NameVerdict.Invalid) {
+            field.foreground = JBColor.RED
+            field.toolTipText = AgenstormBundle.message(v.messageKey, v.arg ?: "")
+        } else {
+            field.foreground = UIUtil.getTreeForeground()
+            field.toolTipText = null
         }
     }
 
-    /** Accepts what was typed. An unusable name is dropped rather than argued with — nothing is created. */
+    /**
+     * Accepts what was typed. An unusable name is dropped rather than argued with — nothing is created.
+     *
+     * The commit reaches the model through `Application.invokeLater` with the tree's modality, never directly from
+     * the event that asked for it. Enter arrives write-safe, but a focus loss, a robot script or anything else that
+     * calls this from a plain Swing callback does not, and `TransactionGuard` then logs a *Write-unsafe context*
+     * SEVERE against the plugin for the file it creates or renames. Queued, it is write-safe however it came.
+     */
     fun commit() {
         if (closing) return
         val typed = field.text.trim()
         val usable = verdict() is NameVerdict.Ok
+        val modality = ModalityState.stateForComponent(tree)
         close()
-        if (usable) onCommit(typed)
+        if (usable) ApplicationManager.getApplication().invokeLater({ onCommit(typed) }, modality)
     }
 
     fun cancel() {

@@ -99,6 +99,14 @@ object InlineNamePolicy {
     }
 
     /**
+     * Whether a verdict should turn the field red. An empty field is not a mistake yet — it is where every new name
+     * starts — so only a name that has something wrong *in* it is flagged. Committing an empty field still creates
+     * nothing.
+     */
+    fun flags(verdict: NameVerdict): Boolean =
+        verdict is NameVerdict.Invalid && verdict.messageKey != ERROR_EMPTY
+
+    /**
      * How much of [name] to select when the field opens: the part before the extension, so typing replaces the
      * name and keeps the `.php`. A dot file has no extension to protect, and neither does a folder.
      */
