@@ -33,19 +33,20 @@ import javax.swing.tree.TreePath
  *
  * It is a child of the [JTree] rather than a `TreeCellEditor` (decision 52) — `JTree` is a `Container` with a
  * null layout, which is how Swing hosts its own editing component, so an absolutely positioned child scrolls
- * with the tree and disturbs neither the model nor the row count. Nothing below it moves; while the field is
- * open it covers one row, which is the compromise the placement rule is chosen to make least surprising.
+ * with the tree. It always sits on a real row: the element being renamed, or for a new element the placeholder
+ * node [InlineRowSession] had the tree insert (decision 61), so nothing the user can see is ever covered.
  *
  * It owns focus, so the four handlers already installed on the project tree — double-click-to-open,
  * Enter-to-open, the speed search and the copy/paste Escape handler — never see a keystroke meant for it.
  */
 class InlineNameEditor private constructor(
     private val tree: JTree,
-    private val anchor: TreePath,
-    private val placement: Placement,
+    private var anchor: TreePath,
     private val kind: InlineNameKind,
     private val isDirectory: Boolean,
     private val siblingNames: Set<String>,
+    private val relocate: (() -> TreePath?)?,
+    private val onClose: () -> Unit,
     private val onCommit: (String) -> Unit,
 ) : Disposable {
 
@@ -61,12 +62,6 @@ class InlineNameEditor private constructor(
 
     /** Set before any commit or cancel, so the focus listener cannot re-enter while a refactoring runs. */
     private var closing = false
-
-    /** One natural row, measured before the spacer doubles the anchor's height. */
-    private var rowHeight = 0
-
-    /** The tree's own renderer, put back when the field closes. Null while no gap is open. */
-    private var displacedRenderer: javax.swing.tree.TreeCellRenderer? = null
 
     private val viewportListener = javax.swing.event.ChangeListener { repositionOrCancel() }
 
@@ -111,37 +106,12 @@ class InlineNameEditor private constructor(
         tree.model?.addTreeModelListener(modelListener)
         viewportOf()?.addChangeListener(viewportListener)
 
-        rowHeight = ProjectTreeAccess.boundsOf(tree, anchor)?.height ?: 0
-        if (rowHeight <= 0) {
-            cancel()
-            return
-        }
-        openTheGap()
-
         tree.add(row)
         if (!reposition()) {
             cancel()
             return
         }
         focusTheField()
-    }
-
-    /**
-     * Doubles the anchor's row so the rows below move down and the field has somewhere to be. A rename edits
-     * the anchor's own row, so it needs no gap.
-     */
-    private fun openTheGap() {
-        if (placement == Placement.OVER_ANCHOR) return
-        val current = tree.cellRenderer ?: return
-        displacedRenderer = current
-        tree.cellRenderer = SpacerRenderer(current, anchor, rowHeight)
-    }
-
-    /** Closes the gap again. Safe to call when none was opened. */
-    private fun closeTheGap() {
-        val original = displacedRenderer ?: return
-        displacedRenderer = null
-        if (tree.cellRenderer is SpacerRenderer) tree.cellRenderer = original
     }
 
     /**
@@ -160,18 +130,20 @@ class InlineNameEditor private constructor(
         if (!closing && !reposition()) cancel()
     }
 
-    /** Puts the row where it belongs. `false` means the anchor is gone and the field has nothing to sit on. */
+    /**
+     * Puts the field on its row. A refresh can rebuild the folder under it, which leaves the old path without
+     * bounds; [relocate] finds the row again. `false` means there is no row left to sit on.
+     */
     private fun reposition(): Boolean {
         if (closing) return false
-        val anchorBounds = ProjectTreeAccess.boundsOf(tree, anchor) ?: return false
+        val anchorBounds = ProjectTreeAccess.boundsOf(tree, anchor)
+            ?: relocate?.invoke()?.let { moved -> anchor = moved; ProjectTreeAccess.boundsOf(tree, moved) }
+            ?: return false
         val bounds = InlineRowGeometry.place(
             anchor = anchorBounds,
-            placement = placement,
-            indentPerLevel = ProjectTreeAccess.indentPerLevel(tree),
             viewport = tree.visibleRect,
             rightGap = JBUI.scale(8),
             minWidth = JBUI.scale(120),
-            rowHeight = rowHeight,
         )
         row.bounds = bounds
         tree.scrollRectToVisible(bounds)
@@ -231,7 +203,6 @@ class InlineNameEditor private constructor(
     override fun dispose() {
         closing = true
         field.removeFocusListener(focusListener)
-        closeTheGap()
         tree.model?.removeTreeModelListener(modelListener)
         viewportOf()?.removeChangeListener(viewportListener)
         if (row.parent === tree) {
@@ -241,6 +212,7 @@ class InlineNameEditor private constructor(
         if (ClientProperty.get(tree, OPEN_EDITOR) === this) ClientProperty.put(tree, OPEN_EDITOR, null)
         // Focus goes back where it came from, or the tree is left with nothing selected-looking.
         if (!tree.hasFocus()) tree.requestFocusInWindow()
+        onClose()
     }
 
     companion object {
@@ -258,18 +230,21 @@ class InlineNameEditor private constructor(
         fun open(
             tree: JTree,
             anchor: TreePath,
-            placement: Placement,
             kind: InlineNameKind,
             initialText: String,
             isDirectory: Boolean,
             siblingNames: Set<String>,
             /** How much of [initialText] is selected; `0` puts the caret at the front and selects nothing. */
             selectionEnd: Int = InlineNamePolicy.selectionEnd(initialText, isDirectory),
+            /** Finds the row again after a refresh rebuilt it; `null` when the row cannot move. */
+            relocate: (() -> TreePath?)? = null,
+            /** Runs once the field is gone, whether it was committed or cancelled — before [onCommit]. */
+            onClose: () -> Unit = {},
             onCommit: (String) -> Unit,
         ): InlineNameEditor? {
             ClientProperty.get(tree, OPEN_EDITOR)?.commit()
             if (ProjectTreeAccess.boundsOf(tree, anchor) == null) return null
-            val editor = InlineNameEditor(tree, anchor, placement, kind, isDirectory, siblingNames, onCommit)
+            val editor = InlineNameEditor(tree, anchor, kind, isDirectory, siblingNames, relocate, onClose, onCommit)
             ClientProperty.put(tree, OPEN_EDITOR, editor)
             editor.install(initialText, selectionEnd)
             return if (editor.closing) null else editor

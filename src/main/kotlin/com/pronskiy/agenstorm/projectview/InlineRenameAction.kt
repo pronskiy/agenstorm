@@ -62,7 +62,6 @@ class InlineRenameAction(private val delegate: AnAction?) : AnAction() {
         val opened = InlineNameEditor.open(
             tree = tree,
             anchor = anchor,
-            placement = Placement.OVER_ANCHOR,
             kind = InlineNameKind.RENAME,
             initialText = currentName,
             isDirectory = element is PsiDirectory,

@@ -48,6 +48,10 @@
              keeps one line. Also gives the registry key back if Agenstorm 1.0 turned it off, and feeds the tabs model. -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.tabs.TabsStartupActivity"/>
 
+        <!-- projectview: the row a new name is typed into is a real, temporary node, so the tree makes room for it
+             instead of the field covering the row below (decision 61). A no-op while nothing is being named. -->
+        <treeStructureProvider implementation="com.pronskiy.agenstorm.projectview.InlinePlaceholderProvider"/>
+
         <!-- toolwindows: right-anchored tool windows move to the left, which empties the right bar; the IDE hides an
              empty bar by itself. MovedToolWindows is a light @Service (no XML registration needed). -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.toolwindows.RightBarStartupActivity"/>

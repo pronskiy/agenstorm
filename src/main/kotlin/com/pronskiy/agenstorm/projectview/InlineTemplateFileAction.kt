@@ -72,21 +72,20 @@ class InlineTemplateFileAction(
         val extension = template.extension
         val prefill = if (extension.isEmpty()) "" else ".$extension"
 
-        val opened = InlineNameEditor.open(
+        InlineRowSession.start(
+            project = project,
             tree = tree,
-            anchor = target.anchor,
-            placement = target.placement,
+            target = target,
             kind = InlineNameKind.NEW_FILE,
             initialText = prefill,
             isDirectory = false,
             siblingNames = siblings,
             selectionEnd = 0,
+            onUnavailable = { fallBack(e) },
         ) { typed ->
             // Enter on an untouched row would otherwise make a file called `.php`.
             if (typed != prefill) commit(project, target.directory, typed)
         }
-
-        if (opened == null) fallBack(e)
     }
 
     private fun templateOf(project: Project): FileTemplate? {

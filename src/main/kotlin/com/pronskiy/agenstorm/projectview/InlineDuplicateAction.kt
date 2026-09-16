@@ -42,20 +42,22 @@ class InlineDuplicateAction : DumbAwareAction() {
         val context = e.getData(PlatformDataKeys.CONTEXT_COMPONENT)
         val fromTree = context === tree || (context != null && SwingUtilities.isDescendingFrom(context, tree))
         if (!fromTree) return
-        val anchor = ProjectTreeAccess.selectedPath(tree) ?: return
+        val anchorNode = ProjectTreeAccess.selectedPath(tree)?.let(ProjectTreeAccess::nodeOf) ?: return
 
         val isDirectory = source is PsiDirectory
         val siblings = parent.virtualFile.children.mapTo(HashSet()) { it.name }
         val suggested = CopyNameSuggester.suggest(source.name, siblings, isDirectory)
 
-        InlineNameEditor.open(
+        // The copy's row goes directly under the original, as a real node the tree makes room for (decision 61).
+        InlineRowSession.start(
+            project = project,
             tree = tree,
-            anchor = anchor,
-            placement = Placement.AS_SIBLING,
+            target = InlineTarget(parent.virtualFile, PlaceholderPosition.AFTER_ANCHOR, anchorNode),
             kind = InlineNameKind.DUPLICATE,
             initialText = suggested,
             isDirectory = isDirectory,
             siblingNames = siblings,
+            onUnavailable = {},
         ) { typed ->
             val created = InlineDuplicate.duplicate(project, source, typed)
             val file = created?.virtualFile ?: parent.virtualFile.findChild(typed)

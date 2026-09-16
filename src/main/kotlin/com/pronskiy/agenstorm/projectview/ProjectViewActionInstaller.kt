@@ -7,6 +7,7 @@ import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.project.ProjectManager
 import com.pronskiy.agenstorm.core.ActionSlot
 import com.pronskiy.agenstorm.core.AgenstormPlugin
 import com.pronskiy.agenstorm.core.AgenstormSettings
@@ -136,6 +137,12 @@ class ProjectViewLifecycleListener : AppLifecycleListener {
 class ProjectViewUnloadListener : DynamicPluginListener {
 
     override fun beforePluginUnload(pluginDescriptor: IdeaPluginDescriptor, isUpdate: Boolean) {
-        if (AgenstormPlugin.isOurs(pluginDescriptor)) ProjectViewActionInstaller.uninstall()
+        if (!AgenstormPlugin.isOurs(pluginDescriptor)) return
+        ProjectViewActionInstaller.uninstall()
+        // A field left open, or a placeholder node left in a tree, would keep this plugin's classes alive.
+        InlinePlaceholders.clear()
+        for (project in ProjectManager.getInstance().openProjects) {
+            ProjectTreeAccess.tree(project)?.let(InlineNameEditor::closeOn)
+        }
     }
 }

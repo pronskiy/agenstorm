@@ -54,17 +54,16 @@ class InlineCreateAction(
         // On the EDT, where an action runs, read access is already held, so no read action is needed — and
         // both of these are lookups, which is the limit of what may happen on this thread at all.
         val siblings = target.directory.children.mapTo(HashSet()) { child -> child.name }
-        val opened = InlineNameEditor.open(
+        InlineRowSession.start(
+            project = project,
             tree = tree,
-            anchor = target.anchor,
-            placement = target.placement,
+            target = target,
             kind = kind,
             initialText = "",
             isDirectory = kind == InlineNameKind.NEW_DIRECTORY,
             siblingNames = siblings,
+            onUnavailable = { fallBack(e) },
         ) { typed -> commit(project, target.directory, typed) }
-
-        if (opened == null) fallBack(e)
     }
 
     private fun commit(project: Project, directory: VirtualFile, typed: String) {
