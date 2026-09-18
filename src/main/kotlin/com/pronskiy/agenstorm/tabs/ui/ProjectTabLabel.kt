@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.hover.HoverListener
 import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.NamedColorUtil
@@ -31,6 +32,12 @@ import javax.swing.JPanel
  * colour. Colours come from named UI keys with the action-button colours as fallback, so every theme paints
  * something sensible. In [isCompact] mode (E2.1 overflow) only the icon is shown, the × goes away and the name
  * moves into the tooltip.
+ *
+ * Hover comes from the platform's [HoverListener] (what the stock project widget and the editor tabs use), not
+ * from AWT enter/exit events: those are delivered per child, so a pointer leaving the tab through the × — or
+ * still over the tab when its window went behind another project's — never told the tab it had left, and the
+ * hover fill plus the × stayed on and looked like a second active tab. The hover service watches every mouse
+ * event in the IDE and reports one exit for the tab as soon as the pointer is no longer over it.
  */
 class ProjectTabLabel(
     val project: Project,
@@ -66,6 +73,13 @@ class ProjectTabLabel(
     private var hovered = false
     private val nameLabel = JBLabel(project.name, if (showIcon) projectIcon(project) else null, JBLabel.LEFT)
 
+    /** Owns [hovered]; `internal` so tests can drive it — the hover service needs showing windows. */
+    internal val hoverListener = object : HoverListener() {
+        override fun mouseEntered(component: Component, x: Int, y: Int) = setHovered(true)
+        override fun mouseMoved(component: Component, x: Int, y: Int) = Unit
+        override fun mouseExited(component: Component) = setHovered(false)
+    }
+
     /** The text shown on the tab (the project name). */
     val title: String get() = nameLabel.text
     internal val closeLabel = JBLabel(HIDDEN_CLOSE).apply {
@@ -90,11 +104,8 @@ class ProjectTabLabel(
         add(nameLabel, BorderLayout.CENTER)
         add(closeLabel, BorderLayout.EAST)
         alignmentY = CENTER_ALIGNMENT
+        hoverListener.addTo(this)
         val mouse = object : MouseAdapter() {
-            override fun mouseEntered(e: MouseEvent) = setHovered(true)
-            override fun mouseExited(e: MouseEvent) {
-                if (!contains(e.point)) setHovered(false)
-            }
             override fun mousePressed(e: MouseEvent) {
                 if (e.isPopupTrigger) onContextMenu(e.component, e.point)
             }

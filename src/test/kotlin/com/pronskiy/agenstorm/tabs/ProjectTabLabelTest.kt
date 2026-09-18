@@ -13,11 +13,11 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
         val width = label.preferredSize.width
         assertFalse(label.isCloseShown)
 
-        mouse(label, MouseEvent.MOUSE_ENTERED, 5, 5)
+        label.hoverListener.mouseEntered(label, 5, 5)
         assertTrue(label.isCloseShown)
         assertEquals(width, label.preferredSize.width)
 
-        mouse(label, MouseEvent.MOUSE_EXITED, -1, -1)
+        label.hoverListener.mouseExited(label)
         assertFalse(label.isCloseShown)
         assertEquals(width, label.preferredSize.width)
 
@@ -25,8 +25,30 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
         assertTrue("the active tab always shows its ×", label.isCloseShown)
         assertEquals(width, label.preferredSize.width)
 
-        mouse(label, MouseEvent.MOUSE_EXITED, -1, -1)
+        label.hoverListener.mouseExited(label)
         assertTrue(label.isCloseShown)
+    }
+
+    /**
+     * The stuck-highlight bug: hover used to be tracked with AWT enter/exit events on the tab and its name, so a
+     * pointer that left the tab through the × (which had no such listener) or that was still over the tab when its
+     * window went behind never cleared it. The platform's hover service reports one exit for the tab as soon as
+     * the pointer is no longer over it, whichever child it left through and whichever window it is in now.
+     */
+    fun testLeavingTheTabThroughTheCloseButtonClearsTheHover() {
+        val label = ProjectTabLabel(project, selected = false, onSelect = {}, onClose = {})
+        label.hoverListener.mouseEntered(label, 5, 5)
+        assertTrue(label.isCloseShown)
+
+        // Pointer moves onto the ×: AWT tells the tab the pointer left it, but it is still over the tab.
+        mouse(label, MouseEvent.MOUSE_EXITED, label.width - 4, 5)
+        mouse(label.closeLabel, MouseEvent.MOUSE_ENTERED, 2, 2)
+        assertTrue("still hovered while over the ×", label.isCloseShown)
+
+        // Pointer leaves the tab from the ×: the only AWT exit goes to the ×, the hover service exits the tab.
+        mouse(label.closeLabel, MouseEvent.MOUSE_EXITED, 40, 2)
+        label.hoverListener.mouseExited(label)
+        assertFalse("hover is gone once the pointer left the tab", label.isCloseShown)
     }
 
     fun testAHiddenCloseIconDoesNotCloseOnClick() {
@@ -35,7 +57,7 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
         click(label.closeLabel)
         assertEquals(0, closed)
 
-        mouse(label, MouseEvent.MOUSE_ENTERED, 5, 5)
+        label.hoverListener.mouseEntered(label, 5, 5)
         click(label.closeLabel)
         assertEquals(1, closed)
     }

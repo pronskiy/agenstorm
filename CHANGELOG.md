@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Project tabs: a tab's hover highlight no longer sticks after the pointer leaves it through the × or after switching projects with the pointer over a tab. Stale hovers looked like a second active tab, so the current project was hard to tell.
+
 ## [1.6.0] - 2026-09-16
 
 ### Added
