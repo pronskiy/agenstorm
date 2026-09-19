@@ -98,6 +98,15 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
         assertEquals(1, closed)
     }
 
+    /** Guardrail feedback 2026-09-19: the dotted border was too loud; it is the inactive colour at reduced alpha now. */
+    fun testTheBookmarkBorderIsAFadedInactiveColour() {
+        val label = ProjectTabLabel(ProjectTab.Offloaded("/fake/beta", "beta", 0L), selected = false, onSelect = {}, onClose = {})
+        val border = label.borderColor()
+        val inactive = NamedColorUtil.getInactiveTextColor()
+        assertEquals(inactive.rgb and 0xFFFFFF, border.rgb and 0xFFFFFF)
+        assertTrue("alpha ${border.alpha} should be well below opaque", border.alpha in 60..140)
+    }
+
     fun testALoadingTabKeepsItsMarkUntilTheStripIsRebuilt() {
         val tab = ProjectTab.Offloaded("/fake/beta", "beta", sinceMs = 0L)
         val label = ProjectTabLabel(tab, selected = false, onSelect = {}, onClose = {})

@@ -5,6 +5,7 @@ import com.intellij.ide.RecentProjectsManagerBase
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
+import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.hover.HoverListener
@@ -39,8 +40,8 @@ import javax.swing.JPanel
  * something sensible. In [isCompact] mode (E2.1 overflow) only the icon is shown, the × goes away and the name
  * moves into the tooltip.
  *
- * An **offloaded** tab (P2.7) is a bookmark for a project Agenstorm closed: a dotted border instead of a fill,
- * the icon at half alpha, the name in the inactive colour, and the path plus "offloaded 2 hours ago" in the
+ * An **offloaded** tab (P2.7) is a bookmark for a project Agenstorm closed: a faint dotted border instead of a
+ * fill, the icon at half alpha, the name in the inactive colour, and the path plus "offloaded 2 hours ago" in the
  * tooltip. Its clicks mean *load* and its × means *forget*; what they do is the strip's callbacks' business,
  * the label only reports them. [isLoading] restores the icon while the project is opening.
  *
@@ -180,6 +181,9 @@ class ProjectTabLabel(
         else -> NamedColorUtil.getInactiveTextColor()
     }
 
+    /** The bookmark's dotted border: the inactive text colour, faded so the mark reads without shouting (Roman, 2026-09-19). */
+    internal fun borderColor(): Color = ColorUtil.withAlpha(NamedColorUtil.getInactiveTextColor(), BORDER_ALPHA)
+
     private fun icon(): Icon? {
         if (!showIcon) return null
         val icon = projectIcon(tab.key, tab.name) ?: return null
@@ -229,7 +233,7 @@ class ProjectTabLabel(
                     g2.fillRoundRect(0, inset, width, height - 2 * inset, arc, arc)
                 }
                 if (isOffloaded) {
-                    g2.color = NamedColorUtil.getInactiveTextColor()
+                    g2.color = borderColor()
                     g2.stroke = BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 1f, floatArrayOf(2f, 2f), 0f)
                     g2.drawRoundRect(0, inset, width - 1, height - 2 * inset - 1, arc, arc)
                 }
@@ -247,6 +251,8 @@ class ProjectTabLabel(
         const val MAX_WIDTH_LIMIT = 600
         const val COMPACT_WIDTH = 32
         const val HEIGHT = 30
+        /** Opacity of the bookmark border (0–1). */
+        const val BORDER_ALPHA = 0.4
         private val LOG = logger<ProjectTabLabel>()
         /** Same size as the close icon, paints nothing: keeps the ×'s room when it is not shown. */
         private val HIDDEN_CLOSE: Icon = EmptyIcon.create(AllIcons.Actions.Close)
