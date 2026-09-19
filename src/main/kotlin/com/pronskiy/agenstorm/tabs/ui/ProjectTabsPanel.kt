@@ -18,8 +18,8 @@ import javax.swing.JPanel
 import javax.swing.SwingUtilities
 
 /**
- * Steps E1.3/E2.1. The strip itself: one [ProjectTabLabel] per open project in [ProjectTabsModel] order,
- * separators between them, a chevron for tabs that do not fit and a "+" button. Each frame has its own panel;
+ * Steps E1.3/E2.1/P1. The strip itself: one [ProjectTabLabel] per open project in [ProjectTabsModel] order,
+ * separators between them and a "+" button. Each frame has its own panel;
  * [ownerProject] (the frame's project) is drawn as the active tab, so no global "current project" bookkeeping
  * is needed. Subscribes to the model while it is showing ([attach] from `addNotify`, [detach] from
  * `removeNotify`). What clicks do is decided by the callbacks (wired by `ProjectTabActions`); the panel renders.
@@ -32,15 +32,15 @@ import javax.swing.SwingUtilities
  * When the full tabs do not fit, the widest give first (P1.2): water-filling finds the level at which every tab
  * wider than it is cut to it and the sum fits, so all shrunk tabs end equal while short names keep theirs, and the
  * strip changes continuously as the window narrows. Below [ProjectTabLabel.MIN_WIDTH] per tab every tab becomes
- * icon-only; when even that does not fit, the first N icon-only tabs are shown (the frame's own project always
- * among them) and the rest hide behind the chevron.
+ * icon-only, and that is the floor (P1.3): nothing ever hides behind a chevron, because the cap on loaded projects
+ * (Phase P2) keeps the icon strip small enough for any toolbar; below it the toolbar simply clips.
  *
  * Reordering (E2.2): dragging a tab horizontally past the middle of a neighbour draws an insertion marker and,
  * on release, reports the new index through [onReorder]; the model persists it and every frame follows.
  */
 class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.getInstance()) : JPanel(null) {
 
-    enum class Mode { FULL, SHRUNK, COMPACT, OVERFLOW }
+    enum class Mode { FULL, SHRUNK, COMPACT }
 
     var ownerProject: Project? = null
         set(value) {
@@ -58,8 +58,6 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     var onAdd: (Component) -> Unit = {}
     /** Right click on a tab: the project, the component and the click point, for a popup. */
     var onContextMenu: (Project, Component, Point) -> Unit = { _, _, _ -> }
-    /** The chevron; receives the button and the projects that do not fit, for a popup. */
-    var onOverflow: (Component, List<Project>) -> Unit = { _, _ -> }
     /** A tab was dragged to a new position: the project and its new index among the open tabs. */
     var onReorder: (Project, Int) -> Unit = { _, _ -> }
 
@@ -122,15 +120,6 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
             }
         })
     }
-    internal val moreButton = JBLabel(AllIcons.Actions.MoreHorizontal).apply {
-        border = JBUI.Borders.empty(0, 4)
-        isVisible = false
-        addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                if (e.button == MouseEvent.BUTTON1) onOverflow(this@apply, hiddenProjects())
-            }
-        })
-    }
 
     init {
         isOpaque = false
@@ -139,9 +128,6 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     }
 
     fun tabLabels(): List<ProjectTabLabel> = components.filterIsInstance<ProjectTabLabel>()
-
-    /** Projects whose tabs are currently behind the chevron. */
-    fun hiddenProjects(): List<Project> = tabLabels().filter { !it.isVisible }.map { it.project }
 
     override fun addNotify() {
         super.addNotify()
@@ -185,7 +171,6 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
             add(label)
         }
         repeat((tabs.size - 1).coerceAtLeast(0)) { separators += separator().also(::add) }
-        add(moreButton)
         add(addButton)
         revalidate()
         repaint()
@@ -193,45 +178,35 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
 
     // ---- layout -------------------------------------------------------------------------------------------------
 
-    /** [widths] are the visible tabs' planned widths, in [visible] order. */
-    private class Plan(val mode: Mode, val visible: List<ProjectTabLabel>, val width: Int, val widths: List<Int>)
+    /** [widths] are the tabs' planned widths, in [tabLabels] order. */
+    private class Plan(val mode: Mode, val width: Int, val widths: List<Int>)
 
-    /** Width of a strip whose tabs are [widths] wide: separators between them, the "+" and, if [more], the chevron. */
-    private fun total(widths: List<Int>, more: Boolean): Int {
+    /** Width of a strip whose tabs are [widths] wide: separators between them and the "+". */
+    private fun total(widths: List<Int>): Int {
         val gap = JBUI.scale(2)
         val separator = JBUI.scale(1) + gap
         val fixed = addButton.preferredSize.width + gap
-        return widths.sum() + separator * (widths.size - 1).coerceAtLeast(0) + fixed + if (more) moreButton.preferredSize.width + gap else 0
+        return widths.sum() + separator * (widths.size - 1).coerceAtLeast(0) + fixed
     }
 
     /** Every tab at its natural width: what the strip asks the toolbar for. */
-    private fun fullWidth(): Int = total(tabLabels().map { it.preferredWidth(false) }, more = false)
+    private fun fullWidth(): Int = total(tabLabels().map { it.preferredWidth(false) })
 
-    /** Every tab as an icon: the least the strip can be given before something has to hide. */
-    private fun compactWidth(): Int = total(tabLabels().map { it.preferredWidth(true) }, more = false)
+    /** Every tab as an icon: the least the strip lays out. */
+    private fun compactWidth(): Int = total(tabLabels().map { it.preferredWidth(true) })
 
-    /** Chooses the mode and the visible tabs for [available] pixels. */
+    /** Chooses the mode and the tab widths for [available] pixels. */
     private fun plan(available: Int): Plan {
         val labels = tabLabels()
         val natural = labels.map { it.preferredWidth(false) }
         val full = fullWidth()
-        if (labels.isEmpty() || available <= 0 || full <= available) return Plan(Mode.FULL, labels, full, natural)
-        val level = shrinkLevel(natural, available - total(List(labels.size) { 0 }, more = false))
+        if (labels.isEmpty() || available <= 0 || full <= available) return Plan(Mode.FULL, full, natural)
+        val level = shrinkLevel(natural, available - total(List(labels.size) { 0 }))
         if (level != null) {
             val widths = natural.map { minOf(it, level) }
-            return Plan(Mode.SHRUNK, labels, total(widths, more = false), widths)
+            return Plan(Mode.SHRUNK, total(widths), widths)
         }
-        val compact = compactWidth()
-        val icons = labels.map { it.preferredWidth(true) }
-        if (compact <= available) return Plan(Mode.COMPACT, labels, compact, icons)
-
-        val each = JBUI.scale(ProjectTabLabel.COMPACT_WIDTH)
-        var count = 1
-        while (count < labels.size && total(List(count + 1) { each }, more = true) <= available) count++
-        val visible = labels.take(count).toMutableList()
-        val owner = labels.firstOrNull { it.project === ownerProject }
-        if (owner != null && owner !in visible) visible[visible.lastIndex] = owner
-        return Plan(Mode.OVERFLOW, visible, total(List(count) { each }, more = true), List(count) { each })
+        return Plan(Mode.COMPACT, compactWidth(), labels.map { it.preferredWidth(true) })
     }
 
     /**
@@ -265,36 +240,20 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     override fun doLayout() {
         val plan = plan(width)
         mode = plan.mode
-        val compact = plan.mode == Mode.COMPACT || plan.mode == Mode.OVERFLOW
+        val compact = plan.mode == Mode.COMPACT
         val gap = JBUI.scale(2)
-        val labels = tabLabels()
         var x = 0
-        var shown = 0
-        for ((index, label) in labels.withIndex()) {
-            val separator = separators.getOrNull(index - 1)
-            val slot = plan.visible.indexOf(label)
-            val visible = slot >= 0
+        for ((index, label) in tabLabels().withIndex()) {
             label.isCompact = compact
-            label.isVisible = visible
-            separator?.isVisible = false
-            if (!visible) continue
-            if (shown > 0 && separator != null) {
+            label.isVisible = true
+            separators.getOrNull(index - 1)?.let { separator ->
                 separator.isVisible = true
                 place(separator, x)
                 x += separator.preferredSize.width + gap
             }
-            val tabWidth = plan.widths[slot]
+            val tabWidth = plan.widths[index]
             place(label, x, tabWidth)
             x += tabWidth
-            shown++
-        }
-        moreButton.isVisible = plan.mode == Mode.OVERFLOW
-        if (moreButton.isVisible) {
-            val hidden = labels.size - plan.visible.size
-            moreButton.toolTipText = AgenstormBundle.message("tabs.more.tooltip", hidden)
-            x += gap
-            place(moreButton, x)
-            x += moreButton.preferredSize.width
         }
         x += gap
         place(addButton, x)
@@ -303,21 +262,21 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     override fun paint(g: java.awt.Graphics) {
         super.paint(g)
         val index = dropIndex ?: return
-        val visible = tabLabels().filter { it.isVisible }
+        val labels = tabLabels()
         val x = when {
-            visible.isEmpty() -> 0
-            index >= tabLabels().size -> visible.last().let { it.x + it.width }
-            else -> (tabLabels()[index].takeIf { it.isVisible } ?: visible.last()).x
+            labels.isEmpty() -> 0
+            index >= labels.size -> labels.last().let { it.x + it.width }
+            else -> labels[index].x
         }
         g.color = JBUI.CurrentTheme.Focus.focusColor()
         g.fillRect((x - JBUI.scale(1)).coerceAtLeast(0), JBUI.scale(3), JBUI.scale(2), height - JBUI.scale(6))
     }
 
-    /** Index the pointer at panel-x [x] points at: before the first visible tab whose centre lies right of it. */
+    /** Index the pointer at panel-x [x] points at: before the first tab whose centre lies right of it. */
     internal fun insertionIndex(x: Int): Int {
         val labels = tabLabels()
         for ((index, label) in labels.withIndex()) {
-            if (label.isVisible && x < label.x + label.width / 2) return index
+            if (x < label.x + label.width / 2) return index
         }
         return labels.size
     }
