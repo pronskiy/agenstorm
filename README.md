@@ -39,11 +39,13 @@ A subject and body streamed into the commit message field from the Anthropic API
 OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, OpenRouter, Groq), or the local `claude` CLI,
 which needs no API key. No SDK and no bundled jars: just the platform's own HTTP client.
 
-### One header row instead of two
+### Project tabs, the way a browser does them
 
 Open projects become tabs inside the main toolbar, in the slot the project widget normally occupies,
-so the window loses a row of chrome. The Git branch moves down to the status bar, and window titles
-name the project rather than whichever file is open.
+so the window loses a row of chrome. The tabs take all the room the toolbar can spare and shrink
+before they turn into icons. A project you have not touched for two hours is offloaded: closed with
+everything saved, its tab kept as a dotted bookmark that loads it again on click. The Git branch moves
+down to the status bar, and window titles name the project rather than whichever file is open.
 
 ### A terminal that fills the window
 
@@ -88,6 +90,7 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 | [IDE as `$EDITOR`](#the-ide-as-your-terminals-editor-1) | on | Terminal editor |
 | [AI commit messages](#ai-commit-messages-1) | on | Commit messages |
 | [Project tabs in the toolbar](#project-tabs) | on | Project tabs |
+| [Idle projects offloaded](#offloaded-projects) | on | Project tabs |
 | [Window title without file names](#window-title) | on | Window title |
 | [Terminal fills the window](#filling-the-window-with-the-terminal) | on | Terminal size |
 | [Self-hiding notifications](#notifications) | on | Notifications |
@@ -117,7 +120,7 @@ Download the [latest release](https://github.com/pronskiy/agenstorm/releases/lat
 ## Settings
 
 Everything lives under <kbd>Settings</kbd> → <kbd>Tools</kbd> → <kbd>Agenstorm</kbd>, one group per
-feature. Most features are on by default; the two marked **off** in the table above are not.
+feature. Most features are on by default; the one marked **off** in the table above is not.
 
 Settings are stored in `agenstorm.xml` in the IDE config directory, so they roam with Settings Sync.
 
