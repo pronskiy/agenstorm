@@ -8,6 +8,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.wm.IdeFocusManager
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.tabs.ProjectTab
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +20,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Step P2.5. Runs [Offloader] on the real IDE: once a minute, and shortly after every project open (the cap).
+ * Steps P2.5/P2.6. Runs [Offloader] on the real IDE — once a minute, and shortly after every project open (the
+ * cap) — and [ProjectLoader] for a click on an offloaded tab.
  * Every sweep happens on the EDT under the non-modal modality state — `closeAndDispose` wants the EDT outside a
  * write action, and a close while a dialog is up is not something to do behind the user's back. The active
  * project is the one whose frame was focused last, which also protects the last-used project while the IDE is
@@ -29,6 +31,7 @@ import kotlin.time.Duration.Companion.seconds
 class ProjectOffloadService(private val scope: CoroutineScope) {
 
     private val started = AtomicBoolean(false)
+    private val loader = ProjectLoader(ProjectTabsModel.getInstance())
 
     private val offloader = Offloader(
         model = ProjectTabsModel.getInstance(),
@@ -62,6 +65,11 @@ class ProjectOffloadService(private val scope: CoroutineScope) {
     /** Re-runs the rule now, e.g. after the settings changed. */
     fun sweepSoon() {
         scope.launch { sweep() }
+    }
+
+    /** A click on an offloaded tab (P2.6). */
+    fun load(tab: ProjectTab.Offloaded) {
+        scope.launch { loader.load(tab) }
     }
 
     suspend fun sweep(): List<String> = withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
