@@ -70,6 +70,8 @@
     <applicationListeners>
         <!-- tabs: closed projects leave the tab strip. -->
         <listener class="com.pronskiy.agenstorm.tabs.TabsProjectCloseListener" topic="com.intellij.openapi.project.ProjectCloseListener"/>
+        <!-- tabs: a frame coming to the front is what "active" means to the offload policy (P2.2). -->
+        <listener class="com.pronskiy.agenstorm.tabs.offload.TabsFrameListener" topic="com.intellij.ide.FrameStateListener"/>
         <!-- tabs: the main-toolbar project slot becomes a strip of project tabs, taken before the first toolbar
              is built and given back when the feature is switched off or the plugin is unloaded. -->
         <listener class="com.pronskiy.agenstorm.tabs.ProjectTabsWidgetLifecycleListener" topic="com.intellij.ide.AppLifecycleListener"/>
