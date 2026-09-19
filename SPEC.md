@@ -40,7 +40,7 @@
 
 ### Current focus
 
-**Now on:** **Epic P — Project tabs, Chrome-style**, added 2026-09-19 at Roman's request, **Phase P1 is built** (P1.1–P1.4, 2026-09-19: the strip reports minimum < preferred, reads its mode from the width it is granted, shrinks the widest tabs first before going icon-only, and has no chevron any more) and waits for its **guardrail run** — six rows, one `runIde` session with 4 and then 8 projects, resized across 1400 / 1200 / 700 px. **P2.1** is next once Roman signs off. Two features, one epic: the strip takes the whole toolbar and gives way by shrinking, then icons, never a chevron; and a project idle for 2 hours, or beyond the cap of 8 loaded projects, is offloaded — closed with everything saved, its tab kept dotted, one click to load it again. The platform facts are verified (decisions 63–65): width comes from the compressing layout for free, there is no public close that skips the veto dialogs so our own guards must run first, and the IDE will not reopen an offloaded project at launch — the strip does. Order: **P1 → P2**, each phase ending in its guardrail run.
+**Now on:** **Epic P — Project tabs, Chrome-style**, added 2026-09-19 at Roman's request, **Phase P1 is closed** (built and signed off 2026-09-19: the strip reports minimum < preferred, reads its mode from the width it is granted, shrinks the widest tabs first before going icon-only, and has no chevron any more; all six guardrails ✅, log clean). Next step **P2.1**: the model learns about offloaded tabs — `ProjectTab` (loaded or offloaded), the persisted `offloaded` list and `lastActive` map. Two features, one epic: the strip takes the whole toolbar and gives way by shrinking, then icons, never a chevron; and a project idle for 2 hours, or beyond the cap of 8 loaded projects, is offloaded — closed with everything saved, its tab kept dotted, one click to load it again. The platform facts are verified (decisions 63–65): width comes from the compressing layout for free, there is no public close that skips the veto dialogs so our own guards must run first, and the IDE will not reopen an offloaded project at launch — the strip does. Order: **P1 → P2**, each phase ending in its guardrail run.
 
 **Before that:** **1.6.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.6.0`). The order was decision 51's: push, the **Marketplace upload** workflow run by hand, the update-server list checked for 1.6.0 before publishing, then the draft published. `release.yml` came back green with *"1.6.0 is being served - this release is installable"* and opened no changelog PR, because `patchChangelog` had already run in the cut commit. **`pluginVersion` stays 1.6.0 for now:** `build.yml` leaves a published release alone, so pushing without a bump drafts nothing and fails nothing; the next number is picked when there is something to release — 1.6.1 for fixes, 1.7.0 for a feature.
 
@@ -1819,12 +1819,12 @@ terminal plugin's jars):
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Full width | 4 projects at 1400 px: every name readable, the run widget and the right-hand group intact, the strip ends before the centre widget | 🔲 | |
-| Shrink | 8 projects at 1200 px: names shortened evenly, short names untouched, no icons yet | 🔲 | |
-| Icons | At 700 px every tab is an icon, the "+" is still there, nothing is hidden behind a chevron | 🔲 | |
-| Frame floor | The window still shrinks to the platform's own minimum width — the strip's minimum does not raise it | 🔲 | |
-| Steady | No relayout churn with the strip on: CPU idle, no flicker while resizing (the E2.1 loop) | 🔲 | |
-| Log clean | No `com.pronskiy.agenstorm` exceptions after resizing across all three modes | 🔲 | |
+| Full width | 4 projects at 1400 px: every name readable, the run widget and the right-hand group intact, the strip ends before the centre widget | ✅ | Roman, 2026-09-19 sandbox run ("looks all good, yeah") on the eight scratchpad demo projects, `api` to `customer-analytics-dashboard-service` |
+| Shrink | 8 projects at 1200 px: names shortened evenly, short names untouched, no icons yet | ✅ | Same run |
+| Icons | At 700 px every tab is an icon, the "+" is still there, nothing is hidden behind a chevron | ✅ | Same run |
+| Frame floor | The window still shrinks to the platform's own minimum width — the strip's minimum does not raise it | ✅ | Same run |
+| Steady | No relayout churn with the strip on: CPU idle, no flicker while resizing (the E2.1 loop) | ✅ | Same run |
+| Log clean | No `com.pronskiy.agenstorm` exceptions after resizing across all three modes | ✅ | Session 2026-09-19 21:48:46–21:50:08 (the first launch after the P1 commits; the jar in the sandbox is dated 21:48): zero SEVERE and zero ERROR lines, nothing blamed on the plugin |
 
 #### Phase P2 — Idle projects are offloaded
 
