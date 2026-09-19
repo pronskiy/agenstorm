@@ -7,6 +7,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.pronskiy.agenstorm.core.AgenstormBundle
+import com.pronskiy.agenstorm.tabs.ProjectTab
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
 import java.awt.Component
 import java.awt.Dimension
@@ -124,7 +125,7 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     init {
         isOpaque = false
         border = JBUI.Borders.empty()
-        showTabs(model.tabs())
+        showTabs(model.loadedProjects())
     }
 
     fun tabLabels(): List<ProjectTabLabel> = components.filterIsInstance<ProjectTabLabel>()
@@ -144,8 +145,8 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
         if (subscription != null) return
         val disposable = Disposer.newDisposable("Agenstorm project tabs panel")
         subscription = disposable
-        model.addListener({ tabs -> showTabs(tabs) }, disposable)
-        showTabs(model.tabs())
+        model.addListener({ tabs -> showTabs(tabs.filterIsInstance<ProjectTab.Loaded>().map { it.project }) }, disposable)
+        showTabs(model.loadedProjects())
     }
 
     fun detach() {

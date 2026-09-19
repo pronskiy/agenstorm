@@ -81,7 +81,7 @@ object NativeTabStrip {
     }
 
     private fun applyTo(container: JComponent) {
-        apply(container, AgenstormSettings.getInstance().state.projectTabsEnabled, ProjectTabsModel.getInstance().tabs().size)
+        apply(container, AgenstormSettings.getInstance().state.projectTabsEnabled, ProjectTabsModel.getInstance().loadedProjects().size)
     }
 
     /**

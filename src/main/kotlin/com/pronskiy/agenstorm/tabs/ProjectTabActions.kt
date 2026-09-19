@@ -40,10 +40,10 @@ object ProjectTabActions {
     /** Connects a strip to the platform. */
     fun wire(panel: ProjectTabsPanel, model: ProjectTabsModel = ProjectTabsModel.getInstance()) {
         panel.onSelect = { target -> switchTo(target, from = panel.ownerProject) }
-        panel.onClose = { target -> close(target, owner = panel.ownerProject, tabs = model.tabs()) }
+        panel.onClose = { target -> close(target, owner = panel.ownerProject, tabs = model.loadedProjects()) }
         panel.onAdd = { anchor -> showAddPopup(anchor) }
-        panel.onContextMenu = { target, component, point -> showContextMenu(target, component, point, owner = panel.ownerProject, tabs = model.tabs()) }
-        panel.onReorder = { target, index -> model.moveTab(target, index) }
+        panel.onContextMenu = { target, component, point -> showContextMenu(target, component, point, owner = panel.ownerProject, tabs = model.loadedProjects()) }
+        panel.onReorder = { target, index -> model.moveTab(ProjectTabsModel.keyOf(target), index) }
     }
 
     fun switchTo(target: Project, from: Project?) {

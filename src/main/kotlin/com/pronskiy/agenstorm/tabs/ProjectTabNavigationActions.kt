@@ -15,12 +15,12 @@ abstract class ProjectTabNavigationAction(private val step: Int) : DumbAwareActi
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
-        e.presentation.isEnabled = e.project != null && ProjectTabsModel.getInstance().tabs().size > 1
+        e.presentation.isEnabled = e.project != null && ProjectTabsModel.getInstance().loadedProjects().size > 1
     }
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        val target = cyclicNeighbour(ProjectTabsModel.getInstance().tabs(), project, step) ?: return
+        val target = cyclicNeighbour(ProjectTabsModel.getInstance().loadedProjects(), project, step) ?: return
         ProjectTabActions.switchTo(target, from = project)
     }
 
@@ -50,6 +50,6 @@ class CloseProjectTabAction : DumbAwareAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        ProjectTabActions.close(project, owner = project, tabs = ProjectTabsModel.getInstance().tabs())
+        ProjectTabActions.close(project, owner = project, tabs = ProjectTabsModel.getInstance().loadedProjects())
     }
 }
