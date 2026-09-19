@@ -7,7 +7,7 @@ import com.pronskiy.agenstorm.tabs.ui.ProjectTabLabel
 import com.pronskiy.agenstorm.tabs.ui.ProjectTabsPanel
 
 /** Steps E2.1 / P1.1–P1.3: full tabs while they fit, the widest shrunk first, icon-only after that — never a chevron. */
-class ProjectTabsOverflowTest : BasePlatformTestCase() {
+class ProjectTabsLayoutTest : BasePlatformTestCase() {
 
     private fun tabs(count: Int): List<Project> = listOf(project) + (1 until count).map { FakeProjectHolder.another(project, "project-$it") }
 

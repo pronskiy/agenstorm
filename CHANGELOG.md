@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Project tabs take the whole toolbar.** The strip used to cap itself at half the window and jump to icons beyond that. Now it uses all the room the main toolbar can spare and gives way in two steps, the way browser tabs do: the widest tabs shrink first, names shortened with an ellipsis while short names keep their width, then every tab becomes an icon. The "…" button that listed the tabs that did not fit is gone; icons are the floor.
+
 ### Fixed
 
 - Project tabs: a tab's hover highlight no longer sticks after the pointer leaves it through the × or after switching projects with the pointer over a tab. Stale hovers looked like a second active tab, so the current project was hard to tell.

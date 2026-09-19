@@ -289,7 +289,9 @@ sits, so the window has one header row instead of two.
 - "+" opens the usual recent-projects popup (New Project, Open, Clone).
 - Right-click for Close, Close Others, Copy Path.
 - Drag to reorder; order is remembered per project in `agenstorm-tabs.xml`.
-- When the toolbar gets narrow, tabs shrink to icons, then a "…" button lists the rest.
+- The tabs take all the room the toolbar can spare. When it runs out, the widest tabs shrink first (names
+  shortened with an ellipsis, short names untouched), then every tab becomes an icon. Nothing hides behind a
+  "…" button.
 
 ### One window, not many
 
