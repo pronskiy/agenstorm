@@ -44,6 +44,53 @@ class ProjectTabsOverflowTest : BasePlatformTestCase() {
         assertEquals(minimum, panel.minimumSize.width)
     }
 
+    private fun chromeOf(panel: ProjectTabsPanel): Int = panel.preferredSize.width - panel.tabLabels().sumOf { it.preferredWidth(false) }
+
+    /** Step P1.2: just below full width the widest tabs give first; short names keep their width, nothing goes icon-only. */
+    fun testJustBelowFullWidthShrinksTheWidestTabsFirst() {
+        val short = FakeProjectHolder.another(project, "a")
+        val long = FakeProjectHolder.another(project, "a-very-long-project-name-that-hits-the-cap")
+        val panel = panelWith(listOf(project, short, long))
+        val full = panel.preferredSize.width
+        val width = full - JBUI.scale(20)
+
+        layout(panel, width)
+
+        assertEquals(ProjectTabsPanel.Mode.SHRUNK, panel.mode)
+        val labels = panel.tabLabels()
+        assertTrue(labels.all { it.isVisible && !it.isCompact })
+        val shortLabel = labels.single { it.project === short }
+        val longLabel = labels.single { it.project === long }
+        assertEquals("a short name keeps its width", shortLabel.preferredWidth(false), shortLabel.width)
+        assertTrue("the widest tab is the one cut", longLabel.width < longLabel.preferredWidth(false))
+        val used = labels.sumOf { it.width } + chromeOf(panel)
+        assertTrue("fills the width it was given (up to integer rounding)", used <= width && used > width - labels.size)
+        assertTrue(panel.addButton.x + panel.addButton.width <= width)
+        assertEquals("preferred is still the full strip", full, panel.preferredSize.width)
+    }
+
+    /** Step P1.2: shrunk tabs end equal, never below MIN_WIDTH; one pixel less than that and the strip goes icon-only. */
+    fun testShrunkTabsEndEqualAndStopAtTheMinimumWidth() {
+        val names = (1..6).map { "project-with-a-long-name-number-$it" }
+        val panel = panelWith(names.map { FakeProjectHolder.another(project, it) })
+        val min = JBUI.scale(ProjectTabLabel.MIN_WIDTH)
+        val floor = chromeOf(panel) + 6 * min
+
+        layout(panel, floor + JBUI.scale(30))
+        assertEquals(ProjectTabsPanel.Mode.SHRUNK, panel.mode)
+        val widths = panel.tabLabels().map { it.width }
+        assertTrue("equal within a pixel: $widths", widths.max() - widths.min() <= 1)
+        assertTrue(widths.all { it >= min })
+
+        layout(panel, floor)
+        assertEquals(ProjectTabsPanel.Mode.SHRUNK, panel.mode)
+        assertTrue(panel.tabLabels().all { it.width == min })
+
+        layout(panel, floor - 1)
+        assertEquals(ProjectTabsPanel.Mode.COMPACT, panel.mode)
+        assertTrue(panel.tabLabels().all { it.isCompact })
+    }
+
     fun testEverythingFitsShowsFullTabs() {
         val panel = panelWith(tabs(3))
         layout(panel, panel.preferredSize.width)
@@ -62,7 +109,7 @@ class ProjectTabsOverflowTest : BasePlatformTestCase() {
         val panel = panelWith(tabs(3))
         val fullWidth = panel.preferredSize.width
 
-        layout(panel, fullWidth - 1)
+        layout(panel, chromeOf(panel) + 3 * JBUI.scale(ProjectTabLabel.MIN_WIDTH) - 1)
 
         assertEquals(ProjectTabsPanel.Mode.COMPACT, panel.mode)
         assertTrue(panel.tabLabels().all { it.isVisible && it.isCompact })

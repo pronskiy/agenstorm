@@ -29,15 +29,18 @@ import javax.swing.SwingUtilities
  * only with components whose minimum is below their preferred — grants it whatever is left once the other groups
  * have theirs, up to preferred. `doLayout` then reads the mode from the width it was given. Nothing here feeds
  * back into the sizes, so there is no loop (E2.1's cap came from reading the parent, whose size came from us).
- * When the full tabs do not fit, every tab becomes icon-only; when even that does not fit, the first N icon-only
- * tabs are shown (the frame's own project always among them) and the rest hide behind the chevron.
+ * When the full tabs do not fit, the widest give first (P1.2): water-filling finds the level at which every tab
+ * wider than it is cut to it and the sum fits, so all shrunk tabs end equal while short names keep theirs, and the
+ * strip changes continuously as the window narrows. Below [ProjectTabLabel.MIN_WIDTH] per tab every tab becomes
+ * icon-only; when even that does not fit, the first N icon-only tabs are shown (the frame's own project always
+ * among them) and the rest hide behind the chevron.
  *
  * Reordering (E2.2): dragging a tab horizontally past the middle of a neighbour draws an insertion marker and,
  * on release, reports the new index through [onReorder]; the model persists it and every frame follows.
  */
 class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.getInstance()) : JPanel(null) {
 
-    enum class Mode { FULL, COMPACT, OVERFLOW }
+    enum class Mode { FULL, SHRUNK, COMPACT, OVERFLOW }
 
     var ownerProject: Project? = null
         set(value) {
@@ -190,7 +193,8 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
 
     // ---- layout -------------------------------------------------------------------------------------------------
 
-    private class Plan(val mode: Mode, val visible: List<ProjectTabLabel>, val width: Int)
+    /** [widths] are the visible tabs' planned widths, in [visible] order. */
+    private class Plan(val mode: Mode, val visible: List<ProjectTabLabel>, val width: Int, val widths: List<Int>)
 
     /** Width of a strip whose tabs are [widths] wide: separators between them, the "+" and, if [more], the chevron. */
     private fun total(widths: List<Int>, more: Boolean): Int {
@@ -209,10 +213,17 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     /** Chooses the mode and the visible tabs for [available] pixels. */
     private fun plan(available: Int): Plan {
         val labels = tabLabels()
+        val natural = labels.map { it.preferredWidth(false) }
         val full = fullWidth()
-        if (labels.isEmpty() || available <= 0 || full <= available) return Plan(Mode.FULL, labels, full)
+        if (labels.isEmpty() || available <= 0 || full <= available) return Plan(Mode.FULL, labels, full, natural)
+        val level = shrinkLevel(natural, available - total(List(labels.size) { 0 }, more = false))
+        if (level != null) {
+            val widths = natural.map { minOf(it, level) }
+            return Plan(Mode.SHRUNK, labels, total(widths, more = false), widths)
+        }
         val compact = compactWidth()
-        if (compact <= available) return Plan(Mode.COMPACT, labels, compact)
+        val icons = labels.map { it.preferredWidth(true) }
+        if (compact <= available) return Plan(Mode.COMPACT, labels, compact, icons)
 
         val each = JBUI.scale(ProjectTabLabel.COMPACT_WIDTH)
         var count = 1
@@ -220,7 +231,25 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
         val visible = labels.take(count).toMutableList()
         val owner = labels.firstOrNull { it.project === ownerProject }
         if (owner != null && owner !in visible) visible[visible.lastIndex] = owner
-        return Plan(Mode.OVERFLOW, visible, total(List(count) { each }, more = true))
+        return Plan(Mode.OVERFLOW, visible, total(List(count) { each }, more = true), List(count) { each })
+    }
+
+    /**
+     * The width every tab wider than it is cut to so that the tabs fit [budget] pixels, or null when that would
+     * take a tab below [ProjectTabLabel.MIN_WIDTH]. Tabs no wider than the level keep their [natural] width; the
+     * level only rises as more of them are found, so the loop ends when a pass changes nothing.
+     */
+    private fun shrinkLevel(natural: List<Int>, budget: Int): Int? {
+        if (natural.isEmpty() || budget < JBUI.scale(ProjectTabLabel.MIN_WIDTH) * natural.size) return null
+        var level = budget / natural.size
+        while (true) {
+            val kept = natural.filter { it <= level }
+            val cut = natural.size - kept.size
+            if (cut == 0) return level
+            val next = (budget - kept.sum()) / cut
+            if (next == level) return level
+            level = next
+        }
     }
 
     override fun getPreferredSize(): Dimension {
@@ -236,14 +265,15 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     override fun doLayout() {
         val plan = plan(width)
         mode = plan.mode
-        val compact = plan.mode != Mode.FULL
+        val compact = plan.mode == Mode.COMPACT || plan.mode == Mode.OVERFLOW
         val gap = JBUI.scale(2)
         val labels = tabLabels()
         var x = 0
         var shown = 0
         for ((index, label) in labels.withIndex()) {
             val separator = separators.getOrNull(index - 1)
-            val visible = label in plan.visible
+            val slot = plan.visible.indexOf(label)
+            val visible = slot >= 0
             label.isCompact = compact
             label.isVisible = visible
             separator?.isVisible = false
@@ -253,8 +283,9 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
                 place(separator, x)
                 x += separator.preferredSize.width + gap
             }
-            place(label, x)
-            x += label.preferredSize.width
+            val tabWidth = plan.widths[slot]
+            place(label, x, tabWidth)
+            x += tabWidth
             shown++
         }
         moreButton.isVisible = plan.mode == Mode.OVERFLOW
@@ -296,9 +327,9 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
 
     private fun toPanel(e: MouseEvent): Point = SwingUtilities.convertPoint(e.component, e.point, this)
 
-    private fun place(component: Component, x: Int) {
-        val size = component.preferredSize
-        component.setBounds(x, (height - size.height) / 2, size.width, size.height)
+    private fun place(component: Component, x: Int, width: Int = component.preferredSize.width) {
+        val height = component.preferredSize.height
+        component.setBounds(x, (this.height - height) / 2, width, height)
     }
 
     companion object {
