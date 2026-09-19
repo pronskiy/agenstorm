@@ -19,8 +19,8 @@ import javax.swing.JPanel
 import javax.swing.SwingUtilities
 
 /**
- * Steps E1.3/E2.1/P1. The strip itself: one [ProjectTabLabel] per open project in [ProjectTabsModel] order,
- * separators between them and a "+" button. Each frame has its own panel;
+ * Steps E1.3/E2.1/P1/P2.7. The strip itself: one [ProjectTabLabel] per tab in [ProjectTabsModel] order — open
+ * projects and offloaded bookmarks alike — separators between them and a "+" button. Each frame has its own panel;
  * [ownerProject] (the frame's project) is drawn as the active tab, so no global "current project" bookkeeping
  * is needed. Subscribes to the model while it is showing ([attach] from `addNotify`, [detach] from
  * `removeNotify`). What clicks do is decided by the callbacks (wired by `ProjectTabActions`); the panel renders.
@@ -51,16 +51,16 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
             revalidate()
         }
 
-    /** Left click on a tab. */
-    var onSelect: (Project) -> Unit = {}
-    /** Middle click on a tab or its × button. */
-    var onClose: (Project) -> Unit = {}
+    /** Left click on a tab: switch to a loaded project, load an offloaded one. */
+    var onSelect: (ProjectTab) -> Unit = {}
+    /** Middle click on a tab or its × button: close a loaded project, forget an offloaded one. */
+    var onClose: (ProjectTab) -> Unit = {}
     /** The "+" button; receives the button so a popup can anchor to it. */
     var onAdd: (Component) -> Unit = {}
-    /** Right click on a tab: the project, the component and the click point, for a popup. */
-    var onContextMenu: (Project, Component, Point) -> Unit = { _, _, _ -> }
-    /** A tab was dragged to a new position: the project and its new index among the open tabs. */
-    var onReorder: (Project, Int) -> Unit = { _, _ -> }
+    /** Right click on a tab: the tab, the component and the click point, for a popup. */
+    var onContextMenu: (ProjectTab, Component, Point) -> Unit = { _, _, _ -> }
+    /** A tab was dragged to a new position: the tab and its new index in the strip. */
+    var onReorder: (ProjectTab, Int) -> Unit = { _, _ -> }
 
     /** How the strip was laid out last time. */
     var mode: Mode = Mode.FULL
@@ -108,7 +108,7 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
             val labels = tabLabels()
             val from = labels.indexOf(source)
             val to = if (target > from) target - 1 else target
-            if (from >= 0 && to != from) onReorder(source.project, to)
+            if (from >= 0 && to != from) onReorder(source.tab, to)
         }
     }
 
@@ -125,7 +125,7 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     init {
         isOpaque = false
         border = JBUI.Borders.empty()
-        showTabs(model.loadedProjects())
+        showTabs(model.tabs())
     }
 
     fun tabLabels(): List<ProjectTabLabel> = components.filterIsInstance<ProjectTabLabel>()
@@ -145,8 +145,8 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
         if (subscription != null) return
         val disposable = Disposer.newDisposable("Agenstorm project tabs panel")
         subscription = disposable
-        model.addListener({ tabs -> showTabs(tabs.filterIsInstance<ProjectTab.Loaded>().map { it.project }) }, disposable)
-        showTabs(model.loadedProjects())
+        model.addListener({ tabs -> showTabs(tabs) }, disposable)
+        showTabs(model.tabs())
     }
 
     fun detach() {
@@ -155,18 +155,18 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     }
 
     /** Rebuilds the strip for [tabs]; the layout pass decides what fits. */
-    internal fun showTabs(tabs: List<Project>) {
+    internal fun showTabs(tabs: List<ProjectTab>) {
         removeAll()
         separators.clear()
         dragSource = null
         dropIndex = null
-        for (project in tabs) {
+        for (tab in tabs) {
             val label = ProjectTabLabel(
-                project,
-                selected = project === ownerProject,
-                onSelect = { onSelect(project) },
-                onClose = { onClose(project) },
-                onContextMenu = { component, point -> onContextMenu(project, component, point) },
+                tab,
+                selected = tab is ProjectTab.Loaded && tab.project === ownerProject,
+                onSelect = { onSelect(tab) },
+                onClose = { onClose(tab) },
+                onContextMenu = { component, point -> onContextMenu(tab, component, point) },
             )
             label.addDragListener(dragHandler)
             add(label)

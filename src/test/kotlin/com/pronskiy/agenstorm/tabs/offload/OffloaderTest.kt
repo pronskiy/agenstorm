@@ -102,6 +102,19 @@ class OffloaderTest : BasePlatformTestCase() {
         assertEquals(listOf("c" to Reason.CAP), notices)
     }
 
+    /** Step P2.7: Offload Project from the context menu — the busy reason when it must stay, otherwise closed like any other. */
+    fun testAManualOffloadClosesUnlessAGuardObjects() {
+        val b = fake("b", 0)
+        assertNull(offloader().offload(b))
+        assertEquals(listOf("/fake/b"), closed)
+        assertEquals(listOf("b" to Reason.MANUAL), notices)
+
+        busy = { "a command is running" }
+        val c = fake("c", 0)
+        assertEquals("a command is running", offloader().offload(c))
+        assertEquals(listOf("/fake/b"), closed)
+    }
+
     fun testDisabledClosesNothing() {
         settings = settings.copy(enabled = false)
         val a = fake("a", 0)

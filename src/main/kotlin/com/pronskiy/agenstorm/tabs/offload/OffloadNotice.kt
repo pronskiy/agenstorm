@@ -23,6 +23,7 @@ object OffloadNotice {
         val content = when (reason) {
             Offloader.Reason.IDLE -> AgenstormBundle.message("tabs.offload.notice.idle", name, duration(settings.state.projectsOffloadAfterMinutes))
             Offloader.Reason.CAP -> AgenstormBundle.message("tabs.offload.notice.cap", name, settings.state.projectsMaxLoaded)
+            Offloader.Reason.MANUAL -> AgenstormBundle.message("tabs.offload.notice.manual", name)
         }
         AgenstormNotifications.group()
             .createNotification(AgenstormBundle.message("tabs.offload.notice.title"), content, NotificationType.INFORMATION)

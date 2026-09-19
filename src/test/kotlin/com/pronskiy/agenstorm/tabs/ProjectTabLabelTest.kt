@@ -2,14 +2,15 @@ package com.pronskiy.agenstorm.tabs
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.pronskiy.agenstorm.tabs.ui.ProjectTabLabel
+import com.intellij.util.ui.NamedColorUtil
 import java.awt.Component
 import java.awt.event.MouseEvent
 
-/** Phase E1 guardrail feedback: the × must not change the tab width; active tab shows it always, others on hover. */
+/** Phase E1 guardrail feedback and P2.7: the × must not change the tab width; active tab shows it always, others on hover; offloaded tabs are bookmarks. */
 class ProjectTabLabelTest : BasePlatformTestCase() {
 
     fun testCloseIconFollowsHoverAndSelectionWithoutChangingTheWidth() {
-        val label = ProjectTabLabel(project, selected = false, onSelect = {}, onClose = {})
+        val label = ProjectTabLabel(ProjectTab.Loaded(project), selected = false, onSelect = {}, onClose = {})
         val width = label.preferredSize.width
         assertFalse(label.isCloseShown)
 
@@ -36,7 +37,7 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
      * the pointer is no longer over it, whichever child it left through and whichever window it is in now.
      */
     fun testLeavingTheTabThroughTheCloseButtonClearsTheHover() {
-        val label = ProjectTabLabel(project, selected = false, onSelect = {}, onClose = {})
+        val label = ProjectTabLabel(ProjectTab.Loaded(project), selected = false, onSelect = {}, onClose = {})
         label.hoverListener.mouseEntered(label, 5, 5)
         assertTrue(label.isCloseShown)
 
@@ -53,7 +54,7 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
 
     fun testAHiddenCloseIconDoesNotCloseOnClick() {
         var closed = 0
-        val label = ProjectTabLabel(project, selected = false, onSelect = {}, onClose = { closed++ })
+        val label = ProjectTabLabel(ProjectTab.Loaded(project), selected = false, onSelect = {}, onClose = { closed++ })
         click(label.closeLabel)
         assertEquals(0, closed)
 
@@ -64,14 +65,46 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
 
     fun testSettingsControlTheIconAndTheMaximumWidth() {
         val long = FakeProjectHolder.another(project, "a-project-with-a-very-long-name-that-needs-an-ellipsis-for-sure")
-        val wide = ProjectTabLabel(long, selected = false, onSelect = {}, onClose = {}, maxWidth = 600)
-        val narrow = ProjectTabLabel(long, selected = false, onSelect = {}, onClose = {}, maxWidth = 100)
+        val wide = ProjectTabLabel(ProjectTab.Loaded(long), selected = false, onSelect = {}, onClose = {}, maxWidth = 600)
+        val narrow = ProjectTabLabel(ProjectTab.Loaded(long), selected = false, onSelect = {}, onClose = {}, maxWidth = 100)
         assertTrue(wide.preferredSize.width > narrow.preferredSize.width)
         assertEquals(com.intellij.util.ui.JBUI.scale(100), narrow.preferredSize.width)
 
-        val noIcon = ProjectTabLabel(project, selected = false, onSelect = {}, onClose = {}, showIcon = false)
-        val withIcon = ProjectTabLabel(project, selected = false, onSelect = {}, onClose = {}, showIcon = true)
+        val noIcon = ProjectTabLabel(ProjectTab.Loaded(project), selected = false, onSelect = {}, onClose = {}, showIcon = false)
+        val withIcon = ProjectTabLabel(ProjectTab.Loaded(project), selected = false, onSelect = {}, onClose = {}, showIcon = true)
         assertTrue(noIcon.preferredSize.width <= withIcon.preferredSize.width)
+    }
+
+    /** Step P2.7: an offloaded tab is a dimmed, dotted bookmark; a click means load, the × means forget. */
+    fun testAnOffloadedTabIsMarkedAndItsClicksMeanLoadAndForget() {
+        var selected = 0
+        var closed = 0
+        val tab = ProjectTab.Offloaded("/fake/beta", "beta", sinceMs = System.currentTimeMillis() - 7_200_000L)
+        val label = ProjectTabLabel(tab, selected = false, onSelect = { selected++ }, onClose = { closed++ })
+
+        assertTrue(label.isOffloaded)
+        assertNull("no open project behind it", label.project)
+        assertEquals("beta", label.title)
+        assertTrue(label.toolTipText, "/fake/beta" in label.toolTipText)
+        assertEquals(NamedColorUtil.getInactiveTextColor(), label.textColor())
+        assertFalse(label.isCloseShown)
+
+        click(label)
+        assertEquals(1, selected)
+
+        label.hoverListener.mouseEntered(label, 5, 5)
+        assertTrue(label.isCloseShown)
+        click(label.closeLabel)
+        assertEquals(1, closed)
+    }
+
+    fun testALoadingTabKeepsItsMarkUntilTheStripIsRebuilt() {
+        val tab = ProjectTab.Offloaded("/fake/beta", "beta", sinceMs = 0L)
+        val label = ProjectTabLabel(tab, selected = false, onSelect = {}, onClose = {})
+        assertFalse(label.isLoading)
+        label.isLoading = true
+        assertTrue(label.isLoading)
+        assertTrue("still a bookmark while loading", label.isOffloaded)
     }
 
     private fun mouse(target: Component, id: Int, x: Int, y: Int) {

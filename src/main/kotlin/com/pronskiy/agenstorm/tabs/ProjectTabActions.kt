@@ -19,6 +19,7 @@ import com.intellij.openapi.wm.impl.ProjectFrameHelper
 import com.intellij.ui.awt.RelativePoint
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.tabs.offload.ProjectOffloadService
 import com.pronskiy.agenstorm.tabs.ui.ProjectTabsPanel
 import java.awt.Component
 import java.awt.Point
@@ -26,10 +27,12 @@ import java.awt.datatransfer.StringSelection
 import javax.swing.JFrame
 
 /**
- * Step E1.4. What the tabs do: left click switches to the project's window (mirroring the window bounds first
- * when both windows are ordinary, so the other project appears "in place"), middle click or × closes it (after
- * switching to a neighbour when it is the frame's own project, so focus does not fall to the desktop), "+" opens
- * the recent-projects popup with the stock widget's actions, right click offers Close / Close Others / Copy Path.
+ * Steps E1.4/P2.7. What the tabs do: left click switches to the project's window (mirroring the window bounds
+ * first when both windows are ordinary, so the other project appears "in place"), middle click or × closes it
+ * (after switching to a neighbour when it is the frame's own project, so focus does not fall to the desktop),
+ * "+" opens the recent-projects popup with the stock widget's actions, right click offers Close / Close Others /
+ * Offload Project / Copy Path. On an offloaded bookmark a click loads the project, × or middle click forgets it,
+ * and the menu offers Load / Forget / Copy Path.
  * Everything here runs on the EDT (mouse events); the close itself is posted with `invokeLater` because it tears
  * down the very frame whose toolbar dispatched the click.
  */
@@ -39,11 +42,32 @@ object ProjectTabActions {
 
     /** Connects a strip to the platform. */
     fun wire(panel: ProjectTabsPanel, model: ProjectTabsModel = ProjectTabsModel.getInstance()) {
-        panel.onSelect = { target -> switchTo(target, from = panel.ownerProject) }
-        panel.onClose = { target -> close(target, owner = panel.ownerProject, tabs = model.loadedProjects()) }
+        panel.onSelect = { tab ->
+            when (tab) {
+                is ProjectTab.Loaded -> switchTo(tab.project, from = panel.ownerProject)
+                is ProjectTab.Offloaded -> load(tab, panel)
+            }
+        }
+        panel.onClose = { tab ->
+            when (tab) {
+                is ProjectTab.Loaded -> close(tab.project, owner = panel.ownerProject, tabs = model.loadedProjects())
+                is ProjectTab.Offloaded -> model.forget(tab.key)
+            }
+        }
         panel.onAdd = { anchor -> showAddPopup(anchor) }
-        panel.onContextMenu = { target, component, point -> showContextMenu(target, component, point, owner = panel.ownerProject, tabs = model.loadedProjects()) }
-        panel.onReorder = { target, index -> model.moveTab(ProjectTabsModel.keyOf(target), index) }
+        panel.onContextMenu = { tab, component, point -> showContextMenu(tab, component, point, owner = panel.ownerProject, tabs = model.loadedProjects()) }
+        panel.onReorder = { tab, index -> model.moveTab(tab.key, index) }
+    }
+
+    /** A click on a bookmark (P2.7): the tab shows it is loading, the service opens the project. */
+    fun load(tab: ProjectTab.Offloaded, panel: ProjectTabsPanel? = null) {
+        panel?.tabLabels()?.firstOrNull { it.tab == tab }?.isLoading = true
+        ProjectOffloadService.getInstance().load(tab)
+    }
+
+    /** Offload Project from the context menu (P2.7); the guards still apply and say why when they object. */
+    fun offload(target: Project) {
+        ProjectOffloadService.getInstance().offloadNow(target)
     }
 
     fun switchTo(target: Project, from: Project?) {
@@ -75,9 +99,9 @@ object ProjectTabActions {
             .showUnderneathOf(anchor)
     }
 
-    fun showContextMenu(target: Project, component: Component, point: Point, owner: Project?, tabs: List<Project>) {
+    fun showContextMenu(tab: ProjectTab, component: Component, point: Point, owner: Project?, tabs: List<Project>) {
         JBPopupFactory.getInstance()
-            .createActionGroupPopup(null, contextMenuGroup(target, owner, tabs), DataManager.getInstance().getDataContext(component), JBPopupFactory.ActionSelectionAid.MNEMONICS, true)
+            .createActionGroupPopup(null, contextMenuGroup(tab, owner, tabs), DataManager.getInstance().getDataContext(component), JBPopupFactory.ActionSelectionAid.MNEMONICS, true)
             .show(RelativePoint(component, point))
     }
 
@@ -104,16 +128,27 @@ object ProjectTabActions {
         return group
     }
 
-    fun contextMenuGroup(target: Project, owner: Project?, tabs: List<Project>): DefaultActionGroup = DefaultActionGroup(
-        action(AgenstormBundle.message("tabs.menu.close")) { close(target, owner, tabs) },
-        action(AgenstormBundle.message("tabs.menu.closeOthers")) {
-            for (other in tabs) if (other !== target) close(other, owner, tabs)
-        },
-        action(AgenstormBundle.message("tabs.menu.copyPath")) { copyPath(target) },
-    )
+    fun contextMenuGroup(tab: ProjectTab, owner: Project?, tabs: List<Project>): DefaultActionGroup = when (tab) {
+        is ProjectTab.Loaded -> DefaultActionGroup(
+            action(AgenstormBundle.message("tabs.menu.close")) { close(tab.project, owner, tabs) },
+            action(AgenstormBundle.message("tabs.menu.closeOthers")) {
+                for (other in tabs) if (other !== tab.project) close(other, owner, tabs)
+            },
+            action(AgenstormBundle.message("tabs.menu.offload")) { offload(tab.project) },
+            action(AgenstormBundle.message("tabs.menu.copyPath")) { copyPath(tab.project) },
+        )
+        is ProjectTab.Offloaded -> DefaultActionGroup(
+            action(AgenstormBundle.message("tabs.menu.load")) { load(tab) },
+            action(AgenstormBundle.message("tabs.menu.forget")) { ProjectTabsModel.getInstance().forget(tab.key) },
+            action(AgenstormBundle.message("tabs.menu.copyPath")) { copyPath(tab.key) },
+        )
+    }
 
     fun copyPath(target: Project) {
-        val path = target.basePath ?: return
+        copyPath(target.basePath ?: return)
+    }
+
+    fun copyPath(path: String) {
         CopyPasteManager.getInstance().setContents(StringSelection(path))
     }
 

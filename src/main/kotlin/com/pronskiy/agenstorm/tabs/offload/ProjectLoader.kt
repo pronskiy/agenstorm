@@ -37,6 +37,7 @@ class ProjectLoader(
         val project = open(path)
         if (project == null) {
             LOG.warn("Opening ${tab.name} from ${tab.key} returned nothing; its tab stays")
+            model.refresh()
             notify(AgenstormBundle.message("tabs.offload.load.failed", tab.name))
         }
         return project

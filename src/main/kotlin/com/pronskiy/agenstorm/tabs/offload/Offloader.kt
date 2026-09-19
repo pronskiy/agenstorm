@@ -24,7 +24,7 @@ class Offloader(
     private val onOffloaded: (name: String, reason: Reason) -> Unit,
 ) {
 
-    enum class Reason { IDLE, CAP }
+    enum class Reason { IDLE, CAP, MANUAL }
 
     /** Offloads what the rule picks among [loaded]; returns the keys that were closed. */
     fun sweep(loaded: List<Project>): List<String> {
@@ -48,17 +48,31 @@ class Offloader(
                 continue
             }
             val reason = if ((model.lastActive(key) ?: now) + settings.idleMs <= now) Reason.IDLE else Reason.CAP
-            model.markOffloaded(project, now)
-            if (!close(project)) {
-                model.unmarkOffloaded(key)
-                LOG.warn("Closing $name was refused; its tab stays an ordinary one")
-                continue
-            }
-            closed += key
-            LOG.info("Offloaded $name ($reason)")
-            onOffloaded(name, reason)
+            if (closeMarked(project, now, reason)) closed += key
         }
         return closed
+    }
+
+    /** Offload Project from the context menu: the busy reason when the project must stay, null once it is closed. */
+    fun offload(project: Project): String? {
+        busyReason(project)?.let { return it }
+        closeMarked(project, clock(), Reason.MANUAL)
+        return null
+    }
+
+    /** Mark, close, and take the mark back if the close did not happen. */
+    private fun closeMarked(project: Project, now: Long, reason: Reason): Boolean {
+        val name = project.name
+        val key = keyOf(project)
+        model.markOffloaded(project, now)
+        if (!close(project)) {
+            model.unmarkOffloaded(key)
+            LOG.warn("Closing $name was refused; its tab stays an ordinary one")
+            return false
+        }
+        LOG.info("Offloaded $name ($reason)")
+        onOffloaded(name, reason)
+        return true
     }
 
     private companion object {

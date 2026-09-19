@@ -1,6 +1,5 @@
 package com.pronskiy.agenstorm.tabs
 
-import com.intellij.openapi.project.Project
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.pronskiy.agenstorm.tabs.ui.ProjectTabsPanel
 import java.awt.Component
@@ -60,8 +59,8 @@ class ProjectTabsPanelTest : BasePlatformTestCase() {
 
     fun testClicksReachTheCallbacks() {
         val panel = ProjectTabsPanel(model)
-        val selected = mutableListOf<Project>()
-        val closed = mutableListOf<Project>()
+        val selected = mutableListOf<ProjectTab>()
+        val closed = mutableListOf<ProjectTab>()
         var added: Component? = null
         panel.onSelect = { selected += it }
         panel.onClose = { closed += it }
@@ -72,9 +71,34 @@ class ProjectTabsPanelTest : BasePlatformTestCase() {
         click(label, MouseEvent.BUTTON2)
         click(panel.addButton, MouseEvent.BUTTON1)
 
-        assertEquals(listOf(project), selected)
-        assertEquals(listOf(project), closed)
+        assertEquals(listOf(ProjectTab.Loaded(project)), selected)
+        assertEquals(listOf(ProjectTab.Loaded(project)), closed)
         assertSame(panel.addButton, added)
+    }
+
+    /** Step P2.7: the strip renders the model's offloaded tabs as bookmarks, in stored order, and reports them as such. */
+    fun testAnOffloadedTabIsRenderedAsABookmarkAndReportedAsSuch() {
+        model.markOffloaded(FakeProjectHolder.another(project, "beta"), now = 1L)
+        val panel = ProjectTabsPanel(model)
+        panel.attach()
+        try {
+            val labels = panel.tabLabels()
+            assertEquals(model.tabs().size, labels.size)
+            val beta = labels.single { it.isOffloaded }
+            assertEquals("beta", beta.title)
+            assertNull(beta.project)
+
+            val selected = mutableListOf<ProjectTab>()
+            panel.onSelect = { selected += it }
+            click(beta, MouseEvent.BUTTON1)
+            assertEquals(listOf(ProjectTab.Offloaded("/fake/beta", "beta", 1L)), selected)
+
+            // Forgetting it rebuilds the strip without it.
+            model.forget("/fake/beta")
+            assertTrue(panel.tabLabels().none { it.isOffloaded })
+        } finally {
+            panel.detach()
+        }
     }
 
     private fun click(target: Component, button: Int) {

@@ -13,7 +13,7 @@ class ProjectTabsLayoutTest : BasePlatformTestCase() {
 
     private fun panelWith(tabs: List<Project>, owner: Project = project): ProjectTabsPanel {
         val panel = ProjectTabsPanel(ProjectTabsModel.getInstance())
-        panel.showTabs(tabs)
+        panel.showTabs(tabs.map { ProjectTab.Loaded(it) })
         panel.ownerProject = owner
         return panel
     }

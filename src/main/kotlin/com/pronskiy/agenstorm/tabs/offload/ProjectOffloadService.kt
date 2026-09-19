@@ -5,8 +5,12 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
+import com.intellij.notification.NotificationType
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.wm.IdeFocusManager
+import com.pronskiy.agenstorm.core.AgenstormBundle
+import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.tabs.ProjectTab
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
@@ -70,6 +74,24 @@ class ProjectOffloadService(private val scope: CoroutineScope) {
     /** A click on an offloaded tab (P2.6). */
     fun load(tab: ProjectTab.Offloaded) {
         scope.launch { loader.load(tab) }
+    }
+
+    /** Offload Project from the context menu (P2.7): closes now, or says why the guards object. */
+    fun offloadNow(project: Project) {
+        scope.launch {
+            val busy = withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+                if (project.isDisposed) null else offloader.offload(project)
+            }
+            if (busy != null) {
+                AgenstormNotifications.group()
+                    .createNotification(
+                        AgenstormBundle.message("tabs.offload.notice.title"),
+                        AgenstormBundle.message("tabs.offload.manual.busy", project.name, busy),
+                        NotificationType.INFORMATION,
+                    )
+                    .notify(null)
+            }
+        }
     }
 
     suspend fun sweep(): List<String> = withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {

@@ -11,13 +11,13 @@ class ProjectTabsReorderTest : BasePlatformTestCase() {
 
     private lateinit var panel: ProjectTabsPanel
     private lateinit var tabs: List<Project>
-    private val moves = mutableListOf<Pair<Project, Int>>()
+    private val moves = mutableListOf<Pair<ProjectTab, Int>>()
 
     override fun setUp() {
         super.setUp()
         tabs = listOf(project, FakeProjectHolder.another(project, "beta"), FakeProjectHolder.another(project, "gamma"))
         panel = ProjectTabsPanel(ProjectTabsModel.getInstance())
-        panel.showTabs(tabs)
+        panel.showTabs(tabs.map { ProjectTab.Loaded(it) })
         panel.size = panel.preferredSize
         panel.doLayout()
         panel.onReorder = { p, i -> moves += p to i }
@@ -43,7 +43,7 @@ class ProjectTabsReorderTest : BasePlatformTestCase() {
         assertEquals(3, panel.dropIndex)
         mouse(first, MouseEvent.MOUSE_RELEASED, beyondLast)
 
-        assertEquals(listOf(project to 2), moves)
+        assertEquals(listOf(ProjectTab.Loaded(project) to 2), moves)
         assertNull(panel.dropIndex)
     }
 
@@ -53,7 +53,7 @@ class ProjectTabsReorderTest : BasePlatformTestCase() {
         mouse(last, MouseEvent.MOUSE_DRAGGED, 2)
         mouse(last, MouseEvent.MOUSE_RELEASED, 2)
 
-        assertEquals(listOf(tabs[2] to 0), moves)
+        assertEquals(listOf(ProjectTab.Loaded(tabs[2]) to 0), moves)
     }
 
     fun testANudgeOrADropOnTheOwnPositionChangesNothing() {
