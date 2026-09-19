@@ -126,8 +126,8 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
         while (state.order.size > MAX_REMEMBERED) {
             val closed = state.order.firstOrNull { it !in openKeys && it != key } ?: break
             state.order.remove(closed)
+            state.lastActive.remove(closed)
         }
-        state.lastActive.keys.retainAll { it in state.order }
     }
 
     /** New order = open tabs with [key] at [index], followed by the remembered closed keys. */

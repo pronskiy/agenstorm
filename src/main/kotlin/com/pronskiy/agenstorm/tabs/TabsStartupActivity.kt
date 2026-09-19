@@ -4,13 +4,15 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectCloseListener
 import com.intellij.openapi.startup.ProjectActivity
+import com.pronskiy.agenstorm.tabs.offload.ProjectOffloadService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Steps E1.1/E1.2/E1.6: for every opened project, gives the macOS window tabs back if Agenstorm 1.0 took them
- * away ([NativeTabsRegistryGuard]), adds the project to [ProjectTabsModel], and hides the platform's tab row on
- * this frame ([NativeTabStrip]) so the header stays a single line. Registered as `postStartupActivity`.
+ * Steps E1.1/E1.2/E1.6/P2.5: for every opened project, gives the macOS window tabs back if Agenstorm 1.0 took them
+ * away ([NativeTabsRegistryGuard]), adds the project to [ProjectTabsModel], tells the offload service (which
+ * starts its sweep and checks the cap), and hides the platform's tab row on this frame ([NativeTabStrip]) so the
+ * header stays a single line. Registered as `postStartupActivity`.
  */
 class TabsStartupActivity : ProjectActivity {
 
@@ -20,6 +22,7 @@ class TabsStartupActivity : ProjectActivity {
         ProjectTabsWidgetInstaller.sync()
         NativeTabsRegistryGuard().sync(project)
         ProjectTabsModel.getInstance().projectOpened(project)
+        ProjectOffloadService.getInstance().projectOpened()
         withContext(Dispatchers.EDT) {
             if (!project.isDisposed) NativeTabStrip.install(project)
         }

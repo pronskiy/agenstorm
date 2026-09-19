@@ -82,6 +82,14 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var tabsShowIcons: Boolean = true,
         /** Epic E: widest a tab may grow before the name is ellipsized, in pixels (72–600). */
         var tabsMaxWidth: Int = 220,
+        /** Epic P: a project idle for [projectsOffloadAfterMinutes], or the least recently active beyond [projectsMaxLoaded], is closed with its tab kept. */
+        var projectsOffloadEnabled: Boolean = true,
+        /** Epic P: minutes without its window being active before a project is offloaded (5–1440). */
+        var projectsOffloadAfterMinutes: Int = 120,
+        /** Epic P: how many projects may stay loaded at once (1–50). */
+        var projectsMaxLoaded: Int = 8,
+        /** Epic P: the one-time balloon after the first offload has been shown. */
+        var projectsOffloadNoticeShown: Boolean = false,
         /** Epic E (Phase E3): the Git branch leaves the toolbar and shows bottom-left in the status bar. */
         var branchInStatusBar: Boolean = true,
         /** Epic E (Phase E3): set when Agenstorm hid the bottom navigation bar, so turning the feature off restores it. */
