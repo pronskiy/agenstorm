@@ -9,7 +9,7 @@ import com.pronskiy.agenstorm.core.AgenstormSettings
 import java.awt.Component
 import javax.swing.JComponent
 
-/** Step E2.4: the Project tabs group edits mirror bounds, icons and max width. */
+/** Steps E2.4 / P2.8: the Project tabs group edits mirror bounds, icons, max width and the offload rows. */
 class TabsSettingsPanelTest : BasePlatformTestCase() {
 
     private lateinit var configurable: AgenstormConfigurable
@@ -82,6 +82,26 @@ class TabsSettingsPanelTest : BasePlatformTestCase() {
         named<JBCheckBox>("tabs.branchInStatusBar").isSelected = false
         configurable.apply()
         assertEquals(1, fired)
+    }
+
+    /** Step P2.8: the offload rows — switch, idle minutes, cap — show their defaults and are written on apply. */
+    fun testOffloadRowsShowTheDefaultsAndApplyWritesThem() {
+        assertTrue(named<JBCheckBox>("tabs.offload.enabled").isSelected)
+        assertEquals("120", named<JBTextField>("tabs.offload.minutes").text)
+        assertEquals("8", named<JBTextField>("tabs.offload.maxLoaded").text)
+        assertFalse(configurable.isModified)
+
+        named<JBCheckBox>("tabs.offload.enabled").isSelected = false
+        named<JBTextField>("tabs.offload.minutes").text = "45"
+        named<JBTextField>("tabs.offload.maxLoaded").text = "3"
+        assertTrue(configurable.isModified)
+        configurable.apply()
+
+        val state = AgenstormSettings.getInstance().state
+        assertFalse(state.projectsOffloadEnabled)
+        assertEquals(45, state.projectsOffloadAfterMinutes)
+        assertEquals(3, state.projectsMaxLoaded)
+        assertFalse(configurable.isModified)
     }
 
     private inline fun <reified T : Component> named(name: String): T {

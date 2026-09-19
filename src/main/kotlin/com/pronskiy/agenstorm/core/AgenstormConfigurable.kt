@@ -27,6 +27,7 @@ import com.pronskiy.agenstorm.scratch.ScratchActionInstaller
 import com.pronskiy.agenstorm.tabs.NativeTabStrip
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
+import com.pronskiy.agenstorm.tabs.offload.ProjectOffloadService
 import com.pronskiy.agenstorm.tabs.ProjectTabsWidgetInstaller
 import com.pronskiy.agenstorm.terminal.OpenRequestServer
 import com.pronskiy.agenstorm.terminal.TerminalMaximizeLayout
@@ -109,6 +110,28 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .onApply { ProjectTabsModel.getInstance().refresh() }
                     .applyToComponent { name = "tabs.maxWidth" }
                     .comment(AgenstormBundle.message("settings.tabs.maxWidth.comment"))
+            }
+            // P2.8: offloading. Each row re-runs the rule on apply, so a shorter threshold or a smaller cap acts at once.
+            row {
+                checkBox(AgenstormBundle.message("settings.tabs.offload.enabled"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.projectsOffloadEnabled }, { AgenstormSettings.getInstance().state.projectsOffloadEnabled = it })
+                    .onApply { ProjectOffloadService.getInstance().sweepSoon() }
+                    .applyToComponent { name = "tabs.offload.enabled" }
+                    .comment(AgenstormBundle.message("settings.tabs.offload.enabled.comment"))
+            }
+            row(AgenstormBundle.message("settings.tabs.offload.minutes")) {
+                intTextField(5..1440, 5)
+                    .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.projectsOffloadAfterMinutes }, { AgenstormSettings.getInstance().state.projectsOffloadAfterMinutes = it }))
+                    .onApply { ProjectOffloadService.getInstance().sweepSoon() }
+                    .applyToComponent { name = "tabs.offload.minutes" }
+                    .comment(AgenstormBundle.message("settings.tabs.offload.minutes.comment"))
+            }
+            row(AgenstormBundle.message("settings.tabs.offload.maxLoaded")) {
+                intTextField(1..50, 1)
+                    .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.projectsMaxLoaded }, { AgenstormSettings.getInstance().state.projectsMaxLoaded = it }))
+                    .onApply { ProjectOffloadService.getInstance().sweepSoon() }
+                    .applyToComponent { name = "tabs.offload.maxLoaded" }
+                    .comment(AgenstormBundle.message("settings.tabs.offload.maxLoaded.comment"))
             }
         }
         featureGroup("settings.group.terminalMaximize", "settings.terminal.maximize.enabled", AgenstormSettings.State::terminalMaximizeEnabled, onApply = ::applyTerminalMaximizeSettings) {
