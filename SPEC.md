@@ -40,11 +40,13 @@
 
 ### Current focus
 
-**Now on:** **1.6.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.6.0`). The order was decision 51's: push, the **Marketplace upload** workflow run by hand, the update-server list checked for 1.6.0 before publishing, then the draft published. `release.yml` came back green with *"1.6.0 is being served - this release is installable"* and opened no changelog PR, because `patchChangelog` had already run in the cut commit. **`pluginVersion` stays 1.6.0 for now:** `build.yml` leaves a published release alone, so pushing without a bump drafts nothing and fails nothing; the next number is picked when there is something to release — 1.6.1 for fixes, 1.7.0 for a feature.
+**Now on:** **Epic P — Project tabs, Chrome-style**, added 2026-09-19 at Roman's request, next step **P1.1** (the strip reports minimum < preferred and reads its mode from the width it is granted). Two features, one epic: the strip takes the whole toolbar and gives way by shrinking, then icons, never a chevron; and a project idle for 2 hours, or beyond the cap of 8 loaded projects, is offloaded — closed with everything saved, its tab kept dotted, one click to load it again. The platform facts are verified (decisions 63–65): width comes from the compressing layout for free, there is no public close that skips the veto dialogs so our own guards must run first, and the IDE will not reopen an offloaded project at launch — the strip does. Order: **P1 → P2**, each phase ending in its guardrail run.
 
-**Before that:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
+**Before that:** **1.6.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.6.0`). The order was decision 51's: push, the **Marketplace upload** workflow run by hand, the update-server list checked for 1.6.0 before publishing, then the draft published. `release.yml` came back green with *"1.6.0 is being served - this release is installable"* and opened no changelog PR, because `patchChangelog` had already run in the cut commit. **`pluginVersion` stays 1.6.0 for now:** `build.yml` leaves a published release alone, so pushing without a bump drafts nothing and fails nothing; the next number is picked when there is something to release — 1.6.1 for fixes, 1.7.0 for a feature.
 
-**Next, after Epic O, in the order I would take them:** the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then Epic I (terminal output enhancers, 10 steps), the biggest thing left and worth re-deciding before starting. **Parked by Roman, 2026-09-16 (decision 60):** the Find Action gap in Epic M, skipped for now, and Epic H Phase H2, skipped until there is feedback asking for it.
+**Earlier:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
+
+**Next, after Epic P, in the order I would take them:** the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then Epic I (terminal output enhancers, 10 steps), the biggest thing left and worth re-deciding before starting. **Parked by Roman, 2026-09-16 (decision 60):** the Find Action gap in Epic M, skipped for now, and Epic H Phase H2, skipped until there is feedback asking for it.
 
 **The release is now two deliberate steps (decision 51):** run the **Marketplace upload** workflow by hand, wait for review to land — the update server list is the signal, not the API's `approve` flag — then publish the `1.5.0` draft release. Both are Roman's.
 
@@ -1728,6 +1730,151 @@ cross-read from `idea-262.8665.258-sources.jar`):
 | Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔄 | **Startup is clean, twice.** Sandbox runs 2026-09-14 22:47 and 23:05, 1 156 and 1 015 lines: zero SEVERE/ERROR and zero `Plugin to blame` in both, and `com.pronskiy.agenstorm` in the loaded-plugin list, so the three slots are taken without complaint. The `com.pronskiy.agenstorm` lines are Epic L's and Epic N's armed debug traces; this epic logs nothing. **Neither run exercised anything above** — both windows opened and closed with nobody in them, so this stays 🔄 until a run that types a name |
 | Verifier | Still zero internal API usages | ✅ | Build-enforced since O1.0. Last run 2026-09-16 after decision 61: **Compatible** on PS-262.10315.130 and IU-262.10315.125, no internal-API or override-only section, 65 experimental and 10 deprecated. On the way it caught two override-only calls (`AnAction.actionPerformed`, `ActionGroup.getChildren(AnActionEvent)`) and two deprecated read actions |
 
+### Epic P — Project tabs, Chrome-style: the whole toolbar, idle projects offloaded  ·  after 1.6.0
+
+**Goal:** the strip takes all the room the toolbar can spare and gives way in two steps — shrink, then icons — never a
+chevron; a loaded project that has not been the active window for the idle threshold, or that is beyond the cap on
+loaded projects, is *offloaded*: closed with everything saved, its tab kept as a dotted placeholder, and one click loads
+it again.
+**Success metrics:** 4 projects at 1400 px show every name; 8 at 1200 px shrink evenly before the first icon appears; an
+idle project leaves memory within a minute of crossing the threshold and is back in one click; nothing is ever closed
+while a terminal command or a process runs, and no dialog ever appears for a background project; zero internal API.
+
+Roman, 2026-09-19: "I want tabs open to full width of the top bar, and only collapse to icons when the width is out" —
+"project tabs that were not opened for some time to 'offload' the project. And somehow mark such tabs (transparency, or
+better dotted border). Then by click, project open and loads again" — and, asked how the strip should give way: "Shrink
+evenly, then icons, never chevron - limit max projects open for now". The rest was settled the same day (decisions
+63–65): cap reached → the least recently active project is offloaded; idle default 2 hours, cap default 8; a running
+terminal command blocks offloading; on by default with a one-time balloon.
+
+**The two features are one epic** because the cap is what makes "never a chevron" safe: with at most 8 loaded projects
+the icon-only strip is 8 × 32 px, which fits any toolbar, and offloaded tabs are bounded too (P2.1).
+
+Platform facts (verified against build 262, 2026-09-19, by bytecode in `intellij.platform.ide.impl.jar` and the
+terminal plugin's jars):
+
+- **Toolbar width needs no measuring.** `MainToolbar` (internal, never named by us) lays `MainToolbarLeft` /
+  `MainToolbarCenter` / `MainToolbarRight` out with `HorizontalLayout` and a `setPreferredSizeFunction` that distributes
+  the toolbar's own width across the three toolbars through `CompressingLayoutStrategy.distributeSize`: every component
+  starts at its **minimum** width and the narrowest is raised first, water-filling, each capped at its **preferred**
+  width; leftover beyond preferred is not distributed. `CompressingLayoutStrategyKt.getKind` calls a child resizable iff
+  `minimumSize.width < preferredSize.width`; a child whose minimum equals its preferred locks its full width in — which
+  is what `ProjectTabsPanel` does today (`getMinimumSize = preferredSize`), the reason E2.1 needed the half-window cap.
+  So: preferred = every tab at natural width, minimum = every tab as an icon, and the mode is read from the width
+  actually granted in `doLayout`. The stock project widget does exactly this (`AbstractToolbarComboUI.getMinimumSize`
+  returns preferred minus the text it can cut) and truncates at paint time. No loop: preferred is content-driven and
+  the mode never feeds back into it (E2.1's loop came from reading the parent's width). `ActionToolbar.getLayoutStrategy`
+  / `setLayoutStrategy` and `ToolbarLayoutStrategy` are public; `CompressingLayoutStrategy` is internal and not needed.
+  `getMaximumSize` is never consulted by this strategy.
+- **There is no public "close without asking".** `ProjectManager.closeAndDispose(project)` (public) = save
+  (`FileDocumentManager.saveAllDocuments` + `SaveAndSyncHandler.saveSettingsUnderModalProgress`), then `canClose` —
+  the `projectCloseHandler` EP, every `VetoableProjectManagerListener.canClose`, every
+  `ProjectManagerListener.canCloseProject` — then close. `ProjectManagerEx.forceCloseProject` is `@ApiStatus.Internal`
+  (its two-argument overload `@TestOnly`), `saveAndForceCloseProject` internal too. Two vetoes show **modal dialogs**:
+  `RunContentManagerImpl$CloseListener.closeQuery` when a `ProcessHandler` is alive (and `BuildContentManagerImpl`
+  likewise), and the terminal's `TerminalProcessesClosingNotifier` (`intellij.terminal.frontend.jar`,
+  `VetoableProjectManagerListener`) when a tab has a running command — `TerminateRemoteProcessDialog`, consent cached
+  one minute. `ProjectManagerEx.canClose` is public but **is** that dialog path, so it cannot be the pre-check. Must run
+  on the EDT outside a write action (`assertWriteIntentReadAccess`). A runtime close drops the project from the
+  platform's reopen-at-launch set (`RecentProjectsManagerBase$MyProjectListener.projectClosed` → `setOpened(false)`,
+  skipped only while `isExitInProgress`); re-marking needs the internal `getProjectMetaInfo`, so the strip owns that
+  memory itself.
+- **Busy signals, all public:** `ExecutionManager.getInstance(project).getRunningProcesses(): Array<ProcessHandler>`
+  (filter `!isProcessTerminated`); `TerminalToolWindowManager.getInstance(project).getTerminalWidgets():
+  Set<TerminalWidget>` with `TerminalWidget.isCommandRunning()` (`@ApiStatus.Experimental` default method) and, for the
+  classic widget, `ShellTerminalWidget.asShellJediTermWidget(widget)?.hasRunningCommands()`. `getRunningDescriptors`
+  and the old `getWidgets()` are internal — not used.
+- **Reopen:** `ProjectUtil.openOrImportAsync(Path, OpenProjectTask)` (suspend, public; the class is not internal — §7's
+  Epic G row) with `OpenProjectTask.build { forceOpenInNewFrame = true }` so the "this window or a new one?" dialog never
+  shows; on macOS the new frame joins the tab group like any other. Name and icon of a closed project by path:
+  `RecentProjectsManagerBase.getInstanceEx().getProjectName(String)` / `getDisplayName(String)` /
+  `getProjectIcon(Path, true, 16, name)` (the last already used by `ProjectTabLabel`), all public.
+- **Activity:** `com.intellij.ide.FrameStateListener` (app topic, `onFrameActivated(IdeFrame)`, `IdeFrame.getProject()`),
+  public; `IdeFocusManager.getGlobalInstance().getLastFocusedFrame()` names the active project. The platform keeps its
+  own `RecentProjectsManagerBase.getActivationTimestamp(path)`, but a timestamp the model owns is simpler to test and
+  survives a restart the same way.
+
+#### Phase P1 — The strip takes the toolbar
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| P1.1 | `ProjectTabsPanel` sizes: `getPreferredSize` = the FULL plan (natural widths, `tabsMaxWidth` cap, no window cap); `getMinimumSize` = the COMPACT plan (every tab 32 px); `availableWidthProvider`, `availableWidthFor` and the half-window rule deleted; `doLayout` picks the mode from `width` alone | 🔲 | |
+| P1.2 | SHRUNK mode between FULL and COMPACT: the widest tabs are cut first, water-filling, so every shrunk tab ends at the same width while short names keep theirs — continuous as the window narrows, without the jump Chrome's equal widths would give; floor `MIN_WIDTH` (72); the panel places labels at the shrunk width, `JBLabel` ellipsizes the name, the × stays | 🔲 | |
+| P1.3 | Chevron removed: `Mode.OVERFLOW`, `moreButton`, `hiddenProjects`, `onOverflow`, `ProjectTabActions.showOverflowPopup` / `overflowGroup`, `tabs.more.tooltip`. Below the minimum the toolbar clips the strip, which the P2 cap keeps out of reach | 🔲 | |
+| P1.4 | `ProjectTabsOverflowTest` → `ProjectTabsLayoutTest`: FULL / SHRUNK / COMPACT chosen by width; minimum < preferred; shrunk tabs equal and ≥ 72; short names untouched; no chevron at any width. README bullet + CHANGELOG | 🔲 | |
+
+**Steps (detail):**
+
+- **P1.1 — Sizes.** `plan(available)` stays the planner, but it is called from `doLayout` with `width` and from the two
+  size getters with `Int.MAX_VALUE` (FULL) and `0` (COMPACT). Nothing reads the parent, the window or the toolbar.
+- **P1.2 — Shrink.** Given `available`, `fixed` (the "+" button and separators) and the tabs' natural widths `w_i`:
+  find the largest level `L ≥ MIN_WIDTH` with `Σ min(w_i, L) ≤ available − fixed`; a tab gets `min(w_i, L)`. If no
+  `L ≥ MIN_WIDTH` fits, the mode is COMPACT. `ProjectTabLabel` keeps its natural `preferredSize`; the panel calls
+  `setBounds` with the planned width, and the label's `BorderLayout` gives the name whatever is left, which `JBLabel`
+  draws with an ellipsis.
+- **P1.3 — No chevron.** The plan has two modes fewer to test and one popup less to wire. `ProjectTabsOverflowTest`'s
+  chevron cases go; its FULL/COMPACT cases move to `ProjectTabsLayoutTest`.
+
+**Exit guardrails — Phase P1**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Full width | 4 projects at 1400 px: every name readable, the run widget and the right-hand group intact, the strip ends before the centre widget | 🔲 | |
+| Shrink | 8 projects at 1200 px: names shortened evenly, short names untouched, no icons yet | 🔲 | |
+| Icons | At 700 px every tab is an icon, the "+" is still there, nothing is hidden behind a chevron | 🔲 | |
+| Frame floor | The window still shrinks to the platform's own minimum width — the strip's minimum does not raise it | 🔲 | |
+| Steady | No relayout churn with the strip on: CPU idle, no flicker while resizing (the E2.1 loop) | 🔲 | |
+| Log clean | No `com.pronskiy.agenstorm` exceptions after resizing across all three modes | 🔲 | |
+
+#### Phase P2 — Idle projects are offloaded
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| P2.1 | `tabs/ProjectTab.kt`: `sealed class ProjectTab(key, name)` — `Loaded(project)` / `Offloaded(key, name, sinceMs)`. `ProjectTabsModel.State` gains `offloaded: MutableList<OffloadedEntry>` (key, name, since) and `lastActive: MutableMap<String, Long>`; `tabs(): List<ProjectTab>` merges both by stored order; `markOffloaded(project, now)` / `unmarkOffloaded(key)` / `forget(key)` / `touch(key, now)` / `lastActive(key)`; `projectOpened` drops the offloaded entry and touches; a user close needs nothing — not open and not in `offloaded` is gone; at most `MAX_OFFLOADED` (12) entries, the oldest forgotten first. `Listener.tabsChanged(List<ProjectTab>)` | 🔲 | |
+| P2.2 | `tabs/offload/TabsFrameListener : FrameStateListener` (`applicationListeners`) → `touch` on `onFrameActivated` | 🔲 | |
+| P2.3 | `tabs/offload/OffloadPolicy`, pure: `(loaded: List<Candidate(key, lastActive, busy)>, activeKey, now, idleMs, maxLoaded) → List<String>` — idle ones first, then the least recently active while `loaded − chosen > maxLoaded`; never the active project, never a busy one, never the last loaded project | 🔲 | |
+| P2.4 | `OffloadGuard` EP `com.pronskiy.agenstorm.offloadGuard` (`busyReason(project): String?`, dynamic, the `commitContextProvider` shape): `RunningProcessesGuard` (`plugin.xml`, `ExecutionManager.getRunningProcesses`), `TerminalCommandGuard` (`agenstorm-terminal.xml`, `TerminalWidget.isCommandRunning()` + the classic `hasRunningCommands()`). The guards are the whole reason no dialog can appear | 🔲 | |
+| P2.5 | `tabs/offload/ProjectOffloadService` (`@Service(APP)`, `class(scope: CoroutineScope)`): a 60 s loop started from `TabsStartupActivity`, plus `onProjectOpened` for the cap; runs the policy on `Dispatchers.EDT` under `ModalityState.nonModal()`; per key: `markOffloaded` → `closeAndDispose` → `unmarkOffloaded` when it returns `false`. First offload ever → one balloon (`projectsOffloadNoticeShown`: which project, why, "click its tab to load it again", a Settings link). INFO per offload with its reason (idle / cap), DEBUG per skip with the guard's reason | 🔲 | |
+| P2.6 | Load: `ProjectTabActions.load(tab)` → `scope.launch { ProjectUtil.openOrImportAsync(Path.of(key), OpenProjectTask.build { forceOpenInNewFrame = true }) }`; `null` or a missing directory → balloon + `forget`. A project opened any other way ("+", the recent list, `open`, the CLI) that has an offloaded tab turns it solid in place through `projectOpened` | 🔲 | |
+| P2.7 | UI: `ProjectTabLabel(tab: ProjectTab, …)`; offloaded → a 1 px dotted rounded border in the inactive text colour, the icon through `IconLoader.getTransparentIcon(icon, 0.5f)`, the name in the inactive colour, tooltip "path — offloaded 2 h ago, click to load", × and middle click = forget. Context menu: loaded → Close, Close Others, **Offload Project** (respects the guards; busy → balloon with the reason), Copy Path; offloaded → Load, Forget, Copy Path. Drag-reorder works for both; Next/Prev/Close tab and `neighbourOf` see loaded tabs only | 🔲 | |
+| P2.8 | Settings: `projectsOffloadEnabled` (true), `projectsOffloadAfterMinutes` (120, 5–1440), `projectsMaxLoaded` (8, 1–50), `projectsOffloadNoticeShown`; three rows in the Project tabs group; apply re-runs the policy | 🔲 | |
+| P2.9 | Docs: README (the "narrow toolbar" bullet rewritten; an "Offloaded projects" subsection; the options paragraph), CHANGELOG (two Added entries, with the two trades as sub-bullets: an offloaded project is not reopened by the IDE at launch but comes back as a dotted tab; a running command or process keeps a project loaded), CLAUDE.md inventory (`tabs/offload/`, the EP, the settings) | 🔲 | |
+
+**Steps (detail):**
+
+- **P2.1 — Model.** The order list keeps working by key for both kinds, so a project that is offloaded and loaded again
+  never moves. `OffloadedEntry` stores the name so the tab reads right even if the recent list forgets the path.
+- **P2.3 — Policy.** Idle first (every candidate whose `lastActive + idleMs ≤ now`), then the cap: sort the remaining
+  loaded candidates by `lastActive` ascending and take from the front until `loaded − chosen ≤ maxLoaded`. Busy and
+  active candidates are skipped in both passes; if only one loaded project would remain, stop there. With the feature
+  off the policy returns nothing.
+- **P2.4 — Guards.** `busyReason` returns a short user-facing string ("a command is running in the terminal", "a process
+  is running") or null. Both guards take an injectable source in their constructor so the tests never start a process.
+- **P2.5 — Service.** The loop is a `while (isActive) { delay(60.seconds); sweep() }` in the injected scope; `sweep()`
+  gathers candidates on the EDT (`ProjectManager.openProjects`, `lastFocusedFrame?.project`, the guards), asks the
+  policy, and closes in stored-order sequence, re-checking the guard right before each close. A `closeAndDispose` that
+  returns `false` means a veto after all — the entry is unmarked and the reason logged at WARN, once per project.
+- **P2.6 — Load.** `openOrImportAsync` runs in the same scope; the tab shows a "loading" state (the dotted border
+  stays, the icon at full alpha) until `projectOpened` arrives or the call returns `null`.
+- **P2.7 — Marker.** The dotted border is `BasicStroke(1f, CAP_BUTT, JOIN_MITER, 1f, floatArrayOf(2f, 2f), 0f)` on the
+  same rounded rectangle the selected fill uses, in `NamedColorUtil.getInactiveTextColor()`; nothing new in the theme.
+
+**Exit guardrails — Phase P2** (`runIde` with the idle threshold set to 5 minutes and the cap to 2)
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Idle | A project left in the background turns dotted within ~6 minutes, its memory is released, the balloon shows once, the active project is untouched | 🔲 | |
+| Cap | Opening a third project offloads the least recently active of the other two | 🔲 | |
+| Terminal guard | `sleep 600` in the idle project's terminal keeps it loaded, the DEBUG log says why; after Ctrl+C it goes within a minute | 🔲 | |
+| Process guard | A running PHP script keeps its project loaded and **no dialog ever appears** | 🔲 | |
+| Load | Clicking a dotted tab opens the project in the same position, in the same window group, and the tab is solid again | 🔲 | |
+| Forget | × on a dotted tab removes it; the project is still under "+" | 🔲 | |
+| Restart | Dotted tabs survive a restart as dotted; the IDE reopens only the loaded projects | 🔲 | |
+| Off switch | Feature off: nothing is offloaded any more; existing dotted tabs stay and still load on click | 🔲 | |
+| Log clean + verifier | No plugin exceptions; `verifyPlugin` Compatible with zero internal usages, the experimental count moved by `isCommandRunning` only | 🔲 | |
+
+---
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
@@ -1844,6 +1991,9 @@ cross-read from `idea-262.8665.258-sources.jar`):
 | 60 | 2026-09-16 | **Two roadmap items are parked:** the Find Action gap in Epic M is skipped for now, and Epic H Phase H2 is skipped until there is feedback asking for it | Asked what comes after Epic O, Roman set both aside. The Find Action gap is a known and documented limitation of an off-by-default feature — while `markdownHideLayoutSwitcher` is on, the layout actions are hidden everywhere, so the preview cannot be reached — and it stays documented rather than fixed; Epic M's *Reachable* guardrail is marked ⏸️ with it. Phase H2 (the rounded code-fence card, language chip and copy action) was the smallest unbuilt thing left, but nobody has asked for it, so it waits for someone to. Neither is cut: both keep their rows and can be picked up as they stand | Roman |
 | 61 | 2026-09-16 | **The row a new name is typed into is a real, temporary node in the tree**, added by a `treeStructureProvider` and placed by the tree's own comparator directly below the clicked row. Supersedes decision 58, and the half of decision 52 that accepted a covered row | Roman, with a screenshot of the field sitting on top of the row below: "instead it should actually 'insert' the node in the project tree temporarily". Root cause of 58's failure, read in `DefaultTreeUI.getNodeDimensions`: `int height = getRowHeight(); if (height <= 0) height = size.height;` — a row takes the renderer's height only when the tree has no fixed row height, and the project tree has one, so no renderer can make a row taller. Two approaches that could not work, so the third was put to Roman before it was written. **Mechanism:** `InlinePlaceholderProvider` (a `TreeStructureProvider`, public; only its `EP` field is internal and XML registration never touches it) adds one `PlaceholderNode` to the target folder while the field is open; `AbstractProjectViewPane.updateFrom(element, forceResort, updateStructure)` — the overload the platform documents as the one for plugins — rebuilds that folder; `InlineRowSession` waits on the tree model for the row and draws the field on it. The placeholder is cleared before the commit runs, so the refresh that brings in the new file no longer builds it. **Position, Roman's call** between first child, last child and directly below: `GroupByTypeComparator` compares sort order, manual-order key, folders-on-top weight, the active mode's key, then weight and `toString()`. The placeholder borrows every one of the clicked node's keys and loses only the last comparison — its name is the clicked name plus the lowest character — so it lands directly below the clicked file sorted by name *and* by type (`InlinePlaceholderTest`, with a `shmest.md2` sibling next to it). Under a clicked folder it pins itself first, from a menu last, through `@Experimental` `NodeSortOrder`: the verifier's experimental count moved 62 → 65 for exactly that and nothing else. Duplicate uses the same row, directly under the original. **Lesson kept: "the layout honours preferred sizes" is a claim about one UI class, and it has to be read in that class** | Roman |
 | 62 | 2026-09-16 | **The inline rename answers the automatic-renaming question the way OK would, without the dialog**, and the inline field commits through `invokeLater` | Two things the guardrail pass surfaced, which Roman asked to fix. **The dialog:** renaming `Client.php`, which holds class `Client`, stopped at PhpStorm's `AutomaticRenamingDialog` — the follow-up decision 53 had kept. Offered the class following silently, the file alone (which breaks PSR-4) or the dialog, Roman took the first. `AcceptingRenameProcessor` overrides `RenameProcessor.showAutomaticRenamingDialog`, the protected hook the platform uses for exactly this in test mode, and applies what OK applies when nobody touches a checkbox: `AutomaticRenamingDialog` pre-checks every row when `isSelectedByDefault()`, none otherwise, and OK keeps the checked. All four PhpStorm renamers — class in file, inheritors, field accessors, parameters — return true (read with `javap -c` in `php.jar`), so the class follows. The stock guard is kept: with `RENAME_SHOW_AUTOMATIC_RENAMING_DIALOG` off the renamers do not run, and which factories run is still the user's own settings. Verified in the test IDE: class, `require_once`, return type and `new` all renamed, no dialog, one undo step. **The SEVEREs:** four `TransactionGuard` *Write-unsafe context* errors blamed Agenstorm when the commit ran from a robot script or a focus listener; the commit now reaches the model through `Application.invokeLater` with the tree's modality, the remedy the error message itself names, and the same steps re-run logged none. The empty field no longer opens flagged red either | Roman |
+| 63 | 2026-09-19 | **The tab strip takes the toolbar by reporting a minimum width smaller than its preferred width, not by measuring anything; the chevron is removed and a cap on loaded projects replaces it** | Roman: "I want tabs open to full width of the top bar, and only collapse to icons when the width is out" and, on how to give way, "Shrink evenly, then icons, never chevron - limit max projects open for now". The mechanism was read in `MainToolbar`'s bytecode: its `HorizontalLayout` asks a `setPreferredSizeFunction` that distributes the toolbar's width across the three groups with `CompressingLayoutStrategy.distributeSize`, water-filling from each component's minimum up to its preferred, and `getKind` treats a component as resizable only when `minimumSize.width < preferredSize.width`. The strip reports minimum = preferred today, so it is rigid, which is why E2.1 ended up capping itself at half the window — and why measuring the parent looped: the left group is sized from its children. Preferred = natural, minimum = icons, mode from the granted width: no reading of the parent, no loop, and the stock project widget does the same. Shrinking is water-filling too (widest first, all shrunk tabs end equal, short names untouched), chosen over Chrome's equal widths because it is continuous as the window narrows. With at most 8 loaded projects the icon strip is 8 × 32 px, so the chevron has nothing left to do | Roman |
+| 64 | 2026-09-19 | **Offloading is `ProjectManager.closeAndDispose` after Agenstorm's own guards; running run/debug processes block it as well as terminal commands, and the terminal guard is an extension registered in `agenstorm-terminal.xml`** | Roman chose only "a terminal with a running command" as a blocker — the agent case. The platform adds the second one: the only non-internal close is `closeAndDispose`, which walks every `VetoableProjectManagerListener`, and `RunContentManagerImpl`'s listener shows a modal "terminate?" dialog when a process is alive, as the terminal's `TerminalProcessesClosingNotifier` does for a running command. `forceCloseProject`, which skips the vetoes, is `@ApiStatus.Internal`; `ProjectManagerEx.canClose` is public but is the dialog path itself. So a project with a live process is skipped rather than closed, because the alternatives are a dialog popping up for a background project or killing the process unasked. The guards are an EP of our own (`com.pronskiy.agenstorm.offloadGuard`, the `commitContextProvider` shape) so that `tabs/` keeps its rule of importing only `core/`: the terminal-aware guard lives with the terminal's optional-dependency file, exactly as `tabs/git/` lives with `agenstorm-git.xml` | Roman |
+| 65 | 2026-09-19 | **Defaults: 2 hours idle, 8 loaded projects, on for everyone with a one-time balloon; the marker is a dotted border and a dimmed icon; offloaded tabs are bookmarks — 12 kept, oldest forgotten first — and the strip, not the IDE, brings them back after a restart** | Roman picked 2 hours over 30 minutes and 8 hours, 8 over 3 and 5, "dotted border" over transparency, and on-by-default with the balloon over off-by-default, knowing the feature closes projects on its own for Marketplace users who never asked. The balloon follows the `terminalOpenNoticeShown` pattern: once, naming the project and the reason, with the settings link. The bookmark bound exists because "never a chevron" (decision 63) needs the icon strip to fit, and offloaded tabs share it: 8 loaded + 12 offloaded icons is 680 px, still inside a laptop toolbar. The restart half is a platform fact taken openly: a runtime close clears the project's `opened` flag in `RecentProjectsManagerBase`, and re-setting it needs the internal `getProjectMetaInfo`, so the IDE will not reopen an offloaded project at launch — the strip's own persisted list shows it dotted instead, one click from loaded | Roman |
 
 ---
 
@@ -1867,6 +2017,8 @@ cross-read from `idea-262.8665.258-sources.jar`):
 - [ ] **Auto-hiding notification balloons — feasibility settled 2026-09-10, nothing built.** Roman asked whether notification popups can be hidden automatically. The zero-code half: Settings | Appearance & Behavior | Notifications carries a global "Display balloon notifications" (`NotificationsConfigurationImpl.SHOW_BALLOONS`) and a per-group display type (`No popups` / `Balloon` / `Sticky balloon` / `Tool window`); `No popups` still logs the entry to the Notifications tool window, and `Balloon` fades by itself while `Sticky balloon` does not — which is the part that actually annoys. The plugin half is all public API: `NotificationsConfiguration.setDisplayType(groupId, NONE)` (the abstract class carries no ApiStatus at all, and `NotificationsConfigurationImpl` carries only `@State`, so neither is internal — same reasoning as the `ProjectUtil` row above), and for a timed auto-dismiss a `Notifications.TOPIC` subscriber calling `Notification.hideBalloon()` (popup gone, entry kept) or `expire()` (entry dropped) after a delay. Two traps to design around: `Notifications.TOPIC` is declared `BroadcastDirection.NONE` and `Notifications.Bus.doNotify` publishes project-scoped notifications on the project bus and the rest on the app bus, so a listener needs both an `applicationListeners` entry and a per-project subscription or it sees half of them; and at `notify()` time the balloon does not exist yet (`getBalloon()` is null), so the hide must be scheduled, never inline — "never show at all" belongs to the display type instead. The platform's own timer (`BalloonLayoutData.fadeoutTime` → `BalloonImpl.startSmartFadeoutTimer`) sits behind `NotificationsManagerImpl` and is not reachable, so a plugin schedules its own hide rather than retuning theirs. Roman chose the timed auto-dismiss the same day; it is **Epic L**, and the platform facts moved there.
 - [x] **The right tool window bar — settled 2026-09-13 as a trade, not a win.** Hiding the stripe icons in place is internal-API-only in build 262 (decision 48); Epic N ships the re-anchoring version instead (decision 49), which empties the bar but moves those windows to the left. **Still worth asking JetBrains** for a public per-side lever — a counterpart to `UISettings.hideToolStripes`, or a non-internal "remove from sidebar" — which would let the windows stay on the right with no icons; the same route produced IJPL-221866 for Epic K. Also worth a re-check on 263: the New UI's stripe code is still moving (`setShowStripeButton` already a no-op, `setVisibleOnLargeStripe` dead with zero callers).
 - [ ] **`Markdown.Toolbar.Right` looks dead in build 262 — found while surveying Epic M, 2026-09-12.** The Markdown plugin declares the group in its `plugin.xml` (holding `AutoScrollAction`), and `Agenstorm.ToggleLiveMarkup` is added to it, but the id is referenced by **no class in the whole distribution**: every jar under `lib/`, `plugins/*/lib/` and `plugins/*/lib/modules/` was scanned for the string and the only hits are that `plugin.xml` and the searchable-options index. `MarkdownEditorWithPreview` overrides neither `createLeftToolbarActionGroup` nor `createRightToolbarActionGroup`, which are what `TextEditorWithPreview` would consult, and its only overrides are `onLayoutChange`, `requestFocusForPreview` and the auto-scroll pair. If that is right, the Live Markup button never renders in the editor toolbar and only the context-menu entry works — which would also make `settings.markdown.bullets.comment` ("The Live Markup button in a Markdown editor's toolbar…") untrue. **Needs one look in the sandbox before anything is changed**; the fix, if confirmed, is to move the action to a group that is alive.
+- [ ] **Epic P on Windows/Linux:** nothing in offloading is macOS-specific — a project window is closed and reopened the same way, it just does not join a tab group. Default: available wherever the tabs are (the same stance as the Epic E row above).
+- [ ] **Epic P, what counts as active:** P2.2 records frame activation only, so a project you type in for two hours without ever leaving it is "active" by the last activation, which is fine, and a project you *look at* through a second monitor without clicking it is not. Revisit after a week of use; the `IdeEventQueue` idle listener is the public lever if typing needs to count.
 
 ---
 
