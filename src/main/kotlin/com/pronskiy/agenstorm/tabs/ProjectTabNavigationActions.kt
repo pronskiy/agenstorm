@@ -50,6 +50,6 @@ class CloseProjectTabAction : DumbAwareAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        ProjectTabActions.close(project, owner = project, tabs = ProjectTabsModel.getInstance().loadedProjects())
+        ProjectTabActions.close(project, owner = project, tabs = ProjectTabsModel.getInstance().tabs())
     }
 }

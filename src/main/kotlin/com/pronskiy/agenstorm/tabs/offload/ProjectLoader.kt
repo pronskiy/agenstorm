@@ -5,6 +5,7 @@ import com.intellij.ide.impl.ProjectUtil
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.tabs.ProjectTab
@@ -24,7 +25,18 @@ class ProjectLoader(
     private val open: suspend (Path) -> Project? = { ProjectUtil.openOrImportAsync(it, OpenProjectTask.build().withForceOpenInNewFrame(true)) },
     private val exists: (Path) -> Boolean = Files::isDirectory,
     private val notify: (String) -> Unit = ::balloon,
+    private val close: suspend (Project) -> Boolean = { ProjectManager.getInstance().closeAndDispose(it) },
 ) {
+
+    /**
+     * Loads [tab] and, once its project is open, closes [toClose] — the way the frame's own project is closed
+     * when only bookmarks are left, so there is a window at every moment. Nothing is closed when the load failed.
+     */
+    suspend fun loadThenClose(tab: ProjectTab.Offloaded, toClose: Project): Project? {
+        val opened = load(tab) ?: return null
+        if (!toClose.isDisposed && !close(toClose)) LOG.warn("Closing ${toClose.name} after loading ${tab.name} was refused")
+        return opened
+    }
 
     suspend fun load(tab: ProjectTab.Offloaded): Project? {
         val path = Path.of(tab.key)

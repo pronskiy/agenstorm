@@ -50,12 +50,12 @@ object ProjectTabActions {
         }
         panel.onClose = { tab ->
             when (tab) {
-                is ProjectTab.Loaded -> close(tab.project, owner = panel.ownerProject, tabs = model.loadedProjects())
+                is ProjectTab.Loaded -> close(tab.project, owner = panel.ownerProject, tabs = model.tabs())
                 is ProjectTab.Offloaded -> model.forget(tab.key)
             }
         }
         panel.onAdd = { anchor -> showAddPopup(anchor) }
-        panel.onContextMenu = { tab, component, point -> showContextMenu(tab, component, point, owner = panel.ownerProject, tabs = model.loadedProjects()) }
+        panel.onContextMenu = { tab, component, point -> showContextMenu(tab, component, point, owner = panel.ownerProject, tabs = model.tabs()) }
         panel.onReorder = { tab, index -> model.moveTab(tab.key, index) }
     }
 
@@ -85,9 +85,24 @@ object ProjectTabActions {
             !NativeTabStrip.isTabbed(from) &&
             !NativeTabStrip.isTabbed(target)
 
-    fun close(target: Project, owner: Project?, tabs: List<Project>) {
+    /**
+     * Closes [target]. When it is the frame's own project the strip first moves to a neighbour so focus does not
+     * fall to the desktop: the nearest loaded tab if there is one, else the nearest bookmark, which is loaded
+     * first and the old project closed only once the new one is open — closing first would leave no window at
+     * all (Roman, 2026-09-19).
+     */
+    fun close(target: Project, owner: Project?, tabs: List<ProjectTab>) {
         if (target.isDisposed) return
-        if (target === owner) neighbourOf(target, tabs)?.let { switchTo(it, from = target) }
+        if (target === owner) {
+            when (val neighbour = neighbourTabOf(target, tabs)) {
+                is ProjectTab.Loaded -> switchTo(neighbour.project, from = target)
+                is ProjectTab.Offloaded -> {
+                    ProjectOffloadService.getInstance().loadThenClose(neighbour, target)
+                    return
+                }
+                null -> Unit
+            }
+        }
         ApplicationManager.getApplication().invokeLater({
             if (!target.isDisposed) ProjectManager.getInstance().closeAndDispose(target)
         }, { target.isDisposed })
@@ -99,19 +114,24 @@ object ProjectTabActions {
             .showUnderneathOf(anchor)
     }
 
-    fun showContextMenu(tab: ProjectTab, component: Component, point: Point, owner: Project?, tabs: List<Project>) {
+    fun showContextMenu(tab: ProjectTab, component: Component, point: Point, owner: Project?, tabs: List<ProjectTab>) {
         JBPopupFactory.getInstance()
             .createActionGroupPopup(null, contextMenuGroup(tab, owner, tabs), DataManager.getInstance().getDataContext(component), JBPopupFactory.ActionSelectionAid.MNEMONICS, true)
             .show(RelativePoint(component, point))
     }
 
-    /** The tab that takes over when [target] closes: the one after it, else the one before it, else none. */
-    fun neighbourOf(target: Project, tabs: List<Project>): Project? {
-        val others = tabs.filter { it !== target && !it.isDisposed }
-        if (others.isEmpty()) return null
-        val index = tabs.indexOf(target)
-        if (index < 0) return others.first()
-        return tabs.drop(index + 1).firstOrNull { it in others } ?: tabs.take(index).lastOrNull { it in others }
+    /**
+     * The tab that takes over when [target] closes: the loaded one after it, else the loaded one before it, else
+     * the bookmark after it, else the one before it, else none. Loaded first because switching is instant and
+     * costs no memory; a bookmark only when nothing is loaded any more.
+     */
+    fun neighbourTabOf(target: Project, tabs: List<ProjectTab>): ProjectTab? {
+        val index = tabs.indexOfFirst { it is ProjectTab.Loaded && it.project === target }
+        val after = if (index < 0) tabs else tabs.drop(index + 1)
+        val before = if (index < 0) emptyList() else tabs.take(index)
+        fun nearest(accept: (ProjectTab) -> Boolean) = after.firstOrNull(accept) ?: before.lastOrNull(accept)
+        return nearest { it is ProjectTab.Loaded && it.project !== target && !it.project.isDisposed }
+            ?: nearest { it is ProjectTab.Offloaded }
     }
 
     /**
@@ -128,11 +148,11 @@ object ProjectTabActions {
         return group
     }
 
-    fun contextMenuGroup(tab: ProjectTab, owner: Project?, tabs: List<Project>): DefaultActionGroup = when (tab) {
+    fun contextMenuGroup(tab: ProjectTab, owner: Project?, tabs: List<ProjectTab>): DefaultActionGroup = when (tab) {
         is ProjectTab.Loaded -> DefaultActionGroup(
             action(AgenstormBundle.message("tabs.menu.close")) { close(tab.project, owner, tabs) },
             action(AgenstormBundle.message("tabs.menu.closeOthers")) {
-                for (other in tabs) if (other !== tab.project) close(other, owner, tabs)
+                for (other in tabs.filterIsInstance<ProjectTab.Loaded>()) if (other.project !== tab.project) close(other.project, owner, tabs)
             },
             action(AgenstormBundle.message("tabs.menu.offload")) { offload(tab.project) },
             action(AgenstormBundle.message("tabs.menu.copyPath")) { copyPath(tab.project) },

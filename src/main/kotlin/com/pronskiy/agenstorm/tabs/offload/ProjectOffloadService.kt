@@ -35,7 +35,12 @@ import kotlin.time.Duration.Companion.seconds
 class ProjectOffloadService(private val scope: CoroutineScope) {
 
     private val started = AtomicBoolean(false)
-    private val loader = ProjectLoader(ProjectTabsModel.getInstance())
+    private val loader = ProjectLoader(
+        model = ProjectTabsModel.getInstance(),
+        close = { project ->
+            withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) { ProjectManager.getInstance().closeAndDispose(project) }
+        },
+    )
 
     private val offloader = Offloader(
         model = ProjectTabsModel.getInstance(),
@@ -74,6 +79,11 @@ class ProjectOffloadService(private val scope: CoroutineScope) {
     /** A click on an offloaded tab (P2.6). */
     fun load(tab: ProjectTab.Offloaded) {
         scope.launch { loader.load(tab) }
+    }
+
+    /** The frame's own project is closed with only bookmarks left: load [tab], then close [toClose]. */
+    fun loadThenClose(tab: ProjectTab.Offloaded, toClose: Project) {
+        scope.launch { loader.loadThenClose(tab, toClose) }
     }
 
     /** Offload Project from the context menu (P2.7): closes now, or says why the guards object. */

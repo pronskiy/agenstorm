@@ -16,6 +16,7 @@ class ProjectLoaderTest : BasePlatformTestCase() {
     private val balloons = mutableListOf<String>()
     private var openResult: Project? = null
     private var exists = true
+    private val closed = mutableListOf<String>()
 
     override fun setUp() {
         super.setUp()
@@ -36,6 +37,7 @@ class ProjectLoaderTest : BasePlatformTestCase() {
         open = { path -> opened.add(path); openResult },
         exists = { exists },
         notify = { balloons += it },
+        close = { closed += it.name; true },
     )
 
     private fun offloadedBeta(): ProjectTab.Offloaded {
@@ -52,6 +54,21 @@ class ProjectLoaderTest : BasePlatformTestCase() {
         assertSame(openResult, result)
         assertEquals(listOf(Path.of("/fake/beta")), opened)
         assertTrue(balloons.isEmpty())
+    }
+
+    /** Closing the frame's own project with only bookmarks left: the bookmark loads first, the old project closes after. */
+    fun testLoadThenCloseClosesTheOldProjectOnlyOnceTheNewOneIsOpen() {
+        val tab = offloadedBeta()
+        val old = FakeProjectHolder.another(project, "old")
+        openResult = FakeProjectHolder.another(project, "beta")
+
+        assertSame(openResult, runBlocking { loader().loadThenClose(tab, old) })
+        assertEquals(listOf("old"), closed)
+
+        closed.clear()
+        openResult = null
+        assertNull(runBlocking { loader().loadThenClose(tab, old) })
+        assertTrue("the old project stays when nothing opened", closed.isEmpty())
     }
 
     fun testAMissingDirectoryForgetsTheTabAndSaysSo() {

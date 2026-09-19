@@ -15,16 +15,29 @@ import java.awt.event.MouseEvent
 /** Step E1.4: the pure parts of the tab interactions (neighbour choice, popup contents, clipboard, right click). */
 class ProjectTabActionsTest : BasePlatformTestCase() {
 
-    fun testNeighbourIsTheNextTabThenThePreviousOneThenNothing() {
+    fun testNeighbourIsTheNextLoadedTabThenThePreviousOneThenNothing() {
         val a = project
         val b = FakeProjectHolder.another(a, "b")
         val c = FakeProjectHolder.another(a, "c")
-        val tabs = listOf(a, b, c)
-        assertSame(c, ProjectTabActions.neighbourOf(b, tabs))
-        assertSame(b, ProjectTabActions.neighbourOf(c, tabs))
-        assertSame(b, ProjectTabActions.neighbourOf(a, tabs))
-        assertNull(ProjectTabActions.neighbourOf(a, listOf(a)))
-        assertSame(a, ProjectTabActions.neighbourOf(b, listOf(a)))
+        val tabs = listOf(a, b, c).map { ProjectTab.Loaded(it) }
+        assertEquals(ProjectTab.Loaded(c), ProjectTabActions.neighbourTabOf(b, tabs))
+        assertEquals(ProjectTab.Loaded(b), ProjectTabActions.neighbourTabOf(c, tabs))
+        assertEquals(ProjectTab.Loaded(b), ProjectTabActions.neighbourTabOf(a, tabs))
+        assertNull(ProjectTabActions.neighbourTabOf(a, listOf(ProjectTab.Loaded(a))))
+        assertEquals(ProjectTab.Loaded(a), ProjectTabActions.neighbourTabOf(b, listOf(ProjectTab.Loaded(a))))
+    }
+
+    /** Closing the last loaded project with bookmarks left used to leave no window at all (Roman, 2026-09-19). */
+    fun testWithNoLoadedNeighbourTheNearestBookmarkIsTheNeighbour() {
+        val a = project
+        val b = ProjectTab.Offloaded("/fake/b", "b", 0L)
+        val c = ProjectTab.Offloaded("/fake/c", "c", 0L)
+        val d = FakeProjectHolder.another(a, "d")
+
+        assertEquals("a loaded tab wins over a nearer bookmark", ProjectTab.Loaded(d), ProjectTabActions.neighbourTabOf(a, listOf(ProjectTab.Loaded(a), b, ProjectTab.Loaded(d))))
+        assertEquals("next bookmark first", b, ProjectTabActions.neighbourTabOf(a, listOf(ProjectTab.Loaded(a), b, c)))
+        assertEquals("else the previous one", c, ProjectTabActions.neighbourTabOf(a, listOf(b, c, ProjectTab.Loaded(a))))
+        assertNull(ProjectTabActions.neighbourTabOf(a, listOf(ProjectTab.Loaded(a))))
     }
 
     fun testAddPopupHoldsRecentProjectsAndTheStockWidgetActions() {
@@ -39,7 +52,7 @@ class ProjectTabActionsTest : BasePlatformTestCase() {
     }
 
     fun testContextMenuOfALoadedTabOffersCloseCloseOthersOffloadAndCopyPath() {
-        val group = ProjectTabActions.contextMenuGroup(ProjectTab.Loaded(project), project, listOf(project))
+        val group = ProjectTabActions.contextMenuGroup(ProjectTab.Loaded(project), project, listOf(ProjectTab.Loaded(project)))
         assertEquals(
             listOf("tabs.menu.close", "tabs.menu.closeOthers", "tabs.menu.offload", "tabs.menu.copyPath").map(AgenstormBundle::message),
             group.getChildren(null).map { it.templatePresentation.text },
@@ -48,7 +61,7 @@ class ProjectTabActionsTest : BasePlatformTestCase() {
 
     /** Step P2.7. */
     fun testContextMenuOfAnOffloadedTabOffersLoadForgetAndCopyPath() {
-        val group = ProjectTabActions.contextMenuGroup(ProjectTab.Offloaded("/fake/beta", "beta", 0L), project, listOf(project))
+        val group = ProjectTabActions.contextMenuGroup(ProjectTab.Offloaded("/fake/beta", "beta", 0L), project, listOf(ProjectTab.Loaded(project)))
         assertEquals(
             listOf("tabs.menu.load", "tabs.menu.forget", "tabs.menu.copyPath").map(AgenstormBundle::message),
             group.getChildren(null).map { it.templatePresentation.text },
