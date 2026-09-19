@@ -19,15 +19,34 @@ class ProjectTabsOverflowTest : BasePlatformTestCase() {
         return panel
     }
 
-    private fun layout(panel: ProjectTabsPanel, available: Int) {
-        panel.availableWidthProvider = { available }
-        panel.size = panel.preferredSize
+    /** The toolbar decides the width; the strip reads its mode from it (P1.1). */
+    private fun layout(panel: ProjectTabsPanel, width: Int) {
+        panel.setSize(width, panel.preferredSize.height)
         panel.doLayout()
+    }
+
+    /** Step P1.1: the strip is resizable for the toolbar — minimum = every tab as an icon, preferred = every name. */
+    fun testMinimumIsTheIconStripAndPreferredIsTheWholeStrip() {
+        val panel = panelWith(tabs(12))
+        val labels = panel.tabLabels()
+        val preferred = panel.preferredSize.width
+        val minimum = panel.minimumSize.width
+        val chrome = preferred - labels.sumOf { it.preferredWidth(false) }
+
+        assertTrue("the toolbar only shares width with a component whose minimum is below its preferred", minimum < preferred)
+        assertEquals(labels.size * JBUI.scale(ProjectTabLabel.COMPACT_WIDTH) + chrome, minimum)
+        assertEquals("no cap: twelve names at their natural width", labels.sumOf { it.preferredWidth(false) } + chrome, preferred)
+
+        // Whatever the toolbar grants, preferred and minimum stay content-driven.
+        layout(panel, minimum)
+        assertEquals(ProjectTabsPanel.Mode.COMPACT, panel.mode)
+        assertEquals(preferred, panel.preferredSize.width)
+        assertEquals(minimum, panel.minimumSize.width)
     }
 
     fun testEverythingFitsShowsFullTabs() {
         val panel = panelWith(tabs(3))
-        layout(panel, 100_000)
+        layout(panel, panel.preferredSize.width)
 
         assertEquals(ProjectTabsPanel.Mode.FULL, panel.mode)
         assertTrue(panel.tabLabels().all { it.isVisible && !it.isCompact })
@@ -41,7 +60,6 @@ class ProjectTabsOverflowTest : BasePlatformTestCase() {
 
     fun testTooNarrowForNamesFallsBackToIconOnlyTabs() {
         val panel = panelWith(tabs(3))
-        layout(panel, 100_000)
         val fullWidth = panel.preferredSize.width
 
         layout(panel, fullWidth - 1)
@@ -49,7 +67,7 @@ class ProjectTabsOverflowTest : BasePlatformTestCase() {
         assertEquals(ProjectTabsPanel.Mode.COMPACT, panel.mode)
         assertTrue(panel.tabLabels().all { it.isVisible && it.isCompact })
         assertTrue(panel.tabLabels().all { it.preferredSize.width == JBUI.scale(ProjectTabLabel.COMPACT_WIDTH) })
-        assertTrue(panel.preferredSize.width < fullWidth)
+        assertTrue(panel.minimumSize.width < fullWidth)
         assertFalse(panel.moreButton.isVisible)
         assertTrue(panel.tabLabels().first().toolTipText.startsWith(project.name))
     }
@@ -58,10 +76,9 @@ class ProjectTabsOverflowTest : BasePlatformTestCase() {
         val all = tabs(5)
         val owner = all.last()
         val panel = panelWith(all, owner)
-        layout(panel, 100_000)
-        layout(panel, panel.preferredSize.width - 1)
+        val compactWidth = panel.minimumSize.width
+        layout(panel, compactWidth)
         assertEquals(ProjectTabsPanel.Mode.COMPACT, panel.mode)
-        val compactWidth = panel.preferredSize.width
 
         layout(panel, compactWidth - 1)
 
@@ -74,22 +91,11 @@ class ProjectTabsOverflowTest : BasePlatformTestCase() {
         assertEquals(all.size - visible.size, panel.hiddenProjects().size)
         assertFalse(owner in panel.hiddenProjects())
         assertEquals(AgenstormBundle.message("tabs.more.tooltip", all.size - visible.size), panel.moreButton.toolTipText)
-        assertTrue(panel.preferredSize.width <= compactWidth - 1)
 
         // Wide again: everything comes back.
-        layout(panel, 100_000)
+        layout(panel, panel.preferredSize.width)
         assertEquals(ProjectTabsPanel.Mode.FULL, panel.mode)
         assertTrue(panel.hiddenProjects().isEmpty())
-    }
-
-    fun testTheCapIsHalfTheWindowAndAbsentWithoutOne() {
-        assertEquals(700, ProjectTabsPanel.availableWidthFor(1400))
-        assertEquals(Int.MAX_VALUE, ProjectTabsPanel.availableWidthFor(0))
-        // A panel outside any window is never capped, so a toolbar being laid out cannot shrink it.
-        val panel = panelWith(tabs(6))
-        panel.size = panel.preferredSize
-        panel.doLayout()
-        assertEquals(ProjectTabsPanel.Mode.FULL, panel.mode)
     }
 
     fun testOverflowPopupListsTheHiddenProjects() {

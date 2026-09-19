@@ -24,11 +24,13 @@ import javax.swing.SwingUtilities
  * is needed. Subscribes to the model while it is showing ([attach] from `addNotify`, [detach] from
  * `removeNotify`). What clicks do is decided by the callbacks (wired by `ProjectTabActions`); the panel renders.
  *
- * Overflow: the strip may take at most half of the window it sits in ([availableWidthProvider]). The window is
- * the reference on purpose: the left main-toolbar group is sized from its children, so measuring against it
- * would shrink the cap together with the strip until only icons were left. When the full tabs do not fit, every
- * tab becomes icon-only; when even that does not fit, the first N icon-only tabs are shown (the frame's own
- * project always among them) and the rest hide behind the chevron, which lists them in a popup.
+ * Width (P1.1): the strip never measures anything. It reports **preferred** = every tab at its natural width and
+ * **minimum** = every tab as an icon, and the main toolbar's compressing layout — which shares the toolbar's width
+ * only with components whose minimum is below their preferred — grants it whatever is left once the other groups
+ * have theirs, up to preferred. `doLayout` then reads the mode from the width it was given. Nothing here feeds
+ * back into the sizes, so there is no loop (E2.1's cap came from reading the parent, whose size came from us).
+ * When the full tabs do not fit, every tab becomes icon-only; when even that does not fit, the first N icon-only
+ * tabs are shown (the frame's own project always among them) and the rest hide behind the chevron.
  *
  * Reordering (E2.2): dragging a tab horizontally past the middle of a neighbour draws an insertion marker and,
  * on release, reports the new index through [onReorder]; the model persists it and every frame follows.
@@ -57,9 +59,6 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
     var onOverflow: (Component, List<Project>) -> Unit = { _, _ -> }
     /** A tab was dragged to a new position: the project and its new index among the open tabs. */
     var onReorder: (Project, Int) -> Unit = { _, _ -> }
-
-    /** Pixels the strip may use; by default half of the enclosing window, unlimited before the window is sized. */
-    var availableWidthProvider: () -> Int = { availableWidthFor(SwingUtilities.getWindowAncestor(this)?.width ?: 0) }
 
     /** How the strip was laid out last time. */
     var mode: Mode = Mode.FULL
@@ -193,18 +192,26 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
 
     private class Plan(val mode: Mode, val visible: List<ProjectTabLabel>, val width: Int)
 
-    /** Chooses the mode and the visible tabs for [available] pixels. */
-    private fun plan(available: Int): Plan {
-        val labels = tabLabels()
+    /** Width of a strip whose tabs are [widths] wide: separators between them, the "+" and, if [more], the chevron. */
+    private fun total(widths: List<Int>, more: Boolean): Int {
         val gap = JBUI.scale(2)
         val separator = JBUI.scale(1) + gap
         val fixed = addButton.preferredSize.width + gap
-        fun total(widths: List<Int>, more: Boolean) =
-            widths.sum() + separator * (widths.size - 1).coerceAtLeast(0) + fixed + if (more) moreButton.preferredSize.width + gap else 0
+        return widths.sum() + separator * (widths.size - 1).coerceAtLeast(0) + fixed + if (more) moreButton.preferredSize.width + gap else 0
+    }
 
-        val full = total(labels.map { it.preferredWidth(false) }, more = false)
+    /** Every tab at its natural width: what the strip asks the toolbar for. */
+    private fun fullWidth(): Int = total(tabLabels().map { it.preferredWidth(false) }, more = false)
+
+    /** Every tab as an icon: the least the strip can be given before something has to hide. */
+    private fun compactWidth(): Int = total(tabLabels().map { it.preferredWidth(true) }, more = false)
+
+    /** Chooses the mode and the visible tabs for [available] pixels. */
+    private fun plan(available: Int): Plan {
+        val labels = tabLabels()
+        val full = fullWidth()
         if (labels.isEmpty() || available <= 0 || full <= available) return Plan(Mode.FULL, labels, full)
-        val compact = total(labels.map { it.preferredWidth(true) }, more = false)
+        val compact = compactWidth()
         if (compact <= available) return Plan(Mode.COMPACT, labels, compact)
 
         val each = JBUI.scale(ProjectTabLabel.COMPACT_WIDTH)
@@ -218,16 +225,16 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
 
     override fun getPreferredSize(): Dimension {
         if (isPreferredSizeSet) return super.getPreferredSize()
-        val plan = plan(availableWidthProvider())
-        return Dimension(plan.width, JBUI.scale(ProjectTabLabel.HEIGHT))
+        return Dimension(fullWidth(), JBUI.scale(ProjectTabLabel.HEIGHT))
     }
 
-    override fun getMinimumSize(): Dimension = preferredSize
+    /** Below preferred on purpose: that is what makes the toolbar's layout share its width with the strip. */
+    override fun getMinimumSize(): Dimension = Dimension(compactWidth(), JBUI.scale(ProjectTabLabel.HEIGHT))
 
     override fun getMaximumSize(): Dimension = preferredSize
 
     override fun doLayout() {
-        val plan = plan(if (width > 0) minOf(width, availableWidthProvider()) else availableWidthProvider())
+        val plan = plan(width)
         mode = plan.mode
         val compact = plan.mode != Mode.FULL
         val gap = JBUI.scale(2)
@@ -296,9 +303,6 @@ class ProjectTabsPanel(private val model: ProjectTabsModel = ProjectTabsModel.ge
 
     companion object {
         private val DRAG_THRESHOLD = JBUI.scale(4)
-
-        /** Half of a sized window; no cap while the window has no size yet (or the panel is not in one). */
-        fun availableWidthFor(windowWidth: Int): Int = if (windowWidth > 0) windowWidth / 2 else Int.MAX_VALUE
     }
 
     private fun separator(): JComponent = JPanel().apply {

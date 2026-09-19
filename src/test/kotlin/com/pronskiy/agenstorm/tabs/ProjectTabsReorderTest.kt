@@ -18,7 +18,6 @@ class ProjectTabsReorderTest : BasePlatformTestCase() {
         tabs = listOf(project, FakeProjectHolder.another(project, "beta"), FakeProjectHolder.another(project, "gamma"))
         panel = ProjectTabsPanel(ProjectTabsModel.getInstance())
         panel.showTabs(tabs)
-        panel.availableWidthProvider = { 100_000 }
         panel.size = panel.preferredSize
         panel.doLayout()
         panel.onReorder = { p, i -> moves += p to i }
