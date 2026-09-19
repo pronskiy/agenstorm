@@ -7,6 +7,11 @@
         <shellExecOptionsCustomizer implementation="com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer"/>
     </extensions>
 
+    <extensions defaultExtensionNs="com.pronskiy.agenstorm">
+        <!-- P2.4: a terminal tab with a command running keeps its project loaded. -->
+        <offloadGuard implementation="com.pronskiy.agenstorm.tabs.offload.TerminalCommandGuard"/>
+    </extensions>
+
     <actions>
         <!-- J1.3: the maximize toggle joins the terminal's title bar, next to "New Tab". The group belongs to
              the Terminal plugin, so the button is registered here while the action itself stays in plugin.xml
