@@ -27,8 +27,8 @@ import com.pronskiy.agenstorm.scratch.ScratchActionInstaller
 import com.pronskiy.agenstorm.tabs.NativeTabStrip
 import com.pronskiy.agenstorm.tabs.NativeTabsRegistryGuard
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
-import com.pronskiy.agenstorm.tabs.offload.ProjectOffloadService
 import com.pronskiy.agenstorm.tabs.ProjectTabsWidgetInstaller
+import com.pronskiy.agenstorm.tabs.offload.ProjectOffloadService
 import com.pronskiy.agenstorm.terminal.OpenRequestServer
 import com.pronskiy.agenstorm.terminal.TerminalMaximizeLayout
 import javax.swing.JComponent
