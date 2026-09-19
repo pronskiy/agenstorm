@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Idle projects are offloaded.** A project whose window has not been in front for two hours, or the least recently used one when more than eight are loaded, is closed with everything saved and its tab kept as a dotted bookmark. Click the bookmark to load the project again in the same place; × or a middle click forgets it. Right-click a loaded tab for **Offload Project**. On by default, under Tools → Agenstorm → Project tabs, with the idle time and the limit as settings.
+  - A project with a terminal command or a run/debug process still running is never offloaded, and nothing ever asks you a question for a project in the background.
+  - The IDE does not reopen an offloaded project at the next launch; its bookmark comes back instead, one click from loaded.
+  - The first offload shows a balloon saying which project went and why.
+
 ### Changed
 
 - **Project tabs take the whole toolbar.** The strip used to cap itself at half the window and jump to icons beyond that. Now it uses all the room the main toolbar can spare and gives way in two steps, the way browser tabs do: the widest tabs shrink first, names shortened with an ellipsis while short names keep their width, then every tab becomes an icon. The "…" button that listed the tabs that did not fit is gone; icons are the floor.

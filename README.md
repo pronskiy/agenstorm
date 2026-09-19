@@ -292,6 +292,8 @@ sits, so the window has one header row instead of two.
 - The tabs take all the room the toolbar can spare. When it runs out, the widest tabs shrink first (names
   shortened with an ellipsis, short names untouched), then every tab becomes an icon. Nothing hides behind a
   "…" button.
+- A project you have not used for a while is offloaded: closed with everything saved, its tab kept as a
+  dotted bookmark. Click the bookmark to load it again. See below.
 
 ### One window, not many
 
@@ -304,6 +306,21 @@ their separate row, so switching a tab does not raise a second window.
 Windows and Linux have no window merging to build on, so there the strip switches between windows
 instead; the "move the other window onto this one's position and size" option exists for that case.
 
+### Offloaded projects
+
+Like a browser unloading tabs you have not looked at, Agenstorm closes a project whose window has not been in
+front for two hours, and, when more than eight projects are loaded, the least recently used one. Everything is
+saved first. The tab stays where it was, drawn with a dotted border and a dimmed icon; hover it for the path and
+how long ago it was offloaded, click it to load the project again in the same place. The × on a bookmark, or
+a middle click, forgets it (the project is still under "+"). Right-click a loaded tab for **Offload Project**;
+right-click a bookmark for Load, Forget and Copy Path.
+
+Two things never get offloaded: the project whose window is in front, and any project with a terminal command
+or a run/debug process still running. The first time a project is offloaded, a balloon says which one and why.
+
+> An offloaded project is not reopened by the IDE at the next launch. Its bookmark is: the strip remembers
+> it, dotted, one click from loaded.
+
 ### The Git branch
 
 With tabs on, the VCS widget next to them is hidden and the branch shows bottom-left in the status
@@ -313,7 +330,9 @@ when the option is turned off, provided Agenstorm was the one that hid it.
 ### Options and shortcuts
 
 The **Project tabs** group holds the switch plus four options, all on by default: branch in the status
-bar, mirror window position/size when switching, project icons, and max tab width (220 px).
+bar, mirror window position/size when switching, project icons, and max tab width (220 px). Offloading has its
+own switch (on), the idle time before a project is offloaded (120 minutes, from 5 to 1440) and how many projects
+may stay loaded (8, from 1 to 50).
 
 Three actions ship without shortcuts so they never collide with your keymap: **Next Project Tab**,
 **Previous Project Tab** (both wrap) and **Close Project Tab**. Settings → Keymap, search "Project
