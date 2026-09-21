@@ -2,6 +2,7 @@ package com.pronskiy.agenstorm.markdown
 
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Inlay
+import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
@@ -101,6 +102,16 @@ class TableInlaysTest : BasePlatformTestCase() {
         LiveMarkupService.getInstance(project).detach(myFixture.editor)
         val document = myFixture.editor.document
         assertTrue(myFixture.editor.inlayModel.getBlockElementsInRange(0, document.textLength).none { it.renderer is TableInlayRenderer })
+    }
+
+    fun testDetachDisposesTheInlaysOwnerThroughTheDisposerTree() {
+        // Found in the sandbox at shutdown: the width listener registers the owner in the Disposer tree, so it has to
+        // be disposed through the tree as the controller's child, not by a direct call, or the tree reports a leak.
+        val controller = configured()
+        val owner = controller.tableInlaysOwner()
+        LiveMarkupService.getInstance(project).detach(myFixture.editor)
+        assertTrue(Disposer.isDisposed(controller))
+        assertTrue(Disposer.isDisposed(owner))
     }
 
     private fun configured(): LiveMarkupController {

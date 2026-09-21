@@ -25,6 +25,7 @@ import com.intellij.openapi.editor.ex.FoldingListener
 import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Condition
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
@@ -43,6 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import org.jetbrains.annotations.TestOnly
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -106,8 +108,11 @@ class LiveMarkupController(
     /** Epic H: the block backgrounds, updated from the same snapshot as the fold regions. */
     private val blockRenderer = MarkdownBlockRenderer(editor)
 
-    /** Epic Q: the rendered tables, one block inlay per collapsed table region. */
-    private val tableInlays = TableInlays(editor)
+    /**
+     * Epic Q: the rendered tables, one block inlay per collapsed table region. A child in the Disposer tree, not
+     * disposed by hand: its width listener registers it there, and a node disposed directly is reported as a leak.
+     */
+    private val tableInlays = TableInlays(editor).also { Disposer.register(this, it) }
     private val job: Job
     private var policyScheduled = false
     private var ownBatch = false
@@ -272,6 +277,9 @@ class LiveMarkupController(
     /** The rendered tables this controller owns (Epic Q): one inlay per collapsed table. */
     fun tableInlays(): List<Inlay<TableInlayRenderer>> = tableInlays.inlays()
 
+    @TestOnly
+    fun tableInlaysOwner(): Disposable = tableInlays
+
     /**
      * Epic Q, decision 68. A plain click on a rendered table: a link follows, anything else moves the caret to the
      * clicked cell's content, which the caret policy answers by revealing the table right there. [point] is in the
@@ -295,7 +303,6 @@ class LiveMarkupController(
         job.cancel()
         removeAll()
         blockRenderer.dispose()
-        tableInlays.dispose()
         FoldPlaceholderStyle.uninstall(editor)
     }
 
