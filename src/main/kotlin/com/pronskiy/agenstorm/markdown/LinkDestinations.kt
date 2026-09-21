@@ -1,7 +1,7 @@
 package com.pronskiy.agenstorm.markdown
 
 import com.intellij.ide.BrowserUtil
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
@@ -26,9 +26,9 @@ object LinkDestinations {
             browse(link)
             return
         }
-        val target = ReadAction.compute<PsiElement?, RuntimeException> {
-            val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document) ?: return@compute null
-            val element = file.findElementAt(within.startOffset) ?: return@compute null
+        val target: PsiElement? = runReadAction {
+            val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document) ?: return@runReadAction null
+            val element = file.findElementAt(within.startOffset) ?: return@runReadAction null
             val cell = generateSequence(element) { it.parent }.firstOrNull { it.textRange.contains(within) } ?: file
             val destination = PsiTreeUtil.findChildrenOfType(cell, MarkdownLinkDestination::class.java)
                 .firstOrNull { within.contains(it.textRange) && it.text.trim() == link }

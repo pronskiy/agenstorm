@@ -34,6 +34,7 @@
 | 2026-09-16 | **1.6.0 cut** — Epic O (names typed in the project tree) and the build-enforced verifier gate. `check` green, ZIP built, verifier Compatible on both IDEs with zero internal API and zero override-only | Roman (decision), Claude (text) |
 | 2026-09-16 | **1.6.0 released** — Marketplace upload by hand, served version confirmed on the update server, draft published as Latest with the signed ZIP; `release.yml` green, no changelog PR needed | Roman (upload, approval, publish), Claude (runs, text) |
 | 2026-09-21 | **Epic Q added:** GFM tables render in place in live-markup mode — a proportional-font block with wrapped cells under the line above the table, revealed by a click, Find or a caret inside. Decisions 66–68 | Roman (request, the four calls on mechanism, font, click and phasing), Claude (investigation, text) |
+| 2026-09-21 | **Epic Q Phase Q2 signed off and Phase Q3 rewritten** around editing one cell in place instead of the aligned grid, after Roman's first look. Decision 69 | Roman (sign-off, the one-cell idea), Claude (text) |
 
 ### Status legend
 
@@ -41,7 +42,7 @@
 
 ### Current focus
 
-**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Phase Q1 is closed** (2026-09-21: `TableModel` + `TableModelBuilder` with thirteen tests, `TableLayout` with nine, both guardrails ✅). **Phase Q2 is built** (Q2.1–Q2.5 landed 2026-09-21, 33 new tests across the epic, `check` green). **Next: the Phase Q2 guardrail run** — `runIde` on Roman's conference document in Light and Dark, the eight rows of the table below; Roman signs off with "all good, continue with …". Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
+**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Phase Q1 is closed** (2026-09-21: `TableModel` + `TableModelBuilder` with thirteen tests, `TableLayout` with nine, both guardrails ✅). **Phase Q2 is signed off** (2026-09-21: Q2.1–Q2.5 built with 34 tests, the sandbox run "all good", the one shutdown leak it surfaced fixed in `78b1574`). **Phase Q3 is rewritten** around Roman's ask to edit one cell rather than reveal the table (decision 69). **Next actionable step: Q3.1** — the overlay spike: a field over one cell of the block inlay, placement, scroll, resize, focus, Esc. Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
 
 **Before that:** **1.7.0 is released** (2026-09-19, the whole run in one evening): pushed as `9e1fd26`, `build.yml` green and the draft made, the **Marketplace upload** workflow dispatched from the terminal (the `.env` token may trigger `workflow_dispatch`, verified), review passed in about fourteen minutes — the update server listed 1.7.0 at 21:18 — and the draft published as Latest with `agenstorm-1.7.0-signed.zip` (`https://github.com/pronskiy/agenstorm/releases/tag/1.7.0`). `release.yml` came back green and opened no changelog PR, because `patchChangelog` had already run in the cut. **`pluginVersion` stays 1.7.0** until there is something to release: 1.7.1 for a fix, 1.8.0 for a feature.
 
@@ -53,7 +54,7 @@
 
 **Earlier:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
 
-**Next, after Epic Q, in the order I would take them:** Epic Q's Phase Q3 (the aligned grid while a table is revealed, spike-gated) only if Roman wants it in 1.8.0; the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then Epic I (terminal output enhancers, 10 steps), the biggest thing left and worth re-deciding before starting. **Parked by Roman, 2026-09-16 (decision 60):** the Find Action gap in Epic M, skipped for now, and Epic H Phase H2, skipped until there is feedback asking for it.
+**Next, after Epic Q, in the order I would take them:** the 1.8.0 cut once Q3 is in; the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then Epic I (terminal output enhancers, 10 steps), the biggest thing left and worth re-deciding before starting. **Parked by Roman, 2026-09-16 (decision 60):** the Find Action gap in Epic M, skipped for now, and Epic H Phase H2, skipped until there is feedback asking for it.
 
 **The release is now two deliberate steps (decision 51):** run the **Marketplace upload** workflow by hand, wait for review to land — the update server list is the signal, not the API's `approve` flag — then publish the `1.5.0` draft release. Both are Roman's.
 
@@ -2055,28 +2056,74 @@ Platform facts (verified against build 262, 2026-09-21, by bytecode in `PhpStorm
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Looks like the target | Bold header, thin rules between rows, no vertical borders, long cells wrap, the table sits directly under the blank line above with no empty line of its own; no `\|` or `---` visible | 🔲 | |
-| Reveal | Click on a cell → raw table with the caret in that cell; Find a word inside → raw with the match selected; Down from the line above lands below the table; the caret leaving → rendered again within the debounce | 🔲 | |
-| Links | A plain click on a URL opens the browser, on a file link opens the file, on a `path:line:col` navigates there; the hand cursor shows over each | 🔲 | |
-| Coexistence | The plugin's gutter fold for the table is there while revealed; Expand All / Collapse All recover on the next event-loop turn; the plugin's add-row / add-column bars appear once revealed | 🔲 | |
-| Resize and wrap | Narrowing the editor re-wraps without flicker; soft wrap on or off changes nothing; a 200-row table renders and scrolls smoothly | 🔲 | |
-| External edit | A row appended by an agent while the table is rendered shows up rendered, the table still collapsed | 🔲 | |
-| Copy | Selecting across the rendered table and copying yields the raw Markdown | 🔲 | |
-| Log clean + verifier | No plugin exceptions; `verifyPlugin` Compatible with zero internal usages and no new `@Experimental` kinds | 🔲 | |
+| Looks like the target | Bold header, thin rules between rows, no vertical borders, long cells wrap, the table sits directly under the blank line above with no empty line of its own; no `\|` or `---` visible | ✅ | Roman, 2026-09-21 sandbox run on the `demo/tables` project and his own document ("this look great" … "all good") |
+| Reveal | Click on a cell → raw table with the caret in that cell; Find a word inside → raw with the match selected; Down from the line above lands below the table; the caret leaving → rendered again within the debounce | ✅ | Same run. Roman's reaction to the click: it works, but he would rather open one cell than the whole table — Phase Q3 is rewritten around that (decision 69) |
+| Links | A plain click on a URL opens the browser, on a file link opens the file, on a `path:line:col` navigates there; the hand cursor shows over each | ✅ | Same run |
+| Coexistence | The plugin's gutter fold for the table is there while revealed; Expand All / Collapse All recover on the next event-loop turn; the plugin's add-row / add-column bars appear once revealed | ✅ | Same run; `TableFoldingTest` covers the nesting and the foreign batches |
+| Resize and wrap | Narrowing the editor re-wraps without flicker; soft wrap on or off changes nothing; a 200-row table renders and scrolls smoothly | ✅ | Same run, the demo's 200-row "Big table" |
+| External edit | A row appended by an agent while the table is rendered shows up rendered, the table still collapsed | ✅ | Same run; `TableInlaysTest` asserts the in-place update |
+| Copy | Selecting across the rendered table and copying yields the raw Markdown | ✅ | Same run |
+| Log clean + verifier | No plugin exceptions; `verifyPlugin` Compatible with zero internal usages and no new `@Experimental` kinds | ✅ | **The log found one:** at shutdown the Disposer reported `TableInlays` leaked — its width listener registers it in the tree, and the controller disposed it by a direct call. Now the controller's Disposer child, with a test (`78b1574`). Nothing else from the plugin in the session. Verifier, 2026-09-21: **Compatible on PS-262.10968.76 and IU-262.10968.63, zero internal usages, 76 experimental (the 1.7.0 count, unchanged)**; deprecated went 10 → 11 with the `ReadAction.compute(ThrowableComputable)` in `LinkDestinations`, swapped for `runReadAction` the same day and re-verified |
 
-#### Phase Q3 — Aligned grid while revealed  ·  after Q2, spike-gated
+#### Phase Q3 — Edit a cell in place  ·  after Q2, replaces the aligned grid (decision 69)
 
-While a table is revealed it is still the raw text. Q3 pads every cell with an inline inlay to its column's widest
-content (in editor-font space widths) so the pipes line up without a byte of the file changing, and draws the
-separator row's dashes as a rule. Not started; the spike decides whether it is worth it next to the plugin's own
-`reformatTablesOnType`, which pads the text itself while typing (our inlays would shrink to zero once it has), and
-under soft wrap.
+Roman, 2026-09-21, after the Q2 run: "this look great, I'm wondering if it's possible to 'unfold' only one cell for
+editing? instead of the whole table". So the table stays rendered and a click opens the clicked cell: a text field
+laid over it holding that cell's raw Markdown (`**14 September**`, `[Rules](…)`, exactly as written); Enter or
+focus loss writes it back into the cell's range in one undoable command and the table re-renders; Esc leaves the
+file untouched; Tab and Shift+Tab walk a row cell by cell. Structural edits — rows, columns — keep the raw path:
+the gutter arrow, Find, Go to line, an Epic A jump, Right or End from the line above, a selection, and a new
+**Edit Table as Text** entry in the editor context menu. The aligned grid the phase was first written around is
+dropped: once a cell edits in place there is no revealed state to align.
+
+Platform facts (verified against build 262, 2026-09-21):
+
+- **The overlay idiom is Epic O's.** `InlineNameEditor` adds a `JBTextField` row straight to the tree component with
+  explicit bounds and asks for focus in a follow-up `invokeLater` (the first request is asynchronous). The editor's
+  content component (`Editor.getContentComponent()`, a `JComponent`) can take a child the same way; the cell's
+  rectangle is `Inlay.getBounds()` plus `TableGeometry`'s cell bounds, and a `VisibleAreaListener` moves the field
+  on scroll and resize. `com.intellij.ui.EditorTextField` (un-annotated, `intellij.platform.ide.impl.jar`) is the
+  alternative to a plain field if Markdown highlighting inside the cell is wanted; `JBPopupFactory
+  .createComponentPopupBuilder(JComponent, JComponent)` (un-annotated) is the fallback if a child of the content
+  component misbehaves. `EditorEmbeddedComponentManager` exists in no jar of this distribution and is not an option.
+- **Writing the cell back** is `WriteCommandAction` replacing `TableCell.range` (the trimmed content) with the field's
+  text, one command per commit so one Undo reverts one cell. A cell the row does not have — `range` is empty at the
+  row's end (Q1.1) — is appended as ` text |`. `<br>` stays literal in the field: a multi-line cell edits as one line.
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| Q3.1 | Spike: padding inlays next to `reformatTablesOnType`, soft wrap and typing latency | 🔲 | |
-| Q3.2 | Padding inlays per cell; the separator row drawn as a rule | 🔲 | |
-| Q3.3 | Tests and guardrail | 🔲 | |
+| Q3.1 | Spike: a field over one cell of the block inlay — placement, scroll, resize, focus in and out, Esc; child of the content component or a popup | 🔲 | |
+| Q3.2 | `CellEditor`: a plain click opens the clicked cell; Enter or focus loss commits in one command; Esc cancels; the table re-renders; missing cells appended | 🔲 | |
+| Q3.3 | Tab and Shift+Tab move to the next and previous cell, committing first; Enter commits and closes | 🔲 | |
+| Q3.4 | `Agenstorm.EditTableAsText` in `Markdown.EditorContextMenuGroup` reveals the raw table at the caret; tests; guardrails | 🔲 | |
+
+**Steps (detail):**
+
+- **Q3.1 — Spike.** Deliverable: a throwaway field over the `d` cell of `TableInlaysTest`'s document in `runIde`,
+  and the answers: does a child of the content component paint over the inlay and take focus; does it stay on the
+  cell while scrolling and after a resize (the inlay re-lays out, the cell moves); does Esc give focus back to the
+  editor; does the caret policy leave the table collapsed while the field has focus. Exit: the mechanism chosen and
+  recorded in the notes, the throwaway deleted.
+- **Q3.2 — Editor.** Deliverable: `markdown/tables/CellEditor.kt`, opened by `LiveMarkupController.clickTable` for a
+  non-link hit instead of the caret move (decision 69 supersedes that half of decision 68); the field shows the raw
+  cell text, selects nothing, and is sized to the cell with the table's fonts. Commit replaces the cell's range,
+  which the debounced sync answers by re-rendering; cancel changes nothing. Tests drive `CellEditor` directly:
+  commit rewrites exactly the cell, cancel leaves the document as it was, a missing cell is appended, Undo is one step.
+- **Q3.3 — Navigation.** Deliverable: Tab / Shift+Tab commit and open the neighbouring cell (wrapping to the next
+  and previous row), Enter commits and closes, and the field's key bindings are the editor's own for everything else.
+- **Q3.4 — Escape hatch and tests.** Deliverable: the context-menu action that moves the caret into the table (the
+  reveal rule does the rest), the test files, and the guardrail run.
+
+**Exit guardrails — Phase Q3** (`runIde`, the same demo project)
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| One cell | Click a cell: a field over that cell with its raw Markdown, everything else still rendered; Enter writes it back and the table shows the change; Esc leaves the file untouched | 🔲 | |
+| Walk a row | Tab and Shift+Tab move across the cells, each edit committed on the way | 🔲 | |
+| Follows | The field stays on its cell while the editor scrolls and after the editor is resized | 🔲 | |
+| Undo | One Undo reverts one cell edit, and the table re-renders | 🔲 | |
+| Structural | **Edit Table as Text** opens the raw table; a row added there renders on the way out | 🔲 | |
+| Log clean | No plugin exceptions in the session | 🔲 | |
 
 ---
 
@@ -2203,6 +2250,7 @@ under soft wrap.
 | 66 | 2026-09-21 | **A rendered table is a light fold region over the table plus a block inlay, not a `CustomFoldRegion`** | Roman chose the rendered block over an aligned text grid (the target wraps long cells, which monospace text cannot) and, shown both mechanisms, the light region. `FoldingModel.addCustomLinesFolding`, `CustomFoldRegion`, `CustomFoldRegionRenderer` and the listener hook are all `@ApiStatus.Experimental`, the reference implementation `DocRenderer` is `@ApiStatus.Internal`, `FoldingModelImpl.addCustomLinesFolding` returns null for any intersecting region while the Markdown plugin folds every table, and a custom region can be expanded by neither the caret nor Find — click-to-edit, keyboard entry and re-render would all be ours to rebuild. The light region is Epic F's mechanism with the platform's caret, Find and copy semantics for free; `InlayModel.addBlockElement` and `EditorCustomElementRenderer` are un-annotated | Roman (decision), Claude (investigation, text) |
 | 67 | 2026-09-21 | **The table region takes the line break before the table and reveals only from the inside:** `[firstRow.start − 1, lastRow.end)`, a caret strictly inside or at the end, or a selection over it | Taking the break merges the collapsed table into the end of the line above — almost always a blank line — so no empty handle line and no extra line number appear, and the block sits directly under it; the reverse of decision 31, safe because that line keeps its own text and number. The plugin's table region then nests inside ours with a shared end (as `FENCE_OPEN` shares a start with the fence region), and `UpdateFoldRegionsOperation.createOrMergeWithZombie` only merges or removes a same-range region that carries `ZOMBIE_REGION_KEY`, so the folding pass never fights a live region of ours — bytecode of `intellij.platform.lang.impl.jar`. Revealing from the line above would open the table whenever the caret sat on the blank line, so the rule is inside-or-end: arrow-key reading skips the block; click, Find, Go to line, an Epic A jump, Right or End from the line above, and a selection reveal | Claude (proposed), confirmed by Roman 2026-09-21 in the brainstorm |
 | 68 | 2026-09-21 | **The rendered table uses the proportional UI font at the editor's size (code spans in the editor font); a plain click follows a link and any other click reveals the table with the caret in that cell** | Roman, offered the editor font and a Cmd-click rule: the proportional font is what "Render doc comments" uses, matches the target screenshot and wraps densely; a plain click is what a rendered view should do, and the cell's content start is where the caret lands, so the raw table opens where the eye already is | Roman |
+| 69 | 2026-09-21 | **Phase Q3 edits one cell in place instead of aligning the raw grid, and a plain click on a rendered table opens that cell's editor rather than revealing the table** (supersedes the click half of decision 68) | Roman, after the Q2 sandbox run: "this look great, I'm wondering if it's possible to 'unfold' only one cell for editing? instead of the whole table". A field over the clicked cell holding its raw Markdown, written back on Enter, is Epic O's overlay idiom on the editor's content component and keeps the table rendered while it is edited; the aligned grid would only have made the revealed state prettier. Structural edits keep the raw table through the gutter arrow, Find, Go to line, jumps, Right/End, a selection and a new context-menu action | Roman (decision), Claude (design, text) |
 
 ---
 
