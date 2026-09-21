@@ -35,6 +35,7 @@ import com.pronskiy.agenstorm.markdown.tables.TableInlayRenderer
 import com.pronskiy.agenstorm.markdown.tables.TableInlays
 import com.pronskiy.agenstorm.markdown.tables.TableModel
 import java.awt.Cursor
+import java.awt.Point
 import java.awt.event.MouseEvent
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -130,14 +131,20 @@ class LiveMarkupController(
         editor.addEditorMouseListener(object : EditorMouseListener {
             override fun mousePressed(event: EditorMouseEvent) {
                 if (event.mouseEvent.button != MouseEvent.BUTTON1 || event.area != EditorMouseEventArea.EDITING_AREA) return
+                if (event.inlay?.renderer is TableInlayRenderer && clickTable(event.mouseEvent.point)) {
+                    event.consume()
+                    return
+                }
                 val region = event.collapsedFoldRegion ?: return
                 if (toggleCheckbox(region)) event.consume()
             }
         }, this)
         editor.addEditorMouseMotionListener(object : EditorMouseMotionListener {
             override fun mouseMoved(event: EditorMouseEvent) {
-                val overCheckbox = event.area == EditorMouseEventArea.EDITING_AREA && event.collapsedFoldRegion?.getUserData(KIND)?.isCheckbox == true
-                editor.setCustomCursor(this@LiveMarkupController, if (overCheckbox) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else null)
+                val editing = event.area == EditorMouseEventArea.EDITING_AREA
+                val overCheckbox = editing && event.collapsedFoldRegion?.getUserData(KIND)?.isCheckbox == true
+                val overLink = editing && event.inlay?.renderer is TableInlayRenderer && tableLinkAt(event.mouseEvent.point)
+                editor.setCustomCursor(this@LiveMarkupController, if (overCheckbox || overLink) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else null)
             }
         }, this)
         editor.foldingModel.addListener(object : FoldingListener {
@@ -264,6 +271,25 @@ class LiveMarkupController(
 
     /** The rendered tables this controller owns (Epic Q): one inlay per collapsed table. */
     fun tableInlays(): List<Inlay<TableInlayRenderer>> = tableInlays.inlays()
+
+    /**
+     * Epic Q, decision 68. A plain click on a rendered table: a link follows, anything else moves the caret to the
+     * clicked cell's content, which the caret policy answers by revealing the table right there. [point] is in the
+     * editor content component's coordinates. False when the point is on no rendered table.
+     */
+    fun clickTable(point: Point): Boolean {
+        val (_, hit) = tableInlays.hitAt(point) ?: return false
+        val link = hit.run?.run?.link
+        if (link != null) {
+            LinkDestinations.open(project, editor, hit.cell.range, link)
+        } else {
+            editor.caretModel.moveToOffset(hit.cell.range.startOffset)
+        }
+        return true
+    }
+
+    /** Whether [point] (editor content coordinates) is on a link of a rendered table — the hand cursor's cue. */
+    fun tableLinkAt(point: Point): Boolean = tableInlays.hitAt(point)?.second?.run?.run?.link != null
 
     override fun dispose() {
         job.cancel()

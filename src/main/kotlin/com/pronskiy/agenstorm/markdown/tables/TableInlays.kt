@@ -150,6 +150,15 @@ class TableInlays(private val editor: EditorEx) : Disposable {
 
     fun inlays(): List<Inlay<TableInlayRenderer>> = shown.map { it.inlay }.filter { it.isValid }
 
+    /** The rendered table and what is under [point] (editor content coordinates), or null when none is there. */
+    fun hitAt(point: Point): Pair<Inlay<TableInlayRenderer>, Hit>? {
+        for (inlay in inlays()) {
+            val hit = inlay.renderer.hitTest(inlay, point) ?: continue
+            return inlay to hit
+        }
+        return null
+    }
+
     fun removeAll() {
         shown.forEach { Disposer.dispose(it.inlay) }
         shown.clear()
