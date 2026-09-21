@@ -336,7 +336,7 @@ class LiveMarkupController(
 
     /**
      * Where a region should be revealed: around its element for inline markup, its whole line for block markers and,
-     * with the `line` scope setting, for everything.
+     * with the `line` scope setting, for everything; a table only from the inside.
      */
     private fun isRevealed(kind: MarkupKind, start: Int, end: Int, span: TextRange, carets: Carets): Boolean {
         // A region holding a caret is always revealed, whatever the policy would say. Collapsing one makes the
@@ -345,6 +345,9 @@ class LiveMarkupController(
         // closing ``` of a fence is folded together with the line break before it, so a caret on that line sits
         // inside a region whose start line is the one above.
         if (carets.offsets.any { it > start && it < end }) return true
+        // A table (Epic Q) starts at the line break before it, so its start line is the line above: it is revealed
+        // from the inside only — a caret past its first character or at its end, or a selection over it (decision 67).
+        if (kind == MarkupKind.TABLE) return isRevealed(TextRange(start + 1, end), carets)
         val wholeLine = kind.isBlock || AgenstormSettings.getInstance().state.liveMarkupRevealScope == SCOPE_LINE
         val reveal = if (wholeLine) lineSpan(start) else approach(span, lineSpan(span.startOffset), lineSpan(span.endOffset))
         return isRevealed(reveal, carets)
