@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-09-21
+
 ### Added
 
 - **Markdown tables render in place.** In live-markup mode a table whose caret is elsewhere shows as a painted block under the line above it: the proportional UI font, cells that wrap, a bold header row, thin rules between rows, the separator row's alignment, links and code spans styled. Click a cell to edit it in place: a field over the cell holds its raw Markdown, Enter writes it back as one undo step, Esc drops it, Tab and Shift+Tab walk the row. Click a link to follow it. For rows and columns, **Edit Table as Text** in the editor context menu opens the raw table; Find, Go to line and a `path:line` jump into the table open it as well, and it renders again once the caret leaves; the arrow keys pass over it. On by default, under Tools → Agenstorm → Markdown live markup → Render tables.
@@ -104,7 +106,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.7.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.8.0...HEAD
+[1.8.0]: https://github.com/pronskiy/agenstorm/compare/1.7.0...1.8.0
 [1.7.0]: https://github.com/pronskiy/agenstorm/compare/1.6.0...1.7.0
 [1.6.0]: https://github.com/pronskiy/agenstorm/compare/1.5.0...1.6.0
 [1.5.0]: https://github.com/pronskiy/agenstorm/compare/1.4.0...1.5.0
