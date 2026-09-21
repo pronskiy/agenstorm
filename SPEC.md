@@ -41,7 +41,7 @@
 
 ### Current focus
 
-**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Next actionable step: Q1.1** — `TableModel` and `TableModelBuilder` from the table PSI with the `tables.md` fixture, then Q1.2, the pure layout. Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
+**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Q1.1 landed 2026-09-21** (`TableModel`, `TableModelBuilder`, `tables.md`, 13 tests). **Next actionable step: Q1.2** — the pure layout (`TableLayout`, `TextMeasurer`, `TableGeometry.hitTest`) against a fixed-width fake measurer. Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
 
 **Before that:** **1.7.0 is released** (2026-09-19, the whole run in one evening): pushed as `9e1fd26`, `build.yml` green and the draft made, the **Marketplace upload** workflow dispatched from the terminal (the `.env` token may trigger `workflow_dispatch`, verified), review passed in about fourteen minutes — the update server listed 1.7.0 at 21:18 — and the draft published as Latest with `agenstorm-1.7.0-signed.zip` (`https://github.com/pronskiy/agenstorm/releases/tag/1.7.0`). `release.yml` came back green and opened no changelog PR, because `patchChangelog` had already run in the cut. **`pluginVersion` stays 1.7.0** until there is something to release: 1.7.1 for a fix, 1.8.0 for a feature.
 
@@ -1965,7 +1965,7 @@ Platform facts (verified against build 262, 2026-09-21, by bytecode in `PhpStorm
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| Q1.1 | `markdown/tables/TableModel.kt`: `TableModel`, `TableRow`, `TableCell(range, runs)`, `StyledRun`, `ColumnAlignment`, and `TableModelBuilder.build(MarkdownTable): TableModel` from the PSI; fixture `testData/markdown/tables.md` and `TableModelBuilderTest` | 🔲 | |
+| Q1.1 | `markdown/tables/TableModel.kt`: `TableModel`, `TableRow`, `TableCell(range, runs)`, `StyledRun`, `ColumnAlignment`, and `TableModelBuilder.build(MarkdownTable): TableModel` from the PSI; fixture `testData/markdown/tables.md` and `TableModelBuilderTest` | ✅ | Two PSI facts worth knowing: `PsiElement.getChildren()` on the plugin's `ASTDelegatePsiElement`s returns composites only, so the builder walks `firstChild`/`nextSibling` to see `TEXT` and whitespace; and a row's surplus cells (`\| extra \| 1 \| 2 \|` under two columns) come back as a stray `MarkdownTableSeparatorRow` inside the row, which the `take(columns)` over `getCells()` never sees. A bare `me@x.y` is plain `TEXT` in this parser — only `mailto:` links and `<…>` / `https://` autolinks are links |
 | Q1.2 | `markdown/tables/TableLayout.kt`: `TextMeasurer`, column widths, wrapping, row heights, cell rectangles and `hitTest`; `TableLayoutTest` with a fixed-width fake measurer | 🔲 | |
 
 **Steps (detail):**
