@@ -16,6 +16,7 @@ import com.pronskiy.agenstorm.markdown.LiveMarkupController
 import com.pronskiy.agenstorm.markdown.MarkupKind
 import java.awt.Graphics2D
 import java.awt.Point
+import java.awt.Rectangle
 import java.awt.geom.Rectangle2D
 
 /**
@@ -59,6 +60,13 @@ class TableInlayRenderer(private val editor: EditorEx, model: TableModel, privat
     fun hitTest(inlay: Inlay<*>, point: Point): Hit? {
         val bounds = inlay.bounds ?: return null
         return geometry().hitTest(point.x - bounds.x - indent, point.y - bounds.y - margin())
+    }
+
+    /** The cell's rectangle, padding included, in the editor content component's coordinates; null while not shown. */
+    fun cellBounds(inlay: Inlay<*>, row: Int, column: Int): Rectangle? {
+        val bounds = inlay.bounds ?: return null
+        val cell = geometry().cells.firstOrNull { it.row == row && it.column == column } ?: return null
+        return Rectangle(bounds.x + indent + cell.bounds.x, bounds.y + margin() + cell.bounds.y, cell.bounds.width, cell.bounds.height)
     }
 
     private fun current(): Cache {

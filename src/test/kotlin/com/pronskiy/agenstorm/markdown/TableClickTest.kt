@@ -10,8 +10,8 @@ import com.pronskiy.agenstorm.markdown.tables.TableInlayRenderer
 import java.awt.Point
 
 /**
- * Step Q2.4: a plain click on the rendered table follows a link, or reveals the table with the caret in the
- * clicked cell (decision 68); hovering a link is reported so the controller can show the hand cursor.
+ * Step Q2.4: a plain click on the rendered table follows a link, or opens the clicked cell in place (decisions 68
+ * and 69, the latter replacing the reveal-at-cell of the first); hovering a link is reported for the hand cursor.
  *
  * The document is `Above` · blank · `| a | b |` · `|---|---|` · `| [l](https://example.com) | d |` · blank ·
  * `Below`: the table region is (6,59), the link text sits at 30, the `d` cell's content at 56.
@@ -35,13 +35,14 @@ class TableClickTest : BasePlatformTestCase() {
         }
     }
 
-    fun testAClickOnACellRevealsTheTableWithTheCaretInThatCell() {
+    fun testAClickOnACellOpensThatCellAndLeavesTheTableRendered() {
         val controller = configured()
         assertTrue(controller.clickTable(pointOn(controller, row = 1, column = 1)))
         UIUtil.dispatchAllInvocationEvents()
-        assertEquals(56, myFixture.editor.caretModel.offset)
-        assertTrue(tableRegionExpanded(controller))
-        assertEmpty(controller.tableInlays())
+        assertEquals(1 to 1, controller.cellEditor().position)
+        assertEquals("d", controller.cellEditor().field?.text)
+        assertFalse(tableRegionExpanded(controller))
+        assertSize(1, controller.tableInlays())
     }
 
     fun testAClickOnALinkOpensItAndLeavesTheTableRendered() {

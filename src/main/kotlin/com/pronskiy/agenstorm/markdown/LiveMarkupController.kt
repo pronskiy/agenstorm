@@ -32,6 +32,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.ThreadingAssertions
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.markdown.tables.CellEditor
 import com.pronskiy.agenstorm.markdown.tables.TableInlayRenderer
 import com.pronskiy.agenstorm.markdown.tables.TableInlays
 import com.pronskiy.agenstorm.markdown.tables.TableModel
@@ -113,6 +114,9 @@ class LiveMarkupController(
      * disposed by hand: its width listener registers it there, and a node disposed directly is reported as a leak.
      */
     private val tableInlays = TableInlays(editor).also { Disposer.register(this, it) }
+
+    /** Epic Q, Phase Q3: one cell of a rendered table edited in place. */
+    private val cellEditor = CellEditor(editor, project, resync = ::commitAndSyncNow).also { Disposer.register(this, it) }
     private val job: Job
     private var policyScheduled = false
     private var ownBatch = false
@@ -185,6 +189,13 @@ class LiveMarkupController(
         collect()?.let(::apply)
     }
 
+    /** EDT. After a write of our own: commit the document so the PSI is current, then sync at once. */
+    private fun commitAndSyncNow() {
+        if (editor.isDisposed || project.isDisposed) return
+        PsiDocumentManager.getInstance(project).commitDocument(editor.document)
+        syncNow()
+    }
+
     /** Every region this controller created and that is still valid. */
     fun regions(): List<FoldRegion> = editor.foldingModel.allFoldRegions.filter { it.isValid && it.getUserData(KIND) != null }
 
@@ -207,6 +218,7 @@ class LiveMarkupController(
         }
         // Always, not only after a change of ours: a foreign batch may have flipped a table on its own.
         tableInlays.refresh(ours)
+        cellEditor.reposition(tableInlays.inlays())
     }
 
     /**
@@ -281,20 +293,23 @@ class LiveMarkupController(
     fun tableInlaysOwner(): Disposable = tableInlays
 
     /**
-     * Epic Q, decision 68. A plain click on a rendered table: a link follows, anything else moves the caret to the
-     * clicked cell's content, which the caret policy answers by revealing the table right there. [point] is in the
-     * editor content component's coordinates. False when the point is on no rendered table.
+     * Epic Q, decisions 68 and 69. A plain click on a rendered table: a link follows, anything else opens the clicked
+     * cell for editing in place, the table staying rendered. [point] is in the editor content component's
+     * coordinates. False when the point is on no rendered table.
      */
     fun clickTable(point: Point): Boolean {
-        val (_, hit) = tableInlays.hitAt(point) ?: return false
+        val (inlay, hit) = tableInlays.hitAt(point) ?: return false
         val link = hit.run?.run?.link
         if (link != null) {
             LinkDestinations.open(project, editor, hit.cell.range, link)
         } else {
-            editor.caretModel.moveToOffset(hit.cell.range.startOffset)
+            cellEditor.open(inlay, hit.row, hit.column)
         }
         return true
     }
+
+    /** The in-place cell editor (Epic Q, Phase Q3). */
+    fun cellEditor(): CellEditor = cellEditor
 
     /** Whether [point] (editor content coordinates) is on a link of a rendered table — the hand cursor's cue. */
     fun tableLinkAt(point: Point): Boolean = tableInlays.hitAt(point)?.second?.run?.run?.link != null
@@ -380,6 +395,7 @@ class LiveMarkupController(
         }
         blockRenderer.sync(snapshot.blocks)
         tableInlays.sync(snapshot.tables, regions())
+        cellEditor.reposition(tableInlays.inlays())
         if (LOG.isDebugEnabled) LOG.debug("live markup: $created regions created, $removed removed, $replaced foreign ones replaced in ${(System.nanoTime() - started) / 1_000_000} ms")
     }
 
