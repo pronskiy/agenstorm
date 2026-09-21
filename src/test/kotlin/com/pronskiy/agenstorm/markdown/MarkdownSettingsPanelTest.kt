@@ -50,6 +50,16 @@ class MarkdownSettingsPanelTest : BasePlatformTestCase() {
         assertFalse(configurable.isModified)
     }
 
+    fun testTablesOptionIsOnByDefaultAndApplyWritesTheState() {
+        assertTrue(named<JBCheckBox>("markdown.tables").isSelected)
+        assertFalse(configurable.isModified)
+        named<JBCheckBox>("markdown.tables").isSelected = false
+        assertTrue(configurable.isModified)
+        configurable.apply()
+        assertFalse(AgenstormSettings.getInstance().state.liveMarkupTables)
+        assertFalse(configurable.isModified)
+    }
+
     fun testRevealScopeSelectorOffersElementAndLine() {
         val combo = named<ComboBox<*>>("markdown.revealScope")
         assertEquals(listOf("element", "line"), (0 until combo.itemCount).map { (combo.getItemAt(it) as AgenstormConfigurable.RevealScopeOption).id })

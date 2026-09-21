@@ -43,7 +43,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
   │   ├── commit/      GenerateCommitMessageAction, DiffCollector, PromptBuilder, MessagePostProcessor, llm/ (backends), context/
   │   ├── tabs/        ProjectTabsModel, ProjectTabsWidgetAction + Installer, NativeTabsRegistryGuard, ui/, git/
   │   ├── notifications/ AutoDismissPolicy, NotificationAutoDismissService, NotificationAutoDismissListener
-  │   ├── markdown/    MarkupRangeCollector, LiveMarkupController, LiveMarkupService (+ editor listener, startup activity), LiveMarkupAnnotator, LinkTextGotoDeclarationHandler, ToggleLiveMarkupAction, MarkdownBlockRenderer (Phase H1)
+  │   ├── markdown/    MarkupRangeCollector, LiveMarkupController, LiveMarkupService (+ editor listener, startup activity), LiveMarkupAnnotator, LinkTextGotoDeclarationHandler, LinkDestinations, ToggleLiveMarkupAction, MarkdownBlockRenderer (Phase H1), tables/ (Epic Q: TableModel + TableModelBuilder, TableLayout, TableInlays + TableInlayRenderer, TablePainter)
   │   └── terminal/    OpenRequestServer, OpenCommandRouter, OpenShimScriptHolder, TerminalOpenExecOptionsCustomizer, TerminalOpenNotice
   ├── src/main/resources/
   │   ├── META-INF/plugin.xml            core + always-on extensions

@@ -171,6 +171,12 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .onApply { AgenstormSettingsListener.fire() }
                     .applyToComponent { name = "markdown.rules" }
             }
+            row {
+                checkBox(AgenstormBundle.message("settings.markdown.tables"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.liveMarkupTables }, { AgenstormSettings.getInstance().state.liveMarkupTables = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "markdown.tables" }
+            }
             row(AgenstormBundle.message("settings.markdown.revealScope")) {
                 comboBox(REVEAL_SCOPES)
                     .bindItem(

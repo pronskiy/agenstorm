@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Markdown tables render in place.** In live-markup mode a table whose caret is elsewhere shows as a painted block under the line above it: the proportional UI font, cells that wrap, a bold header row, thin rules between rows, the separator row's alignment, links and code spans styled. Click a cell to edit the raw table with the caret in that cell; click a link to follow it. Find, Go to line and a `path:line` jump into the table open it as well, and it renders again once the caret leaves; the arrow keys pass over it. On by default, under Tools → Agenstorm → Markdown live markup → Render tables.
+
 ## [1.7.0] - 2026-09-19
 
 ### Added
