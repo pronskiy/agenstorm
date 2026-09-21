@@ -33,21 +33,22 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
 
               quote q
 
-            | a | b |
-            |---|---|
-            | c | d |
 
-            
+
             
         """.trimIndent()
         assertEquals(expected, render(myFixture.file.text, ranges))
     }
 
-    fun testRangesAreSortedAndDisjoint() {
+    fun testRangesAreSortedAndDisjointExceptInsideATable() {
         val ranges = collectFixture()
         assertTrue(ranges.size > 10)
+        val tables = ranges.filter { it.kind == MarkupKind.TABLE }.map { it.range }
+        assertEquals(1, tables.size)
         for ((previous, next) in ranges.zipWithNext()) {
-            assertTrue("$previous then $next", previous.range.endOffset <= next.range.startOffset)
+            val nested = tables.any { it.contains(previous.range) && it.contains(next.range) } ||
+                (previous.kind == MarkupKind.TABLE && previous.range.contains(next.range))
+            assertTrue("$previous then $next", nested || previous.range.endOffset <= next.range.startOffset)
         }
     }
 
@@ -145,9 +146,11 @@ class MarkupRangeCollectorTest : BasePlatformTestCase() {
         return MarkupRangeCollector.collect(myFixture.file)
     }
 
+    /** A range inside a table's range is folded away with the table, so only the outermost ranges are applied. */
     private fun render(text: String, ranges: List<MarkupRange>): String {
+        val outer = ranges.filter { range -> ranges.none { it !== range && it.range.contains(range.range) } }
         val sb = StringBuilder(text)
-        for (range in ranges.sortedByDescending { it.range.startOffset }) sb.replace(range.range.startOffset, range.range.endOffset, range.placeholder)
+        for (range in outer.sortedByDescending { it.range.startOffset }) sb.replace(range.range.startOffset, range.range.endOffset, range.placeholder)
         return sb.toString()
     }
 }

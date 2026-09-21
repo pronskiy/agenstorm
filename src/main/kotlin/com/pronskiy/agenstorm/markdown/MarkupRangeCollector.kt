@@ -10,19 +10,22 @@ import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.markdown.tables.TableModel
+import com.pronskiy.agenstorm.markdown.tables.TableModelBuilder
 import org.intellij.plugins.markdown.lang.MarkdownElementTypes
 import org.intellij.plugins.markdown.lang.MarkdownTokenTypes
+import org.intellij.plugins.markdown.lang.psi.impl.MarkdownTable
 
 /** What a hidden range stands for; the controller keys its fold regions by kind and range. */
 enum class MarkupKind {
-    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET, FENCE_OPEN, FENCE_CLOSE, QUOTE_MARKER, RULE;
+    STRONG, EMPH, STRIKE, CODE, HEADING, LINK_OPEN, LINK_TAIL, CHECKBOX_OFF, CHECKBOX_ON, BULLET, FENCE_OPEN, FENCE_CLOSE, QUOTE_MARKER, RULE, TABLE;
 
     val isCheckbox: Boolean get() = this == CHECKBOX_OFF || this == CHECKBOX_ON
 
     val isFence: Boolean get() = this == FENCE_OPEN || this == FENCE_CLOSE
 
     /** Block-level markers are revealed for their whole line; inline ones only for their element (Phase F3). */
-    val isBlock: Boolean get() = this == HEADING || this == BULLET || this == QUOTE_MARKER || this == RULE || isCheckbox || isFence
+    val isBlock: Boolean get() = this == HEADING || this == BULLET || this == QUOTE_MARKER || this == RULE || this == TABLE || isCheckbox || isFence
 }
 
 /**
@@ -40,8 +43,12 @@ enum class MarkdownBlockKind { CODE_FENCE, BLOCK_QUOTE, THEMATIC_BREAK }
  */
 data class MarkdownBlock(val kind: MarkdownBlockKind, val span: TextRange, val language: String?)
 
-/** Everything one walk of the file produced: the ranges to fold and the blocks to paint behind. */
-data class Markup(val ranges: List<MarkupRange>, val blocks: List<MarkdownBlock>)
+/**
+ * Everything one walk of the file produced: the ranges to fold, the blocks to paint behind, and the tables to
+ * render in place (Epic Q). A table's [MarkupKind.TABLE] range is the only one that contains other ranges: the
+ * inline markup of its cells nests inside it, hidden with the table and revealed per element once it is open.
+ */
+data class Markup(val ranges: List<MarkupRange>, val blocks: List<MarkdownBlock>, val tables: List<TableModel> = emptyList())
 
 /**
  * Step F1.1. Walks a Markdown PSI tree and lists the marker characters the live-markup mode hides: emphasis and
@@ -89,6 +96,7 @@ object MarkupRangeCollector {
         val codeBlocks: Boolean = true,
         val blockQuotes: Boolean = true,
         val rules: Boolean = true,
+        val tables: Boolean = true,
     ) {
         companion object {
             fun fromSettings(): Options = AgenstormSettings.getInstance().state.let {
@@ -98,6 +106,7 @@ object MarkupRangeCollector {
                     codeBlocks = it.liveMarkupCodeBlocks,
                     blockQuotes = it.liveMarkupBlockQuotes,
                     rules = it.liveMarkupRules,
+                    tables = it.liveMarkupTables,
                 )
             }
         }
@@ -113,6 +122,7 @@ object MarkupRangeCollector {
         val text = file.viewProvider.contents
         val out = ArrayList<MarkupRange>()
         val blocks = ArrayList<MarkdownBlock>()
+        val tables = ArrayList<TableModel>()
         file.accept(object : PsiRecursiveElementWalkingVisitor() {
             override fun visitElement(element: PsiElement) {
                 val type = PsiUtilCore.getElementType(element) ?: return
@@ -133,6 +143,7 @@ object MarkupRangeCollector {
                     MarkdownTokenTypes.CHECK_BOX -> if (options.checkboxes) checkbox(element.node, out)
                     MarkdownTokenTypes.LIST_BULLET -> if (options.bullets) bullet(element.node, out)
                     MarkdownTokenTypes.HORIZONTAL_RULE -> if (options.rules) rule(element.node, out, blocks)
+                    MarkdownElementTypes.TABLE -> if (options.tables && element is MarkdownTable) table(element, text, out, tables)
                     in HEADINGS -> heading(element.node, text, out)
                 }
                 super.visitElement(element)
@@ -140,7 +151,8 @@ object MarkupRangeCollector {
         })
         out.sortBy { it.range.startOffset }
         blocks.sortBy { it.span.startOffset }
-        return Markup(dropSwallowedQuoteMarkers(out), blocks)
+        tables.sortBy { it.span.startOffset }
+        return Markup(dropSwallowedQuoteMarkers(out), blocks, tables)
     }
 
     /**
@@ -175,8 +187,24 @@ object MarkupRangeCollector {
      * the fence range already hides that marker — and starts at the very same offset it does. Everything else
      * is disjoint by construction.
      */
+    /**
+     * Epic Q. One range over the whole table — from the line break before it, when there is one, so the collapsed
+     * table merges into the end of the line above and no empty line is left behind (decision 67) — with the model
+     * riding along for the renderer. The walk goes on into the cells, so their inline markup nests inside.
+     */
+    private fun table(table: MarkdownTable, text: CharSequence, out: MutableList<MarkupRange>, tables: MutableList<TableModel>) {
+        val model = TableModelBuilder.build(table)
+        val span = model.span
+        if (span.isEmpty) return
+        val start = if (span.startOffset > 0 && text[span.startOffset - 1] == '\n') span.startOffset - 1 else span.startOffset
+        val range = TextRange(start, span.endOffset)
+        out += MarkupRange(MarkupKind.TABLE, range, "", range)
+        tables += model
+    }
+
     private fun dropSwallowedQuoteMarkers(sorted: List<MarkupRange>): List<MarkupRange> {
-        val covered = sorted.filter { it.kind != MarkupKind.QUOTE_MARKER }
+        // A table's range contains its rows' markers without swallowing them: they fold as usual once it is open.
+        val covered = sorted.filter { it.kind != MarkupKind.QUOTE_MARKER && it.kind != MarkupKind.TABLE }
         if (covered.isEmpty() || covered.size == sorted.size) return sorted
         val out = ArrayList<MarkupRange>(sorted.size)
         // Both lists run in start order and the covering ranges are disjoint, so one forward pointer is enough.

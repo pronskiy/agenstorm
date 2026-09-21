@@ -41,7 +41,7 @@
 
 ### Current focus
 
-**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Phase Q1 is closed** (2026-09-21: `TableModel` + `TableModelBuilder` with thirteen tests, `TableLayout` with nine, both guardrails ✅). **Next actionable step: Q2.1** — the collector emits `MarkupKind.TABLE` with the preceding-break range rule and the model on `Markup.tables`, gated by `liveMarkupTables`. Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
+**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Phase Q1 is closed** (2026-09-21: `TableModel` + `TableModelBuilder` with thirteen tests, `TableLayout` with nine, both guardrails ✅). **Q2.1 landed 2026-09-21.** **Next actionable step: Q2.2** — the controller's TABLE reveal rule (inside or at the end, never the line above) and the coexistence, restore and off-switch tests in `TableFoldingTest`. Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
 
 **Before that:** **1.7.0 is released** (2026-09-19, the whole run in one evening): pushed as `9e1fd26`, `build.yml` green and the draft made, the **Marketplace upload** workflow dispatched from the terminal (the `.env` token may trigger `workflow_dispatch`, verified), review passed in about fourteen minutes — the update server listed 1.7.0 at 21:18 — and the draft published as Latest with `agenstorm-1.7.0-signed.zip` (`https://github.com/pronskiy/agenstorm/releases/tag/1.7.0`). `release.yml` came back green and opened no changelog PR, because `patchChangelog` had already run in the cut. **`pluginVersion` stays 1.7.0** until there is something to release: 1.7.1 for a fix, 1.8.0 for a feature.
 
@@ -2003,7 +2003,7 @@ Platform facts (verified against build 262, 2026-09-21, by bytecode in `PhpStorm
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| Q2.1 | Collector: `MarkupKind.TABLE` (`isBlock`), the range rule, `Markup.tables`, `Options.tables` ← `liveMarkupTables` | 🔲 | |
+| Q2.1 | Collector: `MarkupKind.TABLE` (`isBlock`), the range rule, `Markup.tables`, `Options.tables` ← `liveMarkupTables` | ✅ | `TableCollectorTest`, eight cases. The collector's "ranges never overlap" invariant is now "never overlap, except inside a table": the cells' inline ranges nest in the table's, `MarkupRangeCollectorTest` renders only the outermost ranges, and `dropSwallowedQuoteMarkers` no longer counts a table as covering its rows' `>` markers, so a quoted table keeps them folded once open |
 | Q2.2 | Controller: the TABLE reveal rule; coexistence with the plugin's table region; persisted-state restore; off switches | 🔲 | |
 | Q2.3 | `TableInlays` + `TableInlayRenderer` + `TablePainter`: one block inlay per collapsed table, width and scheme updates | 🔲 | |
 | Q2.4 | Click and hover: reveal at the cell, follow links, hand cursor; `LinkDestinations` shared with the goto handler | 🔲 | |

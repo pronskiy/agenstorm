@@ -106,6 +106,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupBlockQuotes: Boolean = true,
         /** Epic H (Phase H3): thematic breaks render as a full-width line, their `---` hidden. */
         var liveMarkupRules: Boolean = true,
+        /** Epic Q: tables render in place as a painted block while the caret is outside them. */
+        var liveMarkupTables: Boolean = true,
         /** Epic M: the editor/preview layout buttons leave the top-right corner of every Markdown editor. */
         var markdownHideLayoutSwitcher: Boolean = false,
         /** Epic N: right-anchored tool windows move to the left, which empties the right bar and makes the IDE hide it. */
