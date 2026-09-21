@@ -41,7 +41,7 @@
 
 ### Current focus
 
-**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Q1.1 landed 2026-09-21** (`TableModel`, `TableModelBuilder`, `tables.md`, 13 tests). **Next actionable step: Q1.2** — the pure layout (`TableLayout`, `TextMeasurer`, `TableGeometry.hitTest`) against a fixed-width fake measurer. Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
+**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Phase Q1 is closed** (2026-09-21: `TableModel` + `TableModelBuilder` with thirteen tests, `TableLayout` with nine, both guardrails ✅). **Next actionable step: Q2.1** — the collector emits `MarkupKind.TABLE` with the preceding-break range rule and the model on `Markup.tables`, gated by `liveMarkupTables`. Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
 
 **Before that:** **1.7.0 is released** (2026-09-19, the whole run in one evening): pushed as `9e1fd26`, `build.yml` green and the draft made, the **Marketplace upload** workflow dispatched from the terminal (the `.env` token may trigger `workflow_dispatch`, verified), review passed in about fourteen minutes — the update server listed 1.7.0 at 21:18 — and the draft published as Latest with `agenstorm-1.7.0-signed.zip` (`https://github.com/pronskiy/agenstorm/releases/tag/1.7.0`). `release.yml` came back green and opened no changelog PR, because `patchChangelog` had already run in the cut. **`pluginVersion` stays 1.7.0** until there is something to release: 1.7.1 for a fix, 1.8.0 for a feature.
 
@@ -1966,7 +1966,7 @@ Platform facts (verified against build 262, 2026-09-21, by bytecode in `PhpStorm
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
 | Q1.1 | `markdown/tables/TableModel.kt`: `TableModel`, `TableRow`, `TableCell(range, runs)`, `StyledRun`, `ColumnAlignment`, and `TableModelBuilder.build(MarkdownTable): TableModel` from the PSI; fixture `testData/markdown/tables.md` and `TableModelBuilderTest` | ✅ | Two PSI facts worth knowing: `PsiElement.getChildren()` on the plugin's `ASTDelegatePsiElement`s returns composites only, so the builder walks `firstChild`/`nextSibling` to see `TEXT` and whitespace; and a row's surplus cells (`\| extra \| 1 \| 2 \|` under two columns) come back as a stray `MarkdownTableSeparatorRow` inside the row, which the `take(columns)` over `getCells()` never sees. A bare `me@x.y` is plain `TEXT` in this parser — only `mailto:` links and `<…>` / `https://` autolinks are links |
-| Q1.2 | `markdown/tables/TableLayout.kt`: `TextMeasurer`, column widths, wrapping, row heights, cell rectangles and `hitTest`; `TableLayoutTest` with a fixed-width fake measurer | 🔲 | |
+| Q1.2 | `markdown/tables/TableLayout.kt`: `TextMeasurer`, column widths, wrapping, row heights, cell rectangles and `hitTest`; `TableLayoutTest` with a fixed-width fake measurer | ✅ | One rule more than the step planned: plain proportional sharing wrapped the conference table's date column into three lines at 900 px, so a column no wider than an equal share of the space keeps its natural width and only the wider ones share the rest. Min and max widths reuse the wrapper (wrap at 0 gives the widest word, at infinity the widest line), so there is one wrapping code path. Character breaking never happens: a column is never narrower than its widest word |
 
 **Steps (detail):**
 
@@ -1988,15 +1988,16 @@ Platform facts (verified against build 262, 2026-09-21, by bytecode in `PhpStorm
   the column breaks by character, `breakBefore` forces a line. Row height = the tallest cell's lines × line height +
   vertical padding. The geometry carries column x/width, row y/height, every run's position and each cell's rectangle,
   and answers `hitTest(x, y): Hit(cell, run?)`. `TextMeasurer` has `width(text, style)` and `lineHeight` only, so the
-  test uses seven pixels per character and asserts exact numbers: the conference table at 900 px gives four columns
-  with the third and fourth wrapping and the first two not.
+  test uses seven pixels per character and asserts exact numbers. **Built with one more rule:** a column no wider than
+  an equal share (`available / columns`) keeps its natural width; only the wider columns share the rest — without it
+  the conference table's date column wrapped into three lines at 900 px while the prose columns had room to spare.
 
 **Exit guardrails — Phase Q1 → Q2**
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Model | `TableModelBuilderTest` covers every fixture table: runs, alignments, ranges, ragged rows, the `<br>` and `\|` cases | 🔲 | |
-| Layout | `TableLayoutTest` covers the three width regimes, wrapping, forced breaks, alignment offsets and `hitTest`; `./gradlew check` green | 🔲 | |
+| Model | `TableModelBuilderTest` covers every fixture table: runs, alignments, ranges, ragged rows, the `<br>` and `\|` cases | ✅ | Thirteen tests over the nine tables of `tables.md`, 2026-09-21 |
+| Layout | `TableLayoutTest` covers the three width regimes, wrapping, forced breaks, alignment offsets and `hitTest`; `./gradlew check` green | ✅ | Nine tests, `check` green 2026-09-21. A dump of the conference table at seven pixels a character: 900 px → columns 127 / 192 / 213 / 368, the date column on one line in every row, the prose columns four to five lines, the names two to four; 1400 px → 339 / 192 / 312 / 557, names and dates on one line, prose three |
 
 #### Phase Q2 — Rendered in place
 
