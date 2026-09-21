@@ -67,13 +67,16 @@ class CellEditor(private val editor: EditorEx, private val project: Project, pri
         field.font = inlay.renderer.measurer().fonts.text
         field.focusTraversalKeysEnabled = false
         field.bounds = bounds
-        field.registerKeyboardAction({ commit() }, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), JComponent.WHEN_FOCUSED)
-        field.registerKeyboardAction({ cancel() }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_FOCUSED)
-        field.registerKeyboardAction({ moveToNext() }, KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), JComponent.WHEN_FOCUSED)
-        field.registerKeyboardAction({ moveToPrevious() }, KeyStroke.getKeyStroke(KeyEvent.VK_TAB, KeyEvent.SHIFT_DOWN_MASK), JComponent.WHEN_FOCUSED)
+        // Swing hands these to us outside the write-intent lock (a focus event never holds it, and committing the
+        // document from inside one is "Access is allowed from write thread only"), so each one hops through
+        // invokeLater, which runs under the lock, and checks the cell is still the open one when it gets there.
+        field.registerKeyboardAction({ later(field) { commit() } }, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), JComponent.WHEN_FOCUSED)
+        field.registerKeyboardAction({ later(field) { cancel() } }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_FOCUSED)
+        field.registerKeyboardAction({ later(field) { moveToNext() } }, KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), JComponent.WHEN_FOCUSED)
+        field.registerKeyboardAction({ later(field) { moveToPrevious() } }, KeyStroke.getKeyStroke(KeyEvent.VK_TAB, KeyEvent.SHIFT_DOWN_MASK), JComponent.WHEN_FOCUSED)
         field.addFocusListener(object : FocusAdapter() {
             override fun focusLost(e: FocusEvent) {
-                if (!closing && session?.field === field && !e.isTemporary) commit()
+                if (!closing && !e.isTemporary) later(field) { commit() }
             }
         })
         val marker = document.createRangeMarker(cell.range)
@@ -172,6 +175,11 @@ class CellEditor(private val editor: EditorEx, private val project: Project, pri
         } finally {
             closing = false
         }
+    }
+
+    /** On the next event-loop turn, under the write-intent lock, and only if [field] is still the open cell. */
+    private fun later(field: JBTextField, action: () -> Unit) {
+        ApplicationManager.getApplication().invokeLater({ if (session?.field === field) action() }) { session?.field !== field }
     }
 
     /** The first request is asynchronous and may lose to the editor's own; ask again on the next turn (Epic O). */

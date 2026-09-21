@@ -2123,7 +2123,7 @@ Platform facts (verified against build 262, 2026-09-21):
 | Follows | The field stays on its cell while the editor scrolls and after the editor is resized | 🔲 | |
 | Undo | One Undo reverts one cell edit, and the table re-renders | 🔲 | |
 | Structural | **Edit Table as Text** opens the raw table; a row added there renders on the way out | 🔲 | |
-| Log clean | No plugin exceptions in the session | 🔲 | |
+| Log clean | No plugin exceptions in the session | 🔄 | **First run, 2026-09-21 15:48–15:55: two SEVEREs, both ours** — "Access is allowed from write thread only" from `CellEditor.commit` reached through the field's `focusLost`: an AWT focus event is dispatched without the write-intent lock, and `PsiDocumentManager.commitDocument` asserts it. Every Swing-originated callback of the field (Enter, Esc, Tab, focus loss) now hops through `invokeLater`, which runs under the lock, and checks the cell is still the open one; `CellEditorTest` pins the deferral. `WriteIntentReadAction` would have done it in place but is `@Experimental`. Second run pending |
 
 ---
 

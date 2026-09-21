@@ -9,6 +9,7 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.markdown.tables.CellEditor
 import com.pronskiy.agenstorm.markdown.tables.TableInlayRenderer
 import java.awt.Point
+import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
 import javax.swing.JComponent
 import javax.swing.KeyStroke
@@ -116,6 +117,30 @@ class CellEditorTest : BasePlatformTestCase() {
             assertNotNull("$key is bound", map[KeyStroke.getKeyStroke(key)])
         }
         assertFalse("Tab reaches the binding, not focus traversal", field.focusTraversalKeysEnabled)
+    }
+
+    fun testFocusLossCommitsOnTheNextEventLoopTurnNotInsideTheFocusEvent() {
+        // Found in the sandbox: an AWT focus event is dispatched without the write-intent lock, and committing the
+        // document from inside it is "Access is allowed from write thread only". The commit is deferred one turn.
+        val controller = configured()
+        controller.clickTable(pointOn(controller, row = 1, column = 0))
+        val field = controller.cellEditor().field!!
+        field.text = "late"
+        for (listener in field.focusListeners) listener.focusLost(FocusEvent(field, FocusEvent.FOCUS_LOST, false))
+        assertTrue("still open inside the focus event", controller.cellEditor().isOpen)
+        assertEquals(text, myFixture.editor.document.text)
+        UIUtil.dispatchAllInvocationEvents()
+        assertFalse(controller.cellEditor().isOpen)
+        assertEquals("| late | d |", myFixture.editor.document.getText(com.intellij.openapi.util.TextRange(27, 39)))
+    }
+
+    fun testATemporaryFocusLossCommitsNothing() {
+        val controller = configured()
+        controller.clickTable(pointOn(controller, row = 1, column = 0))
+        val field = controller.cellEditor().field!!
+        for (listener in field.focusListeners) listener.focusLost(FocusEvent(field, FocusEvent.FOCUS_LOST, true))
+        UIUtil.dispatchAllInvocationEvents()
+        assertTrue(controller.cellEditor().isOpen)
     }
 
     fun testAClickOnAnotherCellCommitsTheOpenOne() {
