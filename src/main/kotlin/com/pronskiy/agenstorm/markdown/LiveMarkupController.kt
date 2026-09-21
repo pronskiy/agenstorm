@@ -9,6 +9,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.FoldRegion
 import com.intellij.openapi.editor.FoldingGroup
+import com.intellij.openapi.editor.Inlay
 import com.intellij.openapi.editor.event.CaretEvent
 import com.intellij.openapi.editor.event.CaretListener
 import com.intellij.openapi.editor.event.DocumentEvent
@@ -30,6 +31,9 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.ThreadingAssertions
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.markdown.tables.TableInlayRenderer
+import com.pronskiy.agenstorm.markdown.tables.TableInlays
+import com.pronskiy.agenstorm.markdown.tables.TableModel
 import java.awt.Cursor
 import java.awt.event.MouseEvent
 import kotlinx.coroutines.CoroutineName
@@ -100,6 +104,9 @@ class LiveMarkupController(
 
     /** Epic H: the block backgrounds, updated from the same snapshot as the fold regions. */
     private val blockRenderer = MarkdownBlockRenderer(editor)
+
+    /** Epic Q: the rendered tables, one block inlay per collapsed table region. */
+    private val tableInlays = TableInlays(editor)
     private val job: Job
     private var policyScheduled = false
     private var ownBatch = false
@@ -181,10 +188,13 @@ class LiveMarkupController(
         val carets = Carets.of(editor)
         val targets = targetsFor(ours, carets)
         val changes = targets.filter { (region, target) -> region.isExpanded != target }
-        if (changes.isEmpty()) return
-        batch {
-            for ((region, target) in changes) region.isExpanded = target
+        if (changes.isNotEmpty()) {
+            batch {
+                for ((region, target) in changes) region.isExpanded = target
+            }
         }
+        // Always, not only after a change of ours: a foreign batch may have flipped a table on its own.
+        tableInlays.refresh(ours)
     }
 
     /**
@@ -242,6 +252,7 @@ class LiveMarkupController(
     fun removeAll() {
         if (editor.isDisposed || !ApplicationManager.getApplication().isDispatchThread) return
         blockRenderer.removeAll()
+        tableInlays.removeAll()
         val model = editor.foldingModel
         val ours = regions()
         if (ours.isEmpty()) return
@@ -251,14 +262,18 @@ class LiveMarkupController(
     /** The block backgrounds this controller owns (Epic H). */
     fun blockHighlighters(): List<RangeHighlighter> = blockRenderer.highlighters()
 
+    /** The rendered tables this controller owns (Epic Q): one inlay per collapsed table. */
+    fun tableInlays(): List<Inlay<TableInlayRenderer>> = tableInlays.inlays()
+
     override fun dispose() {
         job.cancel()
         removeAll()
         blockRenderer.dispose()
+        tableInlays.dispose()
         FoldPlaceholderStyle.uninstall(editor)
     }
 
-    private class Snapshot(val ranges: List<MarkupRange>, val blocks: List<MarkdownBlock>, val stamp: Long)
+    private class Snapshot(val ranges: List<MarkupRange>, val blocks: List<MarkdownBlock>, val tables: List<TableModel>, val stamp: Long)
 
     private data class RegionKey(val start: Int, val end: Int, val kind: MarkupKind, val placeholder: String)
 
@@ -270,7 +285,7 @@ class LiveMarkupController(
         val started = System.nanoTime()
         val markup = MarkupRangeCollector.collectMarkup(file, MarkupRangeCollector.Options.fromSettings())
         if (LOG.isDebugEnabled) LOG.debug("live markup: ${markup.ranges.size} ranges collected in ${(System.nanoTime() - started) / 1_000_000} ms")
-        return Snapshot(markup.ranges, markup.blocks, document.modificationStamp)
+        return Snapshot(markup.ranges, markup.blocks, markup.tables, document.modificationStamp)
     }
 
     private fun apply(snapshot: Snapshot) {
@@ -331,6 +346,7 @@ class LiveMarkupController(
             }
         }
         blockRenderer.sync(snapshot.blocks)
+        tableInlays.sync(snapshot.tables, regions())
         if (LOG.isDebugEnabled) LOG.debug("live markup: $created regions created, $removed removed, $replaced foreign ones replaced in ${(System.nanoTime() - started) / 1_000_000} ms")
     }
 

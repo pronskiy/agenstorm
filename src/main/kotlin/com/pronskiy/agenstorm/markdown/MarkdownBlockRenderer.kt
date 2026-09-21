@@ -101,11 +101,6 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
         return ColorUtil.mix(background, scheme.defaultForeground, BAR_MIX)
     }
 
-    /** The rule itself: whatever paints a `---`, else the editor's own background taken toward the foreground. */
-    private fun ruleColor(scheme: EditorColorsScheme): Color {
-        scheme.getAttributes(MarkdownHighlighterColors.HRULE)?.foregroundColor?.let { return it }
-        return ColorUtil.mix(scheme.defaultBackground, scheme.defaultForeground, RULE_MIX)
-    }
 
     /**
      * Fills the bar and nothing else; the card behind it is the highlighter's own background.
@@ -168,6 +163,12 @@ class MarkdownBlockRenderer(private val editor: EditorEx) : Disposable {
 
         /** A rule is a divider, not a highlight: enough to see, not enough to cut the page in two. */
         private const val RULE_MIX = 0.30
+
+        /** The rule itself: whatever paints a `---`, else the editor's own background taken toward the foreground. */
+        fun ruleColor(scheme: EditorColorsScheme): Color {
+            scheme.getAttributes(MarkdownHighlighterColors.HRULE)?.foregroundColor?.let { return it }
+            return ColorUtil.mix(scheme.defaultBackground, scheme.defaultForeground, RULE_MIX)
+        }
 
         /** Null for a thematic break: it is a line drawn on the row, not a card behind one. */
         fun background(scheme: EditorColorsScheme, kind: MarkdownBlockKind): Color? {

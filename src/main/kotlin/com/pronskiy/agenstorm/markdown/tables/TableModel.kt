@@ -38,6 +38,11 @@ data class TableRow(val range: TextRange, val cells: List<TableCell>)
 /** A GFM table as data: [span] runs from the first character of the header row to the last of the last row. */
 data class TableModel(val span: TextRange, val header: TableRow, val rows: List<TableRow>, val alignments: List<ColumnAlignment>) {
     val columnCount: Int get() = alignments.size
+
+    /** The same text in the same styles and alignments, wherever the two tables sit in their documents. */
+    fun sameContent(other: TableModel): Boolean =
+        alignments == other.alignments && header.cells.size == other.header.cells.size && rows.size == other.rows.size &&
+            (listOf(header) + rows).zip(listOf(other.header) + other.rows).all { (a, b) -> a.cells.map { it.runs } == b.cells.map { it.runs } }
 }
 
 /**
