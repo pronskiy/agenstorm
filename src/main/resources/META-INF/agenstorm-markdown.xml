@@ -40,5 +40,10 @@
             <add-to-group group-id="Markdown.Toolbar.Right" anchor="last"/>
             <add-to-group group-id="Markdown.EditorContextMenuGroup" anchor="last"/>
         </action>
+        <!-- markdown (Epic Q): the raw table for structural edits, next to the live-markup toggle in the context menu. -->
+        <action id="Agenstorm.EditTableAsText"
+                class="com.pronskiy.agenstorm.markdown.tables.EditTableAsTextAction">
+            <add-to-group group-id="Markdown.EditorContextMenuGroup" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

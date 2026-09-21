@@ -311,6 +311,18 @@ class LiveMarkupController(
     /** The in-place cell editor (Epic Q, Phase Q3). */
     fun cellEditor(): CellEditor = cellEditor
 
+    /** The rendered table under [point] (editor content coordinates), or null. */
+    fun tableAt(point: Point): Inlay<TableInlayRenderer>? = tableInlays.hitAt(point)?.first
+
+    /** Opens the rendered table as raw text: the caret goes to its first cell, and the reveal rule answers. */
+    fun revealTable(inlay: Inlay<TableInlayRenderer>) {
+        if (!inlay.isValid) return
+        cellEditor.cancel()
+        val model = inlay.renderer.model
+        val first = model.header.cells.firstOrNull()?.range?.startOffset ?: model.span.startOffset
+        editor.caretModel.moveToOffset(first)
+    }
+
     /** Whether [point] (editor content coordinates) is on a link of a rendered table — the hand cursor's cue. */
     fun tableLinkAt(point: Point): Boolean = tableInlays.hitAt(point)?.second?.run?.run?.link != null
 

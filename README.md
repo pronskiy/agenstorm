@@ -12,8 +12,8 @@ Agenstorm closes the gaps, one small feature at a time. Every feature has its ow
 
 Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bullets show their
 result until the caret reaches them. Fenced code blocks and block quotes sit on a card. Tables
-render in place — a proportional font, wrapped cells, a bold header — and open as raw pipes on a
-click. It is folding only: the file on disk never changes, and copying always copies raw Markdown.
+render in place — a proportional font, wrapped cells, a bold header — and a click edits one cell
+without leaving the rendered view. It is folding only: the file on disk never changes, and copying always copies raw Markdown.
 An optional switch also hides the editor/preview layout buttons.
 
 ### Clickable file locations
@@ -143,9 +143,10 @@ Obsidian-style editing: the syntax hides itself until the caret reaches the line
   untouched.
 - **Tables** render in place while the caret is outside them: the proportional UI font, cells that
   wrap, a bold header row, thin rules between rows and the column alignment the separator row asks
-  for. Click a cell to get the raw table back with the caret in that cell; click a link to follow it;
-  Find, Go to line and a jump into the table open it too, and it renders again when the caret leaves.
-  Arrow keys pass over a rendered table.
+  for. Click a cell to edit it right there: a field over the cell holds its raw Markdown, Enter writes it
+  back, Esc drops it, Tab walks the row. Click a link to follow it. For rows and columns, **Edit Table as
+  Text** in the context menu opens the raw table; so do Find, Go to line and a jump into it, and it
+  renders again when the caret leaves. Arrow keys pass over a rendered table.
 - **Links.** `[text](destination)` shows the text; Ctrl/Cmd+click or Ctrl+B follows the destination:
   files, `path:line:col` locations, `#headings` and URLs.
 - **Layout buttons, if you want them gone.** A separate switch, off by default under Settings → Tools →
