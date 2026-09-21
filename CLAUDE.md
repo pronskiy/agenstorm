@@ -4,7 +4,7 @@ Project instructions for Claude Code working on **Agenstorm** — a PhpStorm plu
 
 ## Overview
 
-Plugin id `com.pronskiy.agenstorm`, MIT, public on JetBrains Marketplace, target `since-build=262` (PhpStorm 2026.2). The repo started as a renamed IntelliJ Platform Plugin Template scaffold — Gradle build, `plugin.xml`, `AgenstormBundle`, GitHub Actions workflows — and now holds every feature of the 1.0 release: Epics 0–G and Epic H's Phase H1. Epic H's Phases H2 and H3 and the whole of Epic I are deferred to after 1.0 and have no code yet.
+Plugin id `com.pronskiy.agenstorm`, MIT, public on JetBrains Marketplace, target `since-build=262` (PhpStorm 2026.2). The repo started as a renamed IntelliJ Platform Plugin Template scaffold — Gradle build, `plugin.xml`, `AgenstormBundle`, GitHub Actions workflows — and now holds every feature of the 1.0 release: Epics 0–G and Epic H's Phase H1. Epic H's Phase H2 and the whole of Epic I are deferred and have no code yet. **Epic Q** (Markdown tables rendered in place, spec'd 2026-09-21) is the next thing to build; its code will live in `markdown/tables/`.
 
 **`SPEC.md` is the task list and source of truth.** Start at the **Current focus** pointer near the top of the spec — it names the next actionable step so you don't have to scan the whole file. Work the spec: implement that step's deliverable, update its status (🔲 → 🔄 → ✅) in the phase tracker, and advance the Current focus pointer. Don't skip ahead past a phase's exit guardrails — when you reach a phase boundary, verify the guardrail criteria, fill in the **Actual outcome** column, and only then move on.
 
@@ -84,4 +84,4 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
 
 ## Goals
 
-Near term: ship **Release 1.0** — Epics 0–G plus Epic H's Phase H1, all built. What is left is the release itself: the plugin icon, a green `verifyPlugin`, a hand-installed ZIP, the GitHub repo and the Marketplace listing, tracked as steps R1–R6 in the spec. After 1.0 come Epic H's Phases H2 and H3 (the rounded card with its language chip and copy action, then block quotes and thematic breaks) and Epic I (terminal output enhancers).
+Near term: ship **Release 1.0** — Epics 0–G plus Epic H's Phase H1, all built. What is left is the release itself: the plugin icon, a green `verifyPlugin`, a hand-installed ZIP, the GitHub repo and the Marketplace listing, tracked as steps R1–R6 in the spec. After 1.0 came Epics J–P; **Epic Q** (Markdown tables rendered in place) is next, then Epic I (terminal output enhancers). Epic H's Phase H2 is parked until someone asks.

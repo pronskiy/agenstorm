@@ -33,6 +33,7 @@
 | 2026-09-16 | Epic O's inline rename answers the automatic-renaming question as OK would, commits write-safely, and stops flagging an empty field. Decision 62 | Roman (request, the rename call), Claude (investigation, code, text) |
 | 2026-09-16 | **1.6.0 cut** — Epic O (names typed in the project tree) and the build-enforced verifier gate. `check` green, ZIP built, verifier Compatible on both IDEs with zero internal API and zero override-only | Roman (decision), Claude (text) |
 | 2026-09-16 | **1.6.0 released** — Marketplace upload by hand, served version confirmed on the update server, draft published as Latest with the signed ZIP; `release.yml` green, no changelog PR needed | Roman (upload, approval, publish), Claude (runs, text) |
+| 2026-09-21 | **Epic Q added:** GFM tables render in place in live-markup mode — a proportional-font block with wrapped cells under the line above the table, revealed by a click, Find or a caret inside. Decisions 66–68 | Roman (request, the four calls on mechanism, font, click and phasing), Claude (investigation, text) |
 
 ### Status legend
 
@@ -40,9 +41,11 @@
 
 ### Current focus
 
-**Now on:** **1.7.0 is released** (2026-09-19, the whole run in one evening): pushed as `9e1fd26`, `build.yml` green and the draft made, the **Marketplace upload** workflow dispatched from the terminal (the `.env` token may trigger `workflow_dispatch`, verified), review passed in about fourteen minutes — the update server listed 1.7.0 at 21:18 — and the draft published as Latest with `agenstorm-1.7.0-signed.zip` (`https://github.com/pronskiy/agenstorm/releases/tag/1.7.0`). `release.yml` came back green and opened no changelog PR, because `patchChangelog` had already run in the cut. **`pluginVersion` stays 1.7.0** until there is something to release: 1.7.1 for a fix, 1.8.0 for a feature.
+**Now on:** **Epic Q — Markdown tables rendered in place**, added 2026-09-21 at Roman's request ("I want to be able to view markdown tables really nicely" — the raw table "looks like complete mess"). Spec'd in one brainstorm; the four calls are decisions 66–68. **Next actionable step: Q1.1** — `TableModel` and `TableModelBuilder` from the table PSI with the `tables.md` fixture, then Q1.2, the pure layout. Q1 is tests-only; the first `runIde` sign-off is the Phase Q2 guardrail table.
 
-**Before that:** **1.7.0 is cut** (2026-09-19): `pluginVersion = 1.7.0`, the changelog section patched (`[1.7.0] - 2026-09-19`), `agenstorm-1.7.0.zip` built, `./gradlew check` green and the verifier **Compatible on PS-262.10968.76 and IU-262.10968.63 with zero internal usages** (76 experimental, 10 deprecated — the same counts as this evening's run, now covering the last-loaded-project fix too). It carries **Epic P** (the full-width strip and offloaded projects) and the tab-hover fix. **What is left is Roman's** (decision 51's order): push, the **Marketplace upload** workflow run by hand, the update-server list checked for 1.7.0 before publishing, then the GitHub draft published. `build.yml` drafts the release on the push.
+**Before that:** **1.7.0 is released** (2026-09-19, the whole run in one evening): pushed as `9e1fd26`, `build.yml` green and the draft made, the **Marketplace upload** workflow dispatched from the terminal (the `.env` token may trigger `workflow_dispatch`, verified), review passed in about fourteen minutes — the update server listed 1.7.0 at 21:18 — and the draft published as Latest with `agenstorm-1.7.0-signed.zip` (`https://github.com/pronskiy/agenstorm/releases/tag/1.7.0`). `release.yml` came back green and opened no changelog PR, because `patchChangelog` had already run in the cut. **`pluginVersion` stays 1.7.0** until there is something to release: 1.7.1 for a fix, 1.8.0 for a feature.
+
+**Earlier:** **1.7.0 is cut** (2026-09-19): `pluginVersion = 1.7.0`, the changelog section patched (`[1.7.0] - 2026-09-19`), `agenstorm-1.7.0.zip` built, `./gradlew check` green and the verifier **Compatible on PS-262.10968.76 and IU-262.10968.63 with zero internal usages** (76 experimental, 10 deprecated — the same counts as this evening's run, now covering the last-loaded-project fix too). It carries **Epic P** (the full-width strip and offloaded projects) and the tab-hover fix. **What is left is Roman's** (decision 51's order): push, the **Marketplace upload** workflow run by hand, the update-server list checked for 1.7.0 before publishing, then the GitHub draft published. `build.yml` drafts the release on the push.
 
 **Earlier:** **Epic P — Project tabs, Chrome-style**, added 2026-09-19 at Roman's request, **Phase P1 is closed** (built and signed off 2026-09-19: the strip reports minimum < preferred, reads its mode from the width it is granted, shrinks the widest tabs first before going icon-only, and has no chevron any more; all six guardrails ✅, log clean). **P2.1 landed 2026-09-19** (`ProjectTab`, the persisted `offloaded` list and `lastActive` map; the strip still shows loaded tabs only until P2.7). P2.2 landed too (`TabsFrameListener` records frame activation). P2.3 landed (`OffloadPolicy`, the pure rule). P2.4 landed (the `offloadGuard` EP with the running-processes and terminal-command guards). P2.5 landed (`Offloader` + `ProjectOffloadService`, the sweep that closes, and the one-time balloon). P2.6 landed (`ProjectLoader`). P2.7 landed (dotted bookmarks in the strip, load / forget / Offload Project wired). **Epic P is closed** (built and signed off 2026-09-19, both phases; the quieter bookmark border is in, and so is the fix for closing the last loaded project with bookmarks left, checked by Roman). It sits in `[Unreleased]` with the hover fix — a feature, so the next number is **1.7.0**, Roman's call when to cut it. The sandbox's pre-set 5 min / cap 2 were removed again after the run, so the next session offloads at the defaults. Two features, one epic: the strip takes the whole toolbar and gives way by shrinking, then icons, never a chevron; and a project idle for 2 hours, or beyond the cap of 8 loaded projects, is offloaded — closed with everything saved, its tab kept dotted, one click to load it again. The platform facts are verified (decisions 63–65): width comes from the compressing layout for free, there is no public close that skips the veto dialogs so our own guards must run first, and the IDE will not reopen an offloaded project at launch — the strip does. Order: **P1 → P2**, each phase ending in its guardrail run.
 
@@ -50,7 +53,7 @@
 
 **Earlier:** **1.5.0 is released** — Marketplace review passed, the update server serves it, and the GitHub release is Latest with the signed ZIP (`https://github.com/pronskiy/agenstorm/releases/tag/1.5.0`). `release.yml` came back green with *"1.5.0 is being served - this release is installable"*, which is the whole point of decision 51's reorder. `pluginVersion` is bumped to **1.6.0** so the next push drafts against a free version.
 
-**Next, after Epic P, in the order I would take them:** the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then Epic I (terminal output enhancers, 10 steps), the biggest thing left and worth re-deciding before starting. **Parked by Roman, 2026-09-16 (decision 60):** the Find Action gap in Epic M, skipped for now, and Epic H Phase H2, skipped until there is feedback asking for it.
+**Next, after Epic Q, in the order I would take them:** Epic Q's Phase Q3 (the aligned grid while a table is revealed, spike-gated) only if Roman wants it in 1.8.0; the five unexercised guardrail lines across Epics M and N (one sandbox pass covers all of them); then Epic I (terminal output enhancers, 10 steps), the biggest thing left and worth re-deciding before starting. **Parked by Roman, 2026-09-16 (decision 60):** the Find Action gap in Epic M, skipped for now, and Epic H Phase H2, skipped until there is feedback asking for it.
 
 **The release is now two deliberate steps (decision 51):** run the **Marketplace upload** workflow by hand, wait for review to land — the update server list is the signal, not the API's `approve` flag — then publish the `1.5.0` draft release. Both are Roman's.
 
@@ -173,7 +176,7 @@ Every feature is a leaf: it registers its own extensions in its own optional `co
 
 ## 4. Epics
 
-Epics 0–F are the MVP; G, H and I were added on 2026-09-06. **1.0 ships 0–F, G and H's Phase H1**; H2, H3 and I are the first work after the release (2026-09-06 decision). Original order was 0 → A → B → C → D → E → F → G → H → I (value per hour of work, riskiest last). G and I share the `terminal/` package and its optional dependency, so the knowledge carries over; H sat between them because it is independent of both and the cheapest of the three.
+Epics 0–F are the MVP; G, H and I were added on 2026-09-06. **1.0 ships 0–F, G and H's Phase H1**; H2, H3 and I are the first work after the release (2026-09-06 decision). Original order was 0 → A → B → C → D → E → F → G → H → I (value per hour of work, riskiest last). G and I share the `terminal/` package and its optional dependency, so the knowledge carries over; H sat between them because it is independent of both and the cheapest of the three. Epics J–P came after 1.0 one at a time, each at Roman's request; **Epic Q** (tables rendered in place, 2026-09-21) is the latest.
 
 ### Epic 0 — Scaffold, settings, CI  ·  MVP
 
@@ -1879,6 +1882,203 @@ terminal plugin's jars):
 
 ---
 
+### Epic Q — Markdown tables rendered in place  ·  after 1.7.0
+
+**Goal:** in live-markup mode a GFM table stops being a wall of pipes: with the caret outside it, the table's lines fold
+away and a painted table takes their place directly under the line above — proportional font, cells that wrap, a bold
+header row, thin rules between rows, no vertical borders, the column alignment the separator row asks for. A click on a
+cell, Find, Go to line or a `path:line` jump into the table brings the raw Markdown back with the caret where the click
+landed; leaving renders it again. Links inside the rendered table follow on a plain click. The file on disk never
+changes and a selection across the table still copies raw Markdown.
+**Success metrics:** Roman's four-column conference table (`testData/markdown/tables.md`) reads like the target
+screenshot in Light and Dark; the Epic F budget holds (a re-sync < 50 ms after edits stop) and a 200-row table lays out
+in < 100 ms; every API the epic adds is un-annotated — zero internal, and none of the `@Experimental` custom-fold-region
+surface.
+
+Roman, 2026-09-21, with a rendered table from a document and the same table in the IDE: "I want to be able to view
+markdown tables really nicely" — "right now it looks like complete mess". Four calls in the brainstorm the same day,
+recorded as decisions 66–68: **both, rendered first** (a rendered block now, an aligned text grid for the revealed state
+later — Phase Q3); **a light fold region plus a block inlay**, not `CustomFoldRegion`; **the proportional UI font** at
+the editor's size, code spans in the editor font; **links follow, everything else reveals** with the caret in the
+clicked cell.
+
+**Why not the "Render doc comments" mechanism.** `FoldingModel.addCustomLinesFolding`, `CustomFoldRegion`,
+`CustomFoldRegionRenderer` and `FoldingListener.onCustomFoldRegionPropertiesChange` are all `@ApiStatus.Experimental`,
+the reference implementation (`DocRenderer`) is `@ApiStatus.Internal`, `FoldingModelImpl.addCustomLinesFolding` returns
+null for any range that intersects an existing region — and the Markdown plugin folds every table — and a custom region
+can be neither expanded by the caret nor by Find, so click-to-edit, keyboard entry and re-render would all have to be
+rebuilt. Epic F's light region already has all of that from the platform, and a block inlay is un-annotated public API.
+
+**The region takes the line break before the table.** A table almost always follows a blank line. Our region is
+`[firstRow.start − 1, lastRow.end)` when the character before the table is a line break, so the collapsed table merges
+into the end of the line above — no empty "handle" line, no extra line number; the rendered block sits directly under
+that line and the gutter arrow lands on it. This is the reverse of decision 31's fence case, and safe here because the
+line above keeps its own text and number. The Markdown plugin's own table region (`MarkdownFoldingBuilder`, range = the
+table) then nests inside ours with a shared end — the fold tree accepts that, as `FENCE_OPEN` sharing a start with the
+plugin's fence region shows every day. When there is no break to take (a table at offset 0, or right after a `> ` or
+`- ` prefix) our range equals the plugin's and decision 23's rule replaces it. **Reveal is from the inside only:** a
+caret strictly inside the region or at its end, or a selection overlapping it — never `lineSpan(start)`, which would be
+the line above. So reading with the arrow keys skips over a rendered table (the caret goes from the line above to the
+line below); a click on the rendered table, Find, Go to line, an Epic A jump, Right or End from the end of the line
+above, and Shift-selection over it all reveal.
+
+Platform facts (verified against build 262, 2026-09-21, by bytecode in `PhpStorm-2026.2-aarch64`, PS-262.8665.265):
+
+- **Block inlays, all un-annotated** (`intellij.platform.editor.ui.jar`): `InlayModel.addBlockElement(int offset,
+  InlayProperties, T renderer)`; `InlayProperties.showAbove(boolean)`, `.relatesToPrecedingText(boolean)`,
+  `.showWhenFolded(boolean)`, `.priority(int)`; `Inlay.getBounds()` (null while not shown), `.update()`, `.repaint()`,
+  `.isValid()`; `EditorCustomElementRenderer.calcWidthInPixels(Inlay)`, `.calcHeightInPixels(Inlay)`,
+  `.paint(Inlay, Graphics2D, Rectangle2D, TextAttributes)`; `EditorMouseEvent.getInlay()`, `.getMouseEvent()`,
+  `.getArea()`; `EditorEx.setCustomCursor(Object, Cursor)` (the checkbox hover uses it already).
+- **Width changes:** `ScrollingModel.addVisibleAreaListener(VisibleAreaListener, Disposable)` is a public default
+  method. The platform's own `DocRenderItemUpdaterListeners.MyVisibleAreaListener` skips empty rectangles, compares the
+  new width with the last one and only then re-lays out, throttled — the one thing worth copying from `DocRenderer`.
+- **The folding pass does not fight a live region on its range.** `UpdateFoldRegionsOperation.createOrMergeWithZombie`
+  (`intellij.platform.lang.impl.jar`) calls `FoldingModelEx.getFoldRegion(start, end)`; only a region carrying
+  `FoldingKeys.ZOMBIE_REGION_KEY` (restored from persisted state) is merged or removed; otherwise it goes straight to
+  `createFoldRegion`, whose null result for a duplicate range drops the descriptor. So a region of ours on the plugin's
+  table range survives every pass; only the zombie case needs decision 23, which already handles it.
+- **The Markdown plugin folds tables** (`org.intellij.plugins.markdown.folding.MarkdownFoldingBuilder`, on
+  `MarkdownElementTypes.TABLE`; collapsed by default only if `MarkdownCodeFoldingSettings.State.collapseTables`, off by
+  default) through `MarkdownFoldingBuilderKt.addDescriptors(element, range, list, document)`, which skips trailing
+  newline siblings — the descriptor ends at the last row's end, so it nests inside a region that starts one character
+  earlier and ends at the same offset. Q2.2 asserts the containment.
+- **Table PSI** (`plugins/markdown/lib/intellij.markdown.jar`, none annotated): `MarkdownTable.getHeaderRow()`,
+  `.getRows(boolean withHeader)`; `MarkdownTableRow.getCells()`; `MarkdownTableCell.getColumnIndex()`,
+  `.getParentRow()`; `MarkdownTableSeparatorRow` — a leaf child of the table — `.getCellsCount()`,
+  `.getCellAlignment(int): CellAlignment` with `NONE`, `LEFT`, `RIGHT`, `CENTER`. Element types `TABLE`, `TABLE_ROW`,
+  `TABLE_HEADER`, `TABLE_CELL`; tokens `MarkdownTokenTypes.TABLE_SEPARATOR`, `HTML_TAG`, `GFM_AUTOLINK`,
+  `EMAIL_AUTOLINK`, `AUTOLINK`. `TableUtils` and `TableModificationUtils` are `@Experimental`, `TableFormattingUtils`
+  and `TableProps` `@Internal` — not used; the plain PSI carries everything the model needs.
+- **The plugin's table UI is inlays too**: `MarkdownTableInlayProvider` (an `InlayHintsProvider`) draws the add-row /
+  add-column bars, only with the caret in a table — that is our revealed state, so nothing overlaps.
+  `MarkdownCodeInsightSettings.State.reformatTablesOnType` rewrites the text while typing in a table; Phase Q3's spike
+  has to sit next to it, Phase Q2 never meets it.
+- **Fonts and colours:** `JBFont.label()` (the UI font), `UIUtil.getFontWithFallback(Font)` for glyph coverage,
+  `EditorColorsScheme.getEditorFontSize2D()`, `.getFont(EditorFontType.PLAIN)` for code spans, `.getLineSpacing()`,
+  `.getDefaultForeground()`; `CodeInsightColors.HYPERLINK_ATTRIBUTES` for links (the annotator reads it the same way);
+  `MarkdownHighlighterColors.HRULE` else `ColorUtil.mix(bg, fg, 0.30)` for rules — `MarkdownBlockRenderer.ruleColor`
+  already computes it; `EditorColors.INDENT_GUIDE_COLOR` and `JBUI.CurrentTheme.Separator.color()` as alternatives.
+  `JBUI.CurrentTheme.Table` has no grid colour at all.
+
+#### Phase Q1 — The table as data
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| Q1.1 | `markdown/tables/TableModel.kt`: `TableModel`, `TableRow`, `TableCell(range, runs)`, `StyledRun`, `ColumnAlignment`, and `TableModelBuilder.build(MarkdownTable): TableModel` from the PSI; fixture `testData/markdown/tables.md` and `TableModelBuilderTest` | 🔲 | |
+| Q1.2 | `markdown/tables/TableLayout.kt`: `TextMeasurer`, column widths, wrapping, row heights, cell rectangles and `hitTest`; `TableLayoutTest` with a fixed-width fake measurer | 🔲 | |
+
+**Steps (detail):**
+
+- **Q1.1 — Model.** Deliverable: pure data built inside the collector's read action, no fonts, no editor. A cell is
+  its content `TextRange` (whitespace trimmed, so the caret lands on text) and a list of `StyledRun(text, bold, italic,
+  strike, code, link: String?, breakBefore)` gathered from the cell's inline PSI: `STRONG`, `EMPH`, `STRIKETHROUGH`,
+  `CODE_SPAN` (verbatim), `INLINE_LINK` (`LINK_TEXT` shown, `LINK_DESTINATION` carried), `AUTOLINK`, `GFM_AUTOLINK`,
+  `EMAIL_AUTOLINK` (text = destination), `IMAGE` (alt text, no link), an `HTML_TAG` `<br>` or `<br/>` (a forced
+  break), any other HTML tag (literal text), `\|` (a pipe). Column alignment from the separator row; `NONE` reads as
+  left. Ragged rows are made rectangular the GFM way: missing cells empty, extra cells dropped. The fixture holds
+  Roman's conference table (four columns; bold dates, inline links, an email autolink, bold runs mid-sentence) and one
+  table each for: `<br>` in a cell, `\|`, inline code, a ragged row, `:---:` / `---:` alignment, a table in a list item,
+  one in a block quote, one at the start of the file, one at the end of the file without a trailing newline.
+- **Q1.2 — Layout.** Deliverable: `TableLayout.layout(model, availableWidth, measurer, padding): TableGeometry`. Per
+  column, min width = the widest unbreakable word across its cells, max width = the widest unwrapped cell. If Σmax ≤
+  available, every column gets its max (natural width, nothing stretched — §7 keeps the full-width question); otherwise
+  each gets min plus a share of the remainder proportional to max − min; if Σmin > available the columns get min and
+  the table is wider than the viewport (the editor scrolls). Cells wrap greedily at word boundaries, a word wider than
+  the column breaks by character, `breakBefore` forces a line. Row height = the tallest cell's lines × line height +
+  vertical padding. The geometry carries column x/width, row y/height, every run's position and each cell's rectangle,
+  and answers `hitTest(x, y): Hit(cell, run?)`. `TextMeasurer` has `width(text, style)` and `lineHeight` only, so the
+  test uses seven pixels per character and asserts exact numbers: the conference table at 900 px gives four columns
+  with the third and fourth wrapping and the first two not.
+
+**Exit guardrails — Phase Q1 → Q2**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Model | `TableModelBuilderTest` covers every fixture table: runs, alignments, ranges, ragged rows, the `<br>` and `\|` cases | 🔲 | |
+| Layout | `TableLayoutTest` covers the three width regimes, wrapping, forced breaks, alignment offsets and `hitTest`; `./gradlew check` green | 🔲 | |
+
+#### Phase Q2 — Rendered in place
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| Q2.1 | Collector: `MarkupKind.TABLE` (`isBlock`), the range rule, `Markup.tables`, `Options.tables` ← `liveMarkupTables` | 🔲 | |
+| Q2.2 | Controller: the TABLE reveal rule; coexistence with the plugin's table region; persisted-state restore; off switches | 🔲 | |
+| Q2.3 | `TableInlays` + `TableInlayRenderer` + `TablePainter`: one block inlay per collapsed table, width and scheme updates | 🔲 | |
+| Q2.4 | Click and hover: reveal at the cell, follow links, hand cursor; `LinkDestinations` shared with the goto handler | 🔲 | |
+| Q2.5 | Settings row `markdown.tables`, bundle keys, README, CHANGELOG | 🔲 | |
+
+**Steps (detail):**
+
+- **Q2.1 — Collector.** Deliverable: `MarkdownElementTypes.TABLE` gets a `table` branch emitting one `MarkupRange(TABLE,
+  range, "", span = range)` — `[firstRow.start − 1, lastRow.end)` when `contents[firstRow.start − 1] == '\n'`, else
+  `[firstRow.start, lastRow.end)` — plus the `TableModel` on a new `Markup.tables` list. The walker still descends into
+  the cells, so inline regions keep nesting inside the table region: hidden while it is collapsed, revealed per element
+  while it is open (decision 24 unchanged). `TABLE` is `isBlock`. `Options.tables` reads `liveMarkupTables`; off means
+  neither the range nor the model is emitted. `MarkupRangeCollectorTest`'s Obsidian render of `collector.md` changes:
+  its three table lines now fold to nothing.
+- **Q2.2 — Controller.** Deliverable: a `TABLE` branch in `isRevealed` — `TextRange(start + 1, end)` against the
+  carets, plus selection overlap — and `TableInlays` synced after `apply`, after `applyCaretPolicy` and from
+  `onFoldRegionStateChange` for a TABLE region. Tests in `TableFoldingTest` (the `CodeFenceFoldingTest` pattern): after
+  `CodeFoldingManager.updateFoldRegions` the plugin's table region exists and lies inside ours (same end, start one
+  later) and ours stays collapsed; `moveToOffset` inside reveals, moving to the line below re-collapses; a caret on the
+  line above does **not** reveal; the decision 23 save-and-restore round trip for a table region; `liveMarkupTables`
+  off and live markup off both leave no region and no inlay.
+- **Q2.3 — Rendering.** Deliverable: `TableInlays` owned by the controller like `MarkdownBlockRenderer` — keyed by the
+  region, one `addBlockElement(region.startOffset, InlayProperties().showAbove(false).relatesToPrecedingText(true)
+  .showWhenFolded(true), renderer)` per **collapsed** table region, disposed the moment the region is expanded or
+  gone, all disposed by `removeAll` and `dispose`. `TableInlayRenderer` lays out lazily on the EDT for the width the
+  visible area offers minus insets, caches the geometry per (model, width, font, scheme), reports it as height and
+  width, and `TablePainter` draws: header runs bold with a heavier rule under the row, thin rules between the others,
+  no vertical lines, `JBUIScale.scale(6)` / `scale(12)` padding, code runs in the editor font on the fence-card
+  background, links underlined in the hyperlink colour, strike and italic as derived fonts, a left inset of the first
+  row's start column × plain space width for tables nested in a list or a quote. A `VisibleAreaListener` (empty
+  rectangles skipped, width compared with the last, then `inlay.update()` for every table inlay, debounced through the
+  controller's scope) and the scheme-change path that already invalidates the block renderer keep it current.
+  `TableInlaysTest`: one inlay per collapsed table with `getBounds() != null`, none while revealed, none when the
+  option is off, geometry recomputed after an external edit adds a row.
+- **Q2.4 — Click and hover.** Deliverable: in the controller's existing `EditorMouseListener`, `event.inlay?.renderer as?
+  TableInlayRenderer` → `hitTest(point − inlay.bounds)`; a link run navigates (`http(s)`/`mailto` through
+  `BrowserUtil.browse`; anything else resolved by `LinkDestinations.resolve(file, destination)` — the resolution
+  `LinkTextGotoDeclarationHandler` does today, extracted so both share it, its tests unchanged — and opened with
+  `Navigatable.navigate(true)` after a read action); anything else moves the caret to the cell's content start, which
+  the reveal rule turns into the raw table with the caret in that cell. `mouseMoved` over a link run sets the hand
+  cursor through `setCustomCursor`, the way the checkbox hover does. A test drives `hitTest` and the caret move
+  directly.
+- **Q2.5 — Settings and docs.** Deliverable: `liveMarkupTables: Boolean = true` in `AgenstormSettings.State`, a
+  `markdown.tables` checkbox after `markdown.codeBlocks` with `settings.markdown.tables` in the bundle, applied through
+  the settings topic; `MarkdownSettingsPanelTest` extended; README's live-markup paragraph and feature table gain the
+  sentence; CHANGELOG `[Unreleased]` → Added. `pluginVersion` moves to 1.8.0 at the cut, not here.
+
+**Exit guardrails — Phase Q2** (`runIde`, Roman's conference document, Light and Dark)
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Looks like the target | Bold header, thin rules between rows, no vertical borders, long cells wrap, the table sits directly under the blank line above with no empty line of its own; no `\|` or `---` visible | 🔲 | |
+| Reveal | Click on a cell → raw table with the caret in that cell; Find a word inside → raw with the match selected; Down from the line above lands below the table; the caret leaving → rendered again within the debounce | 🔲 | |
+| Links | A plain click on a URL opens the browser, on a file link opens the file, on a `path:line:col` navigates there; the hand cursor shows over each | 🔲 | |
+| Coexistence | The plugin's gutter fold for the table is there while revealed; Expand All / Collapse All recover on the next event-loop turn; the plugin's add-row / add-column bars appear once revealed | 🔲 | |
+| Resize and wrap | Narrowing the editor re-wraps without flicker; soft wrap on or off changes nothing; a 200-row table renders and scrolls smoothly | 🔲 | |
+| External edit | A row appended by an agent while the table is rendered shows up rendered, the table still collapsed | 🔲 | |
+| Copy | Selecting across the rendered table and copying yields the raw Markdown | 🔲 | |
+| Log clean + verifier | No plugin exceptions; `verifyPlugin` Compatible with zero internal usages and no new `@Experimental` kinds | 🔲 | |
+
+#### Phase Q3 — Aligned grid while revealed  ·  after Q2, spike-gated
+
+While a table is revealed it is still the raw text. Q3 pads every cell with an inline inlay to its column's widest
+content (in editor-font space widths) so the pipes line up without a byte of the file changing, and draws the
+separator row's dashes as a rule. Not started; the spike decides whether it is worth it next to the plugin's own
+`reformatTablesOnType`, which pads the text itself while typing (our inlays would shrink to zero once it has), and
+under soft wrap.
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| Q3.1 | Spike: padding inlays next to `reformatTablesOnType`, soft wrap and typing latency | 🔲 | |
+| Q3.2 | Padding inlays per cell; the separator row drawn as a rule | 🔲 | |
+| Q3.3 | Tests and guardrail | 🔲 | |
+
+---
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
@@ -1926,6 +2126,7 @@ terminal plugin's jars):
 | Shadowing `open` surprises a user whose script depends on macOS `open` | Med | Med | The shim claims only bare existing paths: flags, URLs, missing paths and no-argument calls exec the real binary, and the router can decline with `409` so the real binary still runs. Off by one toggle, and a first-run balloon says so. Only inside IDE terminals — the user's own shells are untouched |
 | Epic N moves tool windows rather than hiding icons, so it rearranges a layout the user chose | Med | Low–Med | Off by default, the setting says plainly that windows move, and the ids moved are recorded in the workspace file so feature-off and plugin unload put back exactly those. A window the user re-docks while the feature is on stops being owed, so it is never yanked back. Decision 49 |
 | A user's enhancer regex makes the terminal crawl | Med | Med | Matching runs off the EDT against a deadline-checking `CharSequence`, so a catastrophic pattern is cancelled rather than survived; the offending rule is disabled for the session with one balloon. Guardrail I2 covers it with a deliberately hostile fixture |
+| A rendered table's block inlay thrashes on resize or a huge table stalls the EDT | Med | Med | Layout is computed once per (model, width, font) and cached; width changes are debounced and compared before `update()` (the `DocRenderItemUpdater` lesson); the Q2 perf guardrail runs a 200-row table; `liveMarkupTables` is its own switch |
 
 ---
 
@@ -1998,6 +2199,9 @@ terminal plugin's jars):
 | 63 | 2026-09-19 | **The tab strip takes the toolbar by reporting a minimum width smaller than its preferred width, not by measuring anything; the chevron is removed and a cap on loaded projects replaces it** | Roman: "I want tabs open to full width of the top bar, and only collapse to icons when the width is out" and, on how to give way, "Shrink evenly, then icons, never chevron - limit max projects open for now". The mechanism was read in `MainToolbar`'s bytecode: its `HorizontalLayout` asks a `setPreferredSizeFunction` that distributes the toolbar's width across the three groups with `CompressingLayoutStrategy.distributeSize`, water-filling from each component's minimum up to its preferred, and `getKind` treats a component as resizable only when `minimumSize.width < preferredSize.width`. The strip reports minimum = preferred today, so it is rigid, which is why E2.1 ended up capping itself at half the window — and why measuring the parent looped: the left group is sized from its children. Preferred = natural, minimum = icons, mode from the granted width: no reading of the parent, no loop, and the stock project widget does the same. Shrinking is water-filling too (widest first, all shrunk tabs end equal, short names untouched), chosen over Chrome's equal widths because it is continuous as the window narrows. With at most 8 loaded projects the icon strip is 8 × 32 px, so the chevron has nothing left to do | Roman |
 | 64 | 2026-09-19 | **Offloading is `ProjectManager.closeAndDispose` after Agenstorm's own guards; running run/debug processes block it as well as terminal commands, and the terminal guard is an extension registered in `agenstorm-terminal.xml`** | Roman chose only "a terminal with a running command" as a blocker — the agent case. The platform adds the second one: the only non-internal close is `closeAndDispose`, which walks every `VetoableProjectManagerListener`, and `RunContentManagerImpl`'s listener shows a modal "terminate?" dialog when a process is alive, as the terminal's `TerminalProcessesClosingNotifier` does for a running command. `forceCloseProject`, which skips the vetoes, is `@ApiStatus.Internal`; `ProjectManagerEx.canClose` is public but is the dialog path itself. So a project with a live process is skipped rather than closed, because the alternatives are a dialog popping up for a background project or killing the process unasked. The guards are an EP of our own (`com.pronskiy.agenstorm.offloadGuard`, the `commitContextProvider` shape) so that `tabs/` keeps its rule of importing only `core/`: the terminal-aware guard lives with the terminal's optional-dependency file, exactly as `tabs/git/` lives with `agenstorm-git.xml` | Roman |
 | 65 | 2026-09-19 | **Defaults: 2 hours idle, 8 loaded projects, on for everyone with a one-time balloon; the marker is a dotted border and a dimmed icon; offloaded tabs are bookmarks — 12 kept, oldest forgotten first — and the strip, not the IDE, brings them back after a restart** | Roman picked 2 hours over 30 minutes and 8 hours, 8 over 3 and 5, "dotted border" over transparency, and on-by-default with the balloon over off-by-default, knowing the feature closes projects on its own for Marketplace users who never asked. The balloon follows the `terminalOpenNoticeShown` pattern: once, naming the project and the reason, with the settings link. The bookmark bound exists because "never a chevron" (decision 63) needs the icon strip to fit, and offloaded tabs share it: 8 loaded + 12 offloaded icons is 680 px, still inside a laptop toolbar. The restart half is a platform fact taken openly: a runtime close clears the project's `opened` flag in `RecentProjectsManagerBase`, and re-setting it needs the internal `getProjectMetaInfo`, so the IDE will not reopen an offloaded project at launch — the strip's own persisted list shows it dotted instead, one click from loaded | Roman |
+| 66 | 2026-09-21 | **A rendered table is a light fold region over the table plus a block inlay, not a `CustomFoldRegion`** | Roman chose the rendered block over an aligned text grid (the target wraps long cells, which monospace text cannot) and, shown both mechanisms, the light region. `FoldingModel.addCustomLinesFolding`, `CustomFoldRegion`, `CustomFoldRegionRenderer` and the listener hook are all `@ApiStatus.Experimental`, the reference implementation `DocRenderer` is `@ApiStatus.Internal`, `FoldingModelImpl.addCustomLinesFolding` returns null for any intersecting region while the Markdown plugin folds every table, and a custom region can be expanded by neither the caret nor Find — click-to-edit, keyboard entry and re-render would all be ours to rebuild. The light region is Epic F's mechanism with the platform's caret, Find and copy semantics for free; `InlayModel.addBlockElement` and `EditorCustomElementRenderer` are un-annotated | Roman (decision), Claude (investigation, text) |
+| 67 | 2026-09-21 | **The table region takes the line break before the table and reveals only from the inside:** `[firstRow.start − 1, lastRow.end)`, a caret strictly inside or at the end, or a selection over it | Taking the break merges the collapsed table into the end of the line above — almost always a blank line — so no empty handle line and no extra line number appear, and the block sits directly under it; the reverse of decision 31, safe because that line keeps its own text and number. The plugin's table region then nests inside ours with a shared end (as `FENCE_OPEN` shares a start with the fence region), and `UpdateFoldRegionsOperation.createOrMergeWithZombie` only merges or removes a same-range region that carries `ZOMBIE_REGION_KEY`, so the folding pass never fights a live region of ours — bytecode of `intellij.platform.lang.impl.jar`. Revealing from the line above would open the table whenever the caret sat on the blank line, so the rule is inside-or-end: arrow-key reading skips the block; click, Find, Go to line, an Epic A jump, Right or End from the line above, and a selection reveal | Claude (proposed), confirmed by Roman 2026-09-21 in the brainstorm |
+| 68 | 2026-09-21 | **The rendered table uses the proportional UI font at the editor's size (code spans in the editor font); a plain click follows a link and any other click reveals the table with the caret in that cell** | Roman, offered the editor font and a Cmd-click rule: the proportional font is what "Render doc comments" uses, matches the target screenshot and wraps densely; a plain click is what a rendered view should do, and the cell's content start is where the caret lands, so the raw table opens where the eye already is | Roman |
 
 ---
 
@@ -2023,6 +2227,8 @@ terminal plugin's jars):
 - [ ] **`Markdown.Toolbar.Right` looks dead in build 262 — found while surveying Epic M, 2026-09-12.** The Markdown plugin declares the group in its `plugin.xml` (holding `AutoScrollAction`), and `Agenstorm.ToggleLiveMarkup` is added to it, but the id is referenced by **no class in the whole distribution**: every jar under `lib/`, `plugins/*/lib/` and `plugins/*/lib/modules/` was scanned for the string and the only hits are that `plugin.xml` and the searchable-options index. `MarkdownEditorWithPreview` overrides neither `createLeftToolbarActionGroup` nor `createRightToolbarActionGroup`, which are what `TextEditorWithPreview` would consult, and its only overrides are `onLayoutChange`, `requestFocusForPreview` and the auto-scroll pair. If that is right, the Live Markup button never renders in the editor toolbar and only the context-menu entry works — which would also make `settings.markdown.bullets.comment` ("The Live Markup button in a Markdown editor's toolbar…") untrue. **Needs one look in the sandbox before anything is changed**; the fix, if confirmed, is to move the action to a group that is alive.
 - [ ] **Epic P on Windows/Linux:** nothing in offloading is macOS-specific — a project window is closed and reopened the same way, it just does not join a tab group. Default: available wherever the tabs are (the same stance as the Epic E row above).
 - [ ] **Epic P, what counts as active:** P2.2 records frame activation only, so a project you type in for two hours without ever leaving it is "active" by the last activation, which is fine, and a project you *look at* through a second monitor without clicking it is not. Revisit after a week of use; the `IdeEventQueue` idle listener is the public lever if typing needs to count.
+- [ ] **Epic Q, copy:** should the rendered table offer "Copy as Markdown" / "Copy as TSV" on its context menu? A selection across it already copies raw Markdown. Default: no; revisit after use.
+- [ ] **Epic Q, width:** natural width capped at the viewport (GitHub's rendering), or stretched to the full editor width like the target screenshot? Q1.2 lays out natural; decide at the Q2 *Looks like the target* guardrail.
 
 ---
 
