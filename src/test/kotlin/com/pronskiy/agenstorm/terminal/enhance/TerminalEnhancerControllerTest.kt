@@ -126,6 +126,36 @@ class TerminalEnhancerControllerTest : BasePlatformTestCase() {
         assertTrue(controller!!.regions().single().isExpanded)
     }
 
+    fun testAClickOnATreePlaceholderOpensTheViewerAndKeepsTheRegionCollapsed() {
+        val requests = ArrayList<TerminalEnhancerController.ViewerRequest>()
+        val text = fixture("var-dump.txt")
+        myFixture.configureByText("out.txt", text)
+        controller = TerminalEnhancerController(myFixture.editor as EditorEx, { rules }, scope, backgroundSync = false, viewer = { requests += it })
+        controller!!.syncNow()
+        val region = controller!!.regions().single()
+
+        assertTrue(controller!!.clickAt(region.startOffset + 3))
+
+        val request = requests.single()
+        assertEquals("php-var-dump", request.ruleId)
+        assertEquals(RenderMode.TREE, request.render)
+        assertTrue(request.raw.startsWith("array(2) {") && request.raw.endsWith("\n}"))
+        assertEquals("array(2)", request.root.label)
+        assertFalse(region.isExpanded)
+    }
+
+    fun testAClickOnAFoldPlaceholderOrPlainTextIsNotOurs() {
+        val requests = ArrayList<TerminalEnhancerController.ViewerRequest>()
+        myFixture.configureByText("out.txt", fixture("stack-trace.txt"))
+        controller = TerminalEnhancerController(myFixture.editor as EditorEx, { rules }, scope, backgroundSync = false, viewer = { requests += it })
+        controller!!.syncNow()
+        val region = controller!!.regions().single()
+
+        assertFalse(controller!!.clickAt(region.startOffset + 3))
+        assertFalse(controller!!.clickAt(0))
+        assertTrue(requests.isEmpty())
+    }
+
     fun testDisposingRemovesEveryRegion() {
         open(fixture("var-dump.txt"))
         assertEquals(1, controller!!.regions().size)

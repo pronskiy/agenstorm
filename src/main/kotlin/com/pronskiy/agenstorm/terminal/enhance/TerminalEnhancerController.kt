@@ -7,10 +7,17 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.FoldRegion
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
+import com.intellij.openapi.editor.event.EditorMouseEvent
+import com.intellij.openapi.editor.event.EditorMouseEventArea
+import com.intellij.openapi.editor.event.EditorMouseListener
+import com.intellij.openapi.editor.event.EditorMouseMotionListener
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.FoldingListener
 import com.intellij.openapi.util.Key
 import com.intellij.util.concurrency.ThreadingAssertions
+import com.pronskiy.agenstorm.terminal.enhance.viewer.PayloadNode
+import com.pronskiy.agenstorm.terminal.enhance.viewer.PayloadTreeParsers
+import com.pronskiy.agenstorm.terminal.enhance.viewer.PayloadViewer
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +29,9 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.Cursor
+import java.awt.Point
+import java.awt.event.MouseEvent
 
 /**
  * Step I2.1 (born as the I1.3 spike, decision 70). One per reworked-terminal output editor: every document
@@ -37,6 +47,9 @@ import kotlinx.coroutines.withContext
  *
  * A region of ours that something else removes (a `clearFoldRegions` by another plugin) is rescanned from its
  * start on the next sync, the way `LiveMarkupController` re-applies after a foreign folding change.
+ *
+ * A click on the placeholder of a `tree` or `json` block opens the viewer (I2.2) instead of expanding the
+ * region, and the event is consumed so the editor does neither; a `fold` block expands as the platform would.
  */
 @OptIn(FlowPreview::class)
 class TerminalEnhancerController(
@@ -46,7 +59,12 @@ class TerminalEnhancerController(
     debounceMs: Long = DEBOUNCE_MS,
     /** Off in tests, which drive [syncNow] themselves. */
     backgroundSync: Boolean = true,
+    /** Opens the viewer for a block; the tests hand in a recorder. */
+    private val viewer: (ViewerRequest) -> Unit = { request -> showViewer(editor, request) },
 ) : Disposable {
+
+    /** What a click on a `tree` or `json` placeholder asks the viewer to show. */
+    class ViewerRequest(val region: FoldRegion, val ruleId: String, val render: RenderMode, val raw: String, val root: PayloadNode, val at: Point)
 
     private val resync = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val detector = BlockDetector(onRuleDisabled = { rule, why -> LOG.warn("enhancer: rule ${rule.id} (${rule.source}) disabled: $why") })
@@ -82,6 +100,20 @@ class TerminalEnhancerController(
                 resync.tryEmit(Unit)
             }
         }, this)
+        editor.addEditorMouseListener(object : EditorMouseListener {
+            override fun mousePressed(event: EditorMouseEvent) {
+                if (event.mouseEvent.button != MouseEvent.BUTTON1 || event.area != EditorMouseEventArea.EDITING_AREA) return
+                val region = event.collapsedFoldRegion ?: return
+                if (openViewer(region, event.mouseEvent.point)) event.consume()
+            }
+        }, this)
+        editor.addEditorMouseMotionListener(object : EditorMouseMotionListener {
+            override fun mouseMoved(event: EditorMouseEvent) {
+                val overViewer = event.area == EditorMouseEventArea.EDITING_AREA &&
+                    event.collapsedFoldRegion?.let { it.getUserData(RULE) != null && it.getUserData(RENDER) != RenderMode.FOLD } == true
+                editor.setCustomCursor(this@TerminalEnhancerController, if (overViewer) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else null)
+            }
+        }, this)
         job = if (backgroundSync) {
             scope.launch(CoroutineName("Agenstorm terminal enhancer")) {
                 sync()
@@ -113,6 +145,24 @@ class TerminalEnhancerController(
         val from = scannedUpTo
         val document = editor.document
         apply(detector.detect(document.immutableCharSequence, rules(), from), from, document.modificationStamp)
+    }
+
+    /**
+     * A click at [offset]: opens the viewer when it lands on a collapsed `tree` or `json` region of ours and says
+     * so; anything else is not handled here (a `fold` region expands as the platform would).
+     */
+    fun clickAt(offset: Int, at: Point = Point()): Boolean {
+        val region = editor.foldingModel.getCollapsedRegionAtOffset(offset) ?: return false
+        return openViewer(region, at)
+    }
+
+    private fun openViewer(region: FoldRegion, at: Point): Boolean {
+        val ruleId = region.getUserData(RULE) ?: return false
+        val render = region.getUserData(RENDER) ?: return false
+        if (render == RenderMode.FOLD) return false
+        val raw = editor.document.getText(region.textRange)
+        viewer(ViewerRequest(region, ruleId, render, raw, PayloadTreeParsers.parse(raw, render), at))
+        return true
     }
 
     /** Every region this controller created and that is still valid. */
@@ -148,6 +198,7 @@ class TerminalEnhancerController(
                 if (end <= start || model.getFoldRegion(start, end) != null) continue
                 val region = model.createFoldRegion(start, end, block.summary, null, false) ?: continue
                 region.putUserData(RULE, block.ruleId)
+                region.putUserData(RENDER, block.render)
                 region.isExpanded = false
                 created++
             }
@@ -185,5 +236,13 @@ class TerminalEnhancerController(
 
         /** Marks a fold region as ours, with the id of the rule that made it. */
         val RULE: Key<String> = Key.create("agenstorm.terminal.enhancer.rule")
+
+        /** How the block behind a region of ours is shown: what a click on its placeholder does. */
+        val RENDER: Key<RenderMode> = Key.create("agenstorm.terminal.enhancer.render")
+
+        private fun showViewer(editor: EditorEx, request: ViewerRequest) {
+            val project = editor.project ?: return
+            PayloadViewer.show(project, editor, request.at, request.region.placeholderText, request.root, request.raw)
+        }
     }
 }
