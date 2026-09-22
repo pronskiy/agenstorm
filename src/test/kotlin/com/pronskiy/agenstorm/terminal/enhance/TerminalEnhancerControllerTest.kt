@@ -160,6 +160,29 @@ class TerminalEnhancerControllerTest : BasePlatformTestCase() {
         assertSame("toggling keeps the region", region, controller!!.regions().single())
     }
 
+    /**
+     * `EditorImpl` opens the placeholder under the pointer on release when it matches the region of the last
+     * unconsumed press; after folding a block under the pointer that is our own region, so the release is ours too.
+     */
+    fun testAChevronPressSwallowsTheReleaseThatFollowsAndNothingElse() {
+        val gate = TerminalEnhancerController.ClickGate()
+
+        assertTrue(gate.press(onChevron = true))
+        assertTrue(gate.release())
+        assertFalse("only the one release", gate.release())
+
+        assertFalse(gate.press(onChevron = false))
+        assertFalse(gate.release())
+    }
+
+    fun testTheChevronStaysVisibleWhileTheBlockIsFolded() {
+        open(fixture("var-dump.txt"))
+        val region = controller!!.regions().single()
+
+        assertFalse(region.isExpanded)
+        assertTrue(controller!!.chevronOf(region)!!.isRelatedToPrecedingText)
+    }
+
     fun testARegionThatGoesTakesItsColoursAndChevronWithIt() {
         open(fixture("var-dump.txt"))
         val region = controller!!.regions().single()

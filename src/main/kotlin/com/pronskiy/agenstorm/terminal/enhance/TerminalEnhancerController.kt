@@ -59,6 +59,11 @@ import java.awt.geom.Rectangle2D
  * `json` block is coloured in place from the moment it is found (I2.2, decision 72): keys, types, class names,
  * strings and numbers in the editor scheme's language colours, visible whenever the block is open.
  *
+ * The chevron is tied to the text *before* it, so it stays visible when the block is folded, and a press on it
+ * swallows the release that follows: `EditorImpl` expands the placeholder under the pointer on release when it
+ * matches the region remembered from the last unconsumed press — which, after folding a block under the
+ * pointer, would open it right back (Roman's "collapses and expands immediately", 2026-09-22).
+ *
  * A region of ours that something else removes (a `clearFoldRegions` by another plugin) is rescanned from its
  * start on the next sync, the way `LiveMarkupController` re-applies after a foreign folding change.
  */
@@ -90,6 +95,7 @@ class TerminalEnhancerController(
     private class Decoration(val highlighters: List<RangeHighlighter>, val chevron: Inlay<*>?)
 
     private val decorations = HashMap<FoldRegion, Decoration>()
+    private val clicks = ClickGate()
 
     init {
         editor.document.addDocumentListener(object : DocumentListener {
@@ -121,10 +127,14 @@ class TerminalEnhancerController(
         }, this)
         editor.addEditorMouseListener(object : EditorMouseListener {
             override fun mousePressed(event: EditorMouseEvent) {
-                if (event.mouseEvent.button != MouseEvent.BUTTON1 || event.area != EditorMouseEventArea.EDITING_AREA) return
-                val chevron = event.inlay?.renderer as? Chevron ?: return
-                toggle(chevron.region)
+                val chevron = if (event.mouseEvent.button == MouseEvent.BUTTON1 && event.area == EditorMouseEventArea.EDITING_AREA) event.inlay?.renderer as? Chevron else null
+                if (!clicks.press(onChevron = chevron != null)) return
+                toggle(chevron!!.region)
                 event.consume()
+            }
+
+            override fun mouseReleased(event: EditorMouseEvent) {
+                if (clicks.release()) event.consume()
             }
         }, this)
         editor.addEditorMouseMotionListener(object : EditorMouseMotionListener {
@@ -249,7 +259,8 @@ class TerminalEnhancerController(
             if (tokenEnd > editor.document.textLength) return@mapNotNull null
             markup.addRangeHighlighter(token.kind.key, tokenStart, tokenEnd, HighlighterLayer.ADDITIONAL_SYNTAX, HighlighterTargetArea.EXACT_RANGE)
         }
-        val chevron = editor.inlayModel.addInlineElement(start, false, Chevron(region))
+        // Tied to the preceding text: shown before the placeholder while the block is folded, not inside it.
+        val chevron = editor.inlayModel.addInlineElement(start, true, Chevron(region))
         decorations[region] = Decoration(highlighters, chevron)
     }
 
@@ -276,6 +287,28 @@ class TerminalEnhancerController(
         val ours = regions()
         if (ours.isNotEmpty()) batch { for (region in ours) editor.foldingModel.removeFoldRegion(region) }
         for (region in decorations.keys.toList()) undecorate(region)
+    }
+
+    /**
+     * Which mouse events of a chevron click are ours. The press toggles and is consumed; the release that
+     * follows is consumed too, so the editor does not treat it as a click on the placeholder now under the pointer.
+     * A press anywhere else is the editor's, and so is its release.
+     */
+    class ClickGate {
+        private var swallowRelease = false
+
+        /** True when the press was on a chevron: toggle, and consume it. */
+        fun press(onChevron: Boolean): Boolean {
+            swallowRelease = onChevron
+            return onChevron
+        }
+
+        /** True once after a chevron press: consume the release. */
+        fun release(): Boolean {
+            val swallow = swallowRelease
+            swallowRelease = false
+            return swallow
+        }
     }
 
     /**
