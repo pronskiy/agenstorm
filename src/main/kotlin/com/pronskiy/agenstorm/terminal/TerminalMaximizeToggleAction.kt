@@ -3,10 +3,11 @@ package com.pronskiy.agenstorm.terminal
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ToolWindowType
@@ -91,14 +92,12 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
     }
 
     /**
-     * `activate` asks for the focus before the pane is reshaped; ask once more after it has settled, through the
+     * `activate` asks for the focus before the pane is reshaped; ask once more one event later, through the
      * content manager — the same call the Terminal plugin makes for a tab it opens itself
      * (`setSelectedContent(content, requestFocus = true)`). J1.7.
      */
     private fun focusTerminal(project: Project, terminal: ToolWindow) {
-        val focusManager = IdeFocusManager.getInstance(project)
-        focusManager.doWhenFocusSettlesDown {
-            if (project.isDisposed) return@doWhenFocusSettlesDown
+        afterFocusSettles(project) {
             val contentManager = terminal.contentManagerIfCreated
             val content = contentManager?.selectedContent
             if (LOG.isDebugEnabled) {
@@ -107,12 +106,21 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
                         "target=${content?.preferredFocusableComponent?.let { "${it.javaClass.name} showing=${it.isShowing}" }}",
                 )
             }
-            if (content == null) return@doWhenFocusSettlesDown
+            if (content == null) return@afterFocusSettles
             contentManager.requestFocus(content, true)
-            focusManager.doWhenFocusSettlesDown {
+            afterFocusSettles(project) {
                 if (LOG.isDebugEnabled) LOG.debug("maximize: after re-request, active=${terminal.isActive}, focus=${focusOwner()}")
             }
         }
+    }
+
+    /**
+     * One EDT event later, under the same modality the toggle runs in. A focus request posts its events to the
+     * queue right away, so a runnable posted after it runs once they are dispatched. (`IdeFocusManager`'s
+     * `doWhenFocusSettlesDown` is deprecated in 2026.2 and the verifier counts it.)
+     */
+    private fun afterFocusSettles(project: Project, block: () -> Unit) {
+        ApplicationManager.getApplication().invokeLater(block, ModalityState.nonModal(), project.disposed)
     }
 
     private fun maximizeEditor(project: Project, terminal: ToolWindow) {
@@ -121,7 +129,7 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         if (manager.isMaximized(terminal)) manager.setMaximized(terminal, false)
         terminal.hide(null)
         manager.activateEditorComponent()
-        IdeFocusManager.getInstance(project).doWhenFocusSettlesDown {
+        afterFocusSettles(project) {
             if (LOG.isDebugEnabled) LOG.debug("editor: focus settled, focus=${focusOwner()}")
         }
     }
