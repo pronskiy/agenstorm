@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-09-22
+
 ### Added
 
 - **Terminal output that folds.** In the Reworked 2025 terminal, a `var_dump`, `print_r`, `var_export`, a JSON line or a PHP stack trace collapses to a one-line summary as it arrives; click the ▸ in front of it (or the summary) to open the block in place, coloured like code — keys, types, class names, strings and numbers in your editor scheme's colours — and the ▾ to fold it again. The five rules ship as JSON files, and your own go in `<IDE config>/agenstorm/terminal-rules/` — picked up a moment after you save, a file with a built-in's id replacing it, a broken file skipped with one balloon naming the field. Every rule runs under a time budget, so a hostile regex is cut off and switched off rather than hanging the IDE. On by default, under Tools → Agenstorm → Terminal output, where each rule has its own switch. The Classic engine is left alone.
@@ -116,7 +118,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.8.1...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.9.0...HEAD
+[1.9.0]: https://github.com/pronskiy/agenstorm/compare/1.8.1...1.9.0
 [1.8.1]: https://github.com/pronskiy/agenstorm/compare/1.8.0...1.8.1
 [1.8.0]: https://github.com/pronskiy/agenstorm/compare/1.7.0...1.8.0
 [1.7.0]: https://github.com/pronskiy/agenstorm/compare/1.6.0...1.7.0
