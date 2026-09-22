@@ -7,6 +7,12 @@
         <shellExecOptionsCustomizer implementation="com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer"/>
     </extensions>
 
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Epic I (I1.3 spike, then I2.1): fold regions over the blocks the enhancer rules recognise in the
+             reworked terminal's output editor. -->
+        <editorFactoryListener implementation="com.pronskiy.agenstorm.terminal.enhance.TerminalEnhancerEditorListener"/>
+    </extensions>
+
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
         <!-- P2.4: a terminal tab with a command running keeps its project loaded. -->
         <offloadGuard implementation="com.pronskiy.agenstorm.tabs.offload.TerminalCommandGuard"/>

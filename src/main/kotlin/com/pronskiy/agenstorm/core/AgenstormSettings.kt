@@ -45,6 +45,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var terminalMaximizeNoticeShown: Boolean = false,
         /** Epic J: set once the balloon explained that the toggle's shortcut wins over what else wanted it. */
         var terminalMaximizeShortcutNoticeShown: Boolean = false,
+        /** Epic I: `var_dump` and friends fold to one line in the terminal, with a viewer behind them. */
+        var terminalEnhancerEnabled: Boolean = true,
         /**
          * Epic B: the languages that stay in the New Scratch File popup, in the order they are shown. Entries
          * name a language by id or display name; a file type name still resolves, which is what 1.0 wrote here.
