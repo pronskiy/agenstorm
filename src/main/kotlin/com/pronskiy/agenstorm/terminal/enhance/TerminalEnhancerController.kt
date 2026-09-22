@@ -61,13 +61,15 @@ class TerminalEnhancerController(
     backgroundSync: Boolean = true,
     /** Opens the viewer for a block; the tests hand in a recorder. */
     private val viewer: (ViewerRequest) -> Unit = { request -> showViewer(editor, request) },
+    /** Told once per rule the detector switched off for blowing its budget; the tests hand in a recorder. */
+    onRuleDisabled: (EnhancerRule, String) -> Unit = { rule, why -> RuleFileNotice.reportDisabled(rule, why, RuleRepository.getInstance().folder) },
 ) : Disposable {
 
     /** What a click on a `tree` or `json` placeholder asks the viewer to show. */
     class ViewerRequest(val region: FoldRegion, val ruleId: String, val render: RenderMode, val raw: String, val root: PayloadNode, val at: Point)
 
     private val resync = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    private val detector = BlockDetector(onRuleDisabled = { rule, why -> LOG.warn("enhancer: rule ${rule.id} (${rule.source}) disabled: $why") })
+    private val detector = BlockDetector(onRuleDisabled = onRuleDisabled)
 
     /** How far the output has been scanned. Written on the EDT only; read from the scan thread. */
     @Volatile

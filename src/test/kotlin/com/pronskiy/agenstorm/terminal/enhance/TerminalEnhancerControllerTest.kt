@@ -156,6 +156,22 @@ class TerminalEnhancerControllerTest : BasePlatformTestCase() {
         assertTrue(requests.isEmpty())
     }
 
+    fun testAHostileRuleIsSwitchedOffAndReportedOnceWhileTheOthersKeepWorking() {
+        val reported = ArrayList<String>()
+        val hostile = RuleParser.parse("""{ "id": "hostile", "start": "^(.*a){20}$" }""", "hostile.json")
+        myFixture.configureByText("out.txt", "a".repeat(40) + "b\n" + fixture("stack-trace.txt"))
+        controller = TerminalEnhancerController(myFixture.editor as EditorEx, { listOf(hostile) + rules }, scope, backgroundSync = false, onRuleDisabled = { r, why -> reported += "${r.id}: $why" })
+        controller!!.syncNow()
+
+        assertEquals(listOf("Stack trace …"), placeholders())
+        assertEquals(1, reported.size)
+        assertTrue(reported.single(), reported.single().startsWith("hostile: took longer than"))
+
+        append("a".repeat(40) + "b\n")
+        controller!!.syncNow()
+        assertEquals("said once", 1, reported.size)
+    }
+
     fun testDisposingRemovesEveryRegion() {
         open(fixture("var-dump.txt"))
         assertEquals(1, controller!!.regions().size)

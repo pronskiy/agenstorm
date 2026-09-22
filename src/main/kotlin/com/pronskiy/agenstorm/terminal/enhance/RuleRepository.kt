@@ -177,6 +177,21 @@ object RuleFileNotice {
         }
     }
 
+    /** A rule the detector switched off for blowing its budget: one balloon per rule id for the session. */
+    fun reportDisabled(rule: EnhancerRule, why: String, folder: Path) {
+        val key = "disabled\u0000" + rule.id
+        if (!shown.add(key)) return
+        LOG.warn("terminal rule ${rule.id} (${rule.source}) switched off: $why")
+        AgenstormNotifications.group()
+            .createNotification(
+                AgenstormBundle.message("terminal.enhancer.rules.disabled.title", rule.id),
+                AgenstormBundle.message("terminal.enhancer.rules.disabled.content", why, rule.source),
+                NotificationType.WARNING,
+            )
+            .addAction(NotificationAction.createSimple(AgenstormBundle.message("terminal.enhancer.rules.openFolder")) { RevealFileAction.openDirectory(folder) })
+            .notify(null)
+    }
+
     private fun keyOf(error: RuleParseException) = error.source + "\u0000" + error.message
 
     @TestOnly
