@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Terminal output that folds.** In the Reworked 2025 terminal, a `var_dump`, `print_r`, `var_export`, a JSON line or a PHP stack trace collapses to a one-line summary as it arrives; click the summary to open the block as a tree of keys, values and types, with Copy Node, Copy Subtree and Copy Raw Output in its context menu. The five rules ship as JSON files, and your own go in `<IDE config>/agenstorm/terminal-rules/` — picked up a moment after you save, a file with a built-in's id replacing it, a broken file skipped with one balloon naming the field. Every rule runs under a time budget, so a hostile regex is cut off and switched off rather than hanging the IDE. On by default, under Tools → Agenstorm → Terminal output, where each rule has its own switch. The Classic engine is left alone.
+
 ## [1.8.1] - 2026-09-22
 
 ### Fixed

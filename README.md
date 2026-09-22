@@ -53,6 +53,11 @@ down to the status bar, and window titles name the project rather than whichever
 One key fills the editor's area with the terminal, and the same key gives the editor back. Other
 tool windows keep their place.
 
+### Terminal output that folds
+
+In the Reworked terminal, a `var_dump`, `print_r`, `var_export`, JSON line or PHP stack trace collapses
+to one line; click it to open the block as a tree. Rules are JSON files you can add to.
+
 ### Notification popups that hide themselves
 
 Balloons fade after a few seconds instead of the IDE's 10 seconds, or 5 minutes for sticky ones.
@@ -94,6 +99,7 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 | [Idle projects offloaded](#offloaded-projects) | on | Project tabs |
 | [Window title without file names](#window-title) | on | Window title |
 | [Terminal fills the window](#filling-the-window-with-the-terminal) | on | Terminal size |
+| [Terminal output that folds](#terminal-output-that-folds-1) | on | Terminal output |
 | [Self-hiding notifications](#notifications) | on | Notifications |
 | [Names typed in the project tree](#project-tree) | on | Project tree |
 | [Shorter New Scratch File popup](#scratch-files) | on | Scratch files |
@@ -419,6 +425,62 @@ keystroke. Nothing in your keymap is changed to arrange it, a balloon says so th
 rebinding either action or switching the feature off gives it back.
 
 Settings → Tools → Agenstorm → Terminal size.
+
+---
+
+## Terminal output that folds
+
+Output that a rule recognises collapses to a one-line summary in the Reworked 2025 terminal (the
+Classic engine is left alone). Five rules ship with the plugin:
+
+| Rule | Recognises | Folds to | Click opens |
+|---|---|---|---|
+| `php-var-dump` | `array(2) {` … `}` and `object(Foo)#1 (3) {` … `}` | `array(2) …` | a tree |
+| `php-print-r` | `Array` / `Foo Object` + `(` … `)` | `Array ( … )` | a tree |
+| `php-var-export` | `array (` … `)` and `Foo::__set_state(array(` … `))` | `array ( … )` | a tree |
+| `php-stack-trace` | `Stack trace:` … `#N {main}` | `Stack trace …` | the raw lines |
+| `json-line` | one line that is a JSON object or array | `JSON {…}` | a tree |
+
+The tree shows keys, values and types as the output wrote them; its context menu copies a node, a
+subtree or the raw block. A block a rule folds but cannot parse is shown line by line, never refused.
+
+### Your own rules
+
+One JSON file per rule in **Open Rules Folder** (`<IDE config>/agenstorm/terminal-rules/`). A saved file
+is picked up a moment later; a file with a built-in's id replaces that built-in, which is what **Copy a
+Built-in Rule…** is for. A file that does not parse is skipped with one balloon naming the file, the
+field and what was expected; every other rule keeps working.
+
+```json
+{ "id": "laravel-dd",
+  "start": "^\\^ array:(\\d+) \\[$",
+  "end": "^]$",
+  "render": "tree",
+  "summary": "dd array:{1} …",
+  "maxLines": 500 }
+```
+
+| Field | Meaning |
+|---|---|
+| `id` | Letters, digits, `.`, `_` or `-`. A built-in's id overrides it. |
+| `start` | Regex matched against one line; the first match opens the block. |
+| `end` | Regex closing the block on a later line. Without it the block is the one matched line. |
+| `render` | `fold` (expand in place), `tree` (the viewer, format sniffed from the first line: var_dump, print_r, var_export or JSON), or `json`. Default `fold`. |
+| `summary` | The folded line: `{1}`, `{2}` … are `start`'s groups, `{0}` the whole match, `{line}` the whole first line (the default). |
+| `enabled` | `false` keeps the file but not the rule. Default `true`. |
+| `maxLines` | How many lines a block may run before the opener is treated as plain text. Default 500. |
+
+A single-line rule with a summary that keeps the useful part:
+
+```json
+{ "id": "psr-log-line",
+  "start": "^\\[(\\d{4}-\\d\\d-\\d\\d)[^\\]]*\\] (\\w+)\\.(\\w+): (.*)$",
+  "summary": "{2}.{3} {4}" }
+```
+
+Rules are regexes only: they read output, never run anything. Every regex invocation runs under a
+time budget, and a rule that blows it is switched off for the session and reported once. The table
+under Settings → Tools → Agenstorm → Terminal output lists every rule with its source and a switch.
 
 ---
 

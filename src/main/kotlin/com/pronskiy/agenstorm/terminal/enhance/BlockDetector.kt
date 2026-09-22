@@ -195,7 +195,7 @@ class BlockDetector(
             val text = BlockDetector::class.java.getResourceAsStream("/terminal/rules/$name")
                 ?.bufferedReader()?.use { it.readText() }
                 ?: throw IllegalStateException("built-in rule $name is missing from the plugin")
-            RuleParser.parse(text, "built-in")
+            RuleParser.parse(text, EnhancerRule.BUILT_IN_SOURCE)
         }
     }
 }

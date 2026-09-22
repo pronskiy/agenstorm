@@ -1,11 +1,12 @@
 package com.pronskiy.agenstorm.core
 
+import com.intellij.ide.actions.RevealFileAction
 import com.intellij.lang.Language
 import com.intellij.lang.LanguageUtil
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.components.serviceIfCreated
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -31,6 +32,8 @@ import com.pronskiy.agenstorm.tabs.ProjectTabsWidgetInstaller
 import com.pronskiy.agenstorm.tabs.offload.ProjectOffloadService
 import com.pronskiy.agenstorm.terminal.OpenRequestServer
 import com.pronskiy.agenstorm.terminal.TerminalMaximizeLayout
+import com.pronskiy.agenstorm.terminal.enhance.EnhancerRulesTable
+import com.pronskiy.agenstorm.terminal.enhance.RuleRepository
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
 
@@ -212,6 +215,41 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
         featureGroup("settings.group.terminalEnhancer", "settings.terminal.enhancer.enabled", AgenstormSettings.State::terminalEnhancerEnabled, onApply = AgenstormSettingsListener::fire) {
             row {
                 comment(AgenstormBundle.message("settings.terminal.enhancer.comment"))
+            }
+            val rules = EnhancerRulesTable()
+            row {
+                cell(rules.component)
+                    .align(AlignX.FILL)
+                    .onIsModified { rules.isModified() }
+                    .onReset { rules.reset() }
+                    .onApply {
+                        rules.apply()
+                        AgenstormSettingsListener.fire()
+                    }
+                    .comment(AgenstormBundle.message("settings.terminal.enhancer.rules.comment"))
+            }
+            row {
+                button(AgenstormBundle.message("settings.terminal.enhancer.openFolder")) {
+                    val repository = RuleRepository.getInstance()
+                    repository.ensureFolder()
+                    RevealFileAction.openDirectory(repository.folder)
+                }
+                button(AgenstormBundle.message("settings.terminal.enhancer.reload")) {
+                    RuleRepository.getInstance().reload()
+                    rules.reset()
+                    RuleRepository.getInstance().resetProjects()
+                }
+                button(AgenstormBundle.message("settings.terminal.enhancer.copyBuiltIn")) { event ->
+                    val repository = RuleRepository.getInstance()
+                    JBPopupFactory.getInstance()
+                        .createPopupChooserBuilder(repository.builtInIds())
+                        .setItemChosenCallback { id ->
+                            repository.copyBuiltIn(id)
+                            rules.reset()
+                        }
+                        .createPopup()
+                        .let { popup -> (event.source as? JComponent)?.let { popup.showUnderneathOf(it) } ?: popup.showInFocusCenter() }
+                }
             }
         }
         featureGroup("settings.group.terminalEditor", "settings.terminal.editor.enabled", AgenstormSettings.State::terminalEditorEnabled, onApply = ::applyTerminalSettings) {

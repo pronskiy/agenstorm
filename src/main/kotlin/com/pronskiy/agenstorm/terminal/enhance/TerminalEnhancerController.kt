@@ -165,6 +165,17 @@ class TerminalEnhancerController(
         return true
     }
 
+    /** The rules changed: drop every region of ours and scan the whole output again. EDT. */
+    fun reset() {
+        ThreadingAssertions.assertEventDispatchThread()
+        if (editor.isDisposed) return
+        val ours = regions()
+        if (ours.isNotEmpty()) batch { for (region in ours) editor.foldingModel.removeFoldRegion(region) }
+        scannedUpTo = 0
+        trimmed = false
+        requestSync()
+    }
+
     /** Every region this controller created and that is still valid. */
     fun regions(): List<FoldRegion> = editor.foldingModel.allFoldRegions.filter { it.isValid && it.getUserData(RULE) != null }
 

@@ -44,7 +44,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
   │   ├── tabs/        ProjectTabsModel, ProjectTabsWidgetAction + Installer, NativeTabsRegistryGuard, ui/, git/
   │   ├── notifications/ AutoDismissPolicy, NotificationAutoDismissService, NotificationAutoDismissListener
   │   ├── markdown/    MarkupRangeCollector, LiveMarkupController, LiveMarkupService (+ editor listener, startup activity), LiveMarkupAnnotator, LinkTextGotoDeclarationHandler, LinkDestinations, ToggleLiveMarkupAction, MarkdownBlockRenderer (Phase H1), tables/ (Epic Q: TableModel + TableModelBuilder, TableLayout, TableInlays + TableInlayRenderer, TablePainter)
-  │   └── terminal/    OpenRequestServer, OpenCommandRouter, OpenShimScriptHolder, TerminalOpenExecOptionsCustomizer, TerminalOpenNotice
+  │   └── terminal/    OpenRequestServer, OpenCommandRouter, OpenShimScriptHolder, TerminalOpenExecOptionsCustomizer, TerminalOpenNotice, enhance/ (Epic I: EnhancerRule + RuleParser, BlockDetector, RuleCatalog + RuleRepository, TerminalEnhancerController + Service + EditorListener, EnhancerRulesTable, viewer/ PayloadNode + PayloadTreeParsers + PayloadViewer)
   ├── src/main/resources/
   │   ├── META-INF/plugin.xml            core + always-on extensions
   │   ├── META-INF/agenstorm-markdown.xml  (optional dep: org.intellij.plugins.markdown)

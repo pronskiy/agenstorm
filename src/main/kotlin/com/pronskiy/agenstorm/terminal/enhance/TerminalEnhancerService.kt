@@ -28,9 +28,14 @@ import java.util.concurrent.ConcurrentHashMap
 class TerminalEnhancerService(private val project: Project, private val scope: CoroutineScope) : Disposable {
 
     private val controllers = ConcurrentHashMap<Editor, TerminalEnhancerController>()
-    private val builtIns: List<EnhancerRule> by lazy { BlockDetector.builtInRules() }
 
-    fun rules(): List<EnhancerRule> = builtIns
+    /** What the detector runs right now: the built-ins, overridden by the user's files, minus what is switched off. */
+    fun rules(): List<EnhancerRule> = RuleRepository.getInstance().activeRules()
+
+    /** Every attached terminal drops its regions and scans again: the rules or the switches changed. EDT. */
+    fun resetAll() {
+        for (controller in controllers.values) controller.reset()
+    }
 
     fun controllerFor(editor: Editor): TerminalEnhancerController? = controllers[editor]
 
@@ -54,6 +59,8 @@ class TerminalEnhancerService(private val project: Project, private val scope: C
             if (editor.project !== project || !isOutputEditor(editor)) continue
             if (wanted) attach(editor) else detach(editor)
         }
+        // The page may have switched rules on or off as well; the cheap way to be right is to fold again.
+        resetAll()
     }
 
     /** [applySettings] on the EDT, also while a modal dialog (the settings page) is open. */

@@ -51,6 +51,9 @@ class EnhancerRule(
         /** The whole first line, in a summary template. */
         const val LINE_REF = "{line}"
 
+        /** The [source] of a rule that ships with the plugin. */
+        const val BUILT_IN_SOURCE = "built-in"
+
         const val DEFAULT_MAX_LINES = 500
         const val DEFAULT_SUMMARY = LINE_REF
     }
