@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Terminal maximize: ⌘⌥M (⌥⇧F12 elsewhere) now puts the typing cursor in the terminal it just maximized instead of leaving it in the editor; the second press still hands it back to the editor.
+
 ## [1.8.0] - 2026-09-21
 
 ### Added

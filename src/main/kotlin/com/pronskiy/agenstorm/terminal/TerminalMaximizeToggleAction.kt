@@ -3,12 +3,15 @@ package com.pronskiy.agenstorm.terminal
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ToolWindowType
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import java.awt.KeyboardFocusManager
 
 /**
  * Step J1.2. One key for "terminal, take the window", and the same key again for "give me the editor back".
@@ -54,6 +57,7 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         val project = e.project ?: return
         val terminal = terminalOf(project) ?: return
         val step = nextStep(stateOf(project, terminal), wantMaximized = state)
+        if (LOG.isDebugEnabled) LOG.debug("toggle: step=$step, focus=${focusOwner()}")
         // Not here and now, one event later. This action reshapes the tool window pane — it hides the
         // terminal, and on its first use it re-nests the pane's splitters — and the terminal's title bar,
         // this button's own toolbar included, is rebuilt when that happens. `ActionButton.performAction`
@@ -79,8 +83,36 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         // included — that is the pane's geometry, not something setMaximized can choose. See J2.1.
         TerminalMaximizeLayout.ensureEditorAreaOnly(project)
         terminal.activate({
-            if (!project.isDisposed) ToolWindowManager.getInstance(project).setMaximized(terminal, true)
+            if (project.isDisposed) return@activate
+            ToolWindowManager.getInstance(project).setMaximized(terminal, true)
+            if (LOG.isDebugEnabled) LOG.debug("maximize: pane reshaped, active=${terminal.isActive}, focus=${focusOwner()}")
+            focusTerminal(project, terminal)
         }, true, true)
+    }
+
+    /**
+     * `activate` asks for the focus before the pane is reshaped; ask once more after it has settled, through the
+     * content manager — the same call the Terminal plugin makes for a tab it opens itself
+     * (`setSelectedContent(content, requestFocus = true)`). J1.7.
+     */
+    private fun focusTerminal(project: Project, terminal: ToolWindow) {
+        val focusManager = IdeFocusManager.getInstance(project)
+        focusManager.doWhenFocusSettlesDown {
+            if (project.isDisposed) return@doWhenFocusSettlesDown
+            val contentManager = terminal.contentManagerIfCreated
+            val content = contentManager?.selectedContent
+            if (LOG.isDebugEnabled) {
+                LOG.debug(
+                    "maximize: focus settled, focus=${focusOwner()}, tab=${content?.displayName}, " +
+                        "target=${content?.preferredFocusableComponent?.let { "${it.javaClass.name} showing=${it.isShowing}" }}",
+                )
+            }
+            if (content == null) return@doWhenFocusSettlesDown
+            contentManager.requestFocus(content, true)
+            focusManager.doWhenFocusSettlesDown {
+                if (LOG.isDebugEnabled) LOG.debug("maximize: after re-request, active=${terminal.isActive}, focus=${focusOwner()}")
+            }
+        }
     }
 
     private fun maximizeEditor(project: Project, terminal: ToolWindow) {
@@ -89,9 +121,14 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         if (manager.isMaximized(terminal)) manager.setMaximized(terminal, false)
         terminal.hide(null)
         manager.activateEditorComponent()
+        IdeFocusManager.getInstance(project).doWhenFocusSettlesDown {
+            if (LOG.isDebugEnabled) LOG.debug("editor: focus settled, focus=${focusOwner()}")
+        }
     }
 
     companion object {
+        private val LOG = logger<TerminalMaximizeToggleAction>()
+
         /** What `plugin.xml` registers this action as; [TerminalMaximizeShortcutPromoter] reads its binding. */
         const val ACTION_ID = "Agenstorm.ToggleTerminalMaximized"
 
@@ -119,5 +156,9 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
             if (project == null || project.isDisposed) return null
             return ToolWindowManager.getInstance(project).getToolWindow(TERMINAL_TOOL_WINDOW_ID)
         }
+
+        /** For the debug trace: who has the keyboard right now. */
+        private fun focusOwner(): String? =
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().permanentFocusOwner?.toString()
     }
 }
