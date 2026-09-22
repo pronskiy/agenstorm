@@ -11,6 +11,7 @@
         <!-- Epic I (I1.3 spike, then I2.1): fold regions over the blocks the enhancer rules recognise in the
              reworked terminal's output editor. -->
         <editorFactoryListener implementation="com.pronskiy.agenstorm.terminal.enhance.TerminalEnhancerEditorListener"/>
+        <postStartupActivity implementation="com.pronskiy.agenstorm.terminal.enhance.TerminalEnhancerStartupActivity"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">

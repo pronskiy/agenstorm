@@ -209,6 +209,11 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                 comment(AgenstormBundle.message("settings.markdown.hideLayoutSwitcher.comment"))
             }
         }
+        featureGroup("settings.group.terminalEnhancer", "settings.terminal.enhancer.enabled", AgenstormSettings.State::terminalEnhancerEnabled, onApply = AgenstormSettingsListener::fire) {
+            row {
+                comment(AgenstormBundle.message("settings.terminal.enhancer.comment"))
+            }
+        }
         featureGroup("settings.group.terminalEditor", "settings.terminal.editor.enabled", AgenstormSettings.State::terminalEditorEnabled, onApply = ::applyTerminalSettings) {
             row {
                 comment(AgenstormBundle.message("settings.terminal.editor.comment"))

@@ -6,11 +6,14 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.EditorFactoryEvent
 import com.intellij.openapi.editor.event.EditorFactoryListener
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.Disposer
+import com.pronskiy.agenstorm.core.AgenstormSettingsListener
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.plugins.terminal.block.util.TerminalDataContextUtils
@@ -44,6 +47,20 @@ class TerminalEnhancerService(private val project: Project, private val scope: C
         controllers.remove(editor)?.let { Disposer.dispose(it) }
     }
 
+    /** Settings changed: attach to or detach from every output editor of this project as the toggle says. */
+    fun applySettings() {
+        val wanted = AgenstormSettings.getInstance().state.terminalEnhancerEnabled
+        for (editor in EditorFactory.getInstance().allEditors) {
+            if (editor.project !== project || !isOutputEditor(editor)) continue
+            if (wanted) attach(editor) else detach(editor)
+        }
+    }
+
+    /** [applySettings] on the EDT, also while a modal dialog (the settings page) is open. */
+    fun applySettingsLater() {
+        ApplicationManager.getApplication().invokeLater({ if (!project.isDisposed) applySettings() }, ModalityState.any())
+    }
+
     override fun dispose() {
         for (controller in controllers.values) Disposer.dispose(controller)
         controllers.clear()
@@ -73,5 +90,18 @@ class TerminalEnhancerEditorListener : EditorFactoryListener {
     override fun editorReleased(event: EditorFactoryEvent) {
         val project = event.editor.project ?: return
         if (!project.isDisposed) TerminalEnhancerService.getInstance(project).detach(event.editor)
+    }
+}
+
+/**
+ * Registered in `agenstorm-terminal.xml`. Applies the toggle to the terminals a project already has, and again
+ * whenever the settings page applies — the page lives in `core/` and speaks through [AgenstormSettingsListener].
+ */
+class TerminalEnhancerStartupActivity : ProjectActivity {
+    override suspend fun execute(project: Project) {
+        val service = TerminalEnhancerService.getInstance(project)
+        ApplicationManager.getApplication().messageBus.connect(service)
+            .subscribe(AgenstormSettingsListener.TOPIC, AgenstormSettingsListener { service.applySettingsLater() })
+        service.applySettingsLater()
     }
 }
