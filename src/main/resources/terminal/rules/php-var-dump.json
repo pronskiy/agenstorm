@@ -1,0 +1,8 @@
+{
+  "id": "php-var-dump",
+  "start": "^(array|object)\\(([^)]*)\\)(?:#\\d+ \\(\\d+\\))?\\s*\\{$",
+  "end": "^\\}$",
+  "render": "tree",
+  "summary": "{1}({2}) …",
+  "maxLines": 500
+}

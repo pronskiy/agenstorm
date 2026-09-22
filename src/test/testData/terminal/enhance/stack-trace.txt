@@ -1,0 +1,6 @@
+PHP Fatal error:  Uncaught RuntimeException: boom in /app/src/Foo.php:12
+Stack trace:
+#0 /app/src/Bar.php(30): Foo->bar()
+#1 /app/index.php(5): Bar->run()
+#2 {main}
+  thrown in /app/src/Foo.php on line 12

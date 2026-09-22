@@ -1,0 +1,6 @@
+{
+  "id": "json-line",
+  "start": "^\\s*([\\[{]).*([\\]}])\\s*$",
+  "render": "json",
+  "summary": "JSON {1}…{2}"
+}

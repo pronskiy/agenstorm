@@ -1,0 +1,8 @@
+{
+  "id": "php-print-r",
+  "start": "^(Array|[A-Za-z_\\\\][A-Za-z0-9_\\\\]* Object)$",
+  "end": "^\\)$",
+  "render": "tree",
+  "summary": "{1} ( … )",
+  "maxLines": 500
+}

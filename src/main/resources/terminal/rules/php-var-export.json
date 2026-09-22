@@ -1,0 +1,8 @@
+{
+  "id": "php-var-export",
+  "start": "^(array \\(|\\\\?[A-Za-z_][A-Za-z0-9_\\\\]*::__set_state\\(array\\()$",
+  "end": "^\\)\\)?$",
+  "render": "tree",
+  "summary": "{1} … )",
+  "maxLines": 500
+}

@@ -1,0 +1,14 @@
+$ php -r 'var_dump(["a" => [1, 2], "b" => new stdClass]);'
+array(2) {
+  ["a"]=>
+  array(2) {
+    [0]=>
+    int(1)
+    [1]=>
+    int(2)
+  }
+  ["b"]=>
+  object(stdClass)#1 (0) {
+  }
+}
+$ 

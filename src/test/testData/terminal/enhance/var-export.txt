@@ -1,0 +1,9 @@
+array (
+  'a' => 
+  array (
+    0 => 1,
+  ),
+  'b' => 
+  (object) array(
+  ),
+)

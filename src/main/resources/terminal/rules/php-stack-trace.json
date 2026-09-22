@@ -1,0 +1,8 @@
+{
+  "id": "php-stack-trace",
+  "start": "^Stack trace:$",
+  "end": "^#\\d+ \\{main\\}$",
+  "render": "fold",
+  "summary": "Stack trace …",
+  "maxLines": 500
+}

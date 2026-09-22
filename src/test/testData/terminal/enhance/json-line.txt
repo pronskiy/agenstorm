@@ -1,0 +1,4 @@
+info: starting
+{"level":"info","msg":"listening","port":8080}
+plain text line
+[{"id":1},{"id":2}]
