@@ -4,7 +4,12 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorCustomElementRenderer
 import com.intellij.openapi.editor.FoldRegion
+import com.intellij.openapi.editor.Inlay
+import com.intellij.openapi.editor.colors.EditorColors
+import com.intellij.openapi.editor.colors.EditorFontType
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.event.EditorMouseEvent
@@ -13,11 +18,13 @@ import com.intellij.openapi.editor.event.EditorMouseListener
 import com.intellij.openapi.editor.event.EditorMouseMotionListener
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.FoldingListener
+import com.intellij.openapi.editor.markup.HighlighterLayer
+import com.intellij.openapi.editor.markup.HighlighterTargetArea
+import com.intellij.openapi.editor.markup.RangeHighlighter
+import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.util.concurrency.ThreadingAssertions
-import com.pronskiy.agenstorm.terminal.enhance.viewer.PayloadNode
-import com.pronskiy.agenstorm.terminal.enhance.viewer.PayloadTreeParsers
-import com.pronskiy.agenstorm.terminal.enhance.viewer.PayloadViewer
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,8 +37,9 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.Cursor
-import java.awt.Point
+import java.awt.Graphics2D
 import java.awt.event.MouseEvent
+import java.awt.geom.Rectangle2D
 
 /**
  * Step I2.1 (born as the I1.3 spike, decision 70). One per reworked-terminal output editor: every document
@@ -41,15 +49,18 @@ import java.awt.event.MouseEvent
  * Shaped like `LiveMarkupController`, with what the terminal forces: the document is append-only and trimmed
  * from the top (by characters, at the *New terminal output capacity* setting), so the scan position moves with
  * a trim and a region the trim cut through is dropped rather than recreated; and there is no caret policy — the
- * caret is the shell prompt — so a region expands only when the user clicks its placeholder. There is no gutter
- * icon either: the terminal creates its editor with gutter icons and the folding outline switched off, and
- * turning them on would change how the terminal looks for everyone.
+ * caret is the shell prompt — so a region opens only when the user asks. There is no gutter icon either: the
+ * terminal creates its editor with gutter icons and the folding outline switched off, and turning them on would
+ * change how the terminal looks for everyone.
+ *
+ * Every block gets a chevron inlay in front of its first line — ▸ folded, ▾ open — and that is the one thing
+ * to click: it toggles the region, and it is also what folds an open block back, since the terminal has no
+ * gutter to do it from. The platform's own click on the placeholder opens the region as well. A `tree` or
+ * `json` block is coloured in place from the moment it is found (I2.2, decision 72): keys, types, class names,
+ * strings and numbers in the editor scheme's language colours, visible whenever the block is open.
  *
  * A region of ours that something else removes (a `clearFoldRegions` by another plugin) is rescanned from its
  * start on the next sync, the way `LiveMarkupController` re-applies after a foreign folding change.
- *
- * A click on the placeholder of a `tree` or `json` block opens the viewer (I2.2) instead of expanding the
- * region, and the event is consumed so the editor does neither; a `fold` block expands as the platform would.
  */
 @OptIn(FlowPreview::class)
 class TerminalEnhancerController(
@@ -59,14 +70,9 @@ class TerminalEnhancerController(
     debounceMs: Long = DEBOUNCE_MS,
     /** Off in tests, which drive [syncNow] themselves. */
     backgroundSync: Boolean = true,
-    /** Opens the viewer for a block; the tests hand in a recorder. */
-    private val viewer: (ViewerRequest) -> Unit = { request -> showViewer(editor, request) },
     /** Told once per rule the detector switched off for blowing its budget; the tests hand in a recorder. */
     onRuleDisabled: (EnhancerRule, String) -> Unit = { rule, why -> RuleFileNotice.reportDisabled(rule, why, RuleRepository.getInstance().folder) },
 ) : Disposable {
-
-    /** What a click on a `tree` or `json` placeholder asks the viewer to show. */
-    class ViewerRequest(val region: FoldRegion, val ruleId: String, val render: RenderMode, val raw: String, val root: PayloadNode, val at: Point)
 
     private val resync = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val detector = BlockDetector(onRuleDisabled = onRuleDisabled)
@@ -79,6 +85,11 @@ class TerminalEnhancerController(
     private var trimmed = false
     private var ownBatch = false
     private val job: Job?
+
+    /** The colours and the chevron of each region of ours; EDT only. */
+    private class Decoration(val highlighters: List<RangeHighlighter>, val chevron: Inlay<*>?)
+
+    private val decorations = HashMap<FoldRegion, Decoration>()
 
     init {
         editor.document.addDocumentListener(object : DocumentListener {
@@ -96,24 +107,30 @@ class TerminalEnhancerController(
         }, this)
         editor.foldingModel.addListener(object : FoldingListener {
             override fun beforeFoldRegionRemoved(region: FoldRegion) {
-                if (ownBatch || region.getUserData(RULE) == null || !region.isValid) return
+                if (region.getUserData(RULE) == null) return
+                undecorate(region)
+                if (ownBatch || !region.isValid) return
                 // Someone else took a region of ours: its text is still there, so look at it again.
                 scannedUpTo = minOf(scannedUpTo, region.startOffset)
                 resync.tryEmit(Unit)
+            }
+
+            override fun onFoldProcessingEnd() {
+                for (decoration in decorations.values) decoration.chevron?.update()
             }
         }, this)
         editor.addEditorMouseListener(object : EditorMouseListener {
             override fun mousePressed(event: EditorMouseEvent) {
                 if (event.mouseEvent.button != MouseEvent.BUTTON1 || event.area != EditorMouseEventArea.EDITING_AREA) return
-                val region = event.collapsedFoldRegion ?: return
-                if (openViewer(region, event.mouseEvent.point)) event.consume()
+                val chevron = event.inlay?.renderer as? Chevron ?: return
+                toggle(chevron.region)
+                event.consume()
             }
         }, this)
         editor.addEditorMouseMotionListener(object : EditorMouseMotionListener {
             override fun mouseMoved(event: EditorMouseEvent) {
-                val overViewer = event.area == EditorMouseEventArea.EDITING_AREA &&
-                    event.collapsedFoldRegion?.let { it.getUserData(RULE) != null && it.getUserData(RENDER) != RenderMode.FOLD } == true
-                editor.setCustomCursor(this@TerminalEnhancerController, if (overViewer) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else null)
+                val overChevron = event.area == EditorMouseEventArea.EDITING_AREA && event.inlay?.renderer is Chevron
+                editor.setCustomCursor(this@TerminalEnhancerController, if (overChevron) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else null)
             }
         }, this)
         job = if (backgroundSync) {
@@ -149,24 +166,6 @@ class TerminalEnhancerController(
         apply(detector.detect(document.immutableCharSequence, rules(), from), from, document.modificationStamp)
     }
 
-    /**
-     * A click at [offset]: opens the viewer when it lands on a collapsed `tree` or `json` region of ours and says
-     * so; anything else is not handled here (a `fold` region expands as the platform would).
-     */
-    fun clickAt(offset: Int, at: Point = Point()): Boolean {
-        val region = editor.foldingModel.getCollapsedRegionAtOffset(offset) ?: return false
-        return openViewer(region, at)
-    }
-
-    private fun openViewer(region: FoldRegion, at: Point): Boolean {
-        val ruleId = region.getUserData(RULE) ?: return false
-        val render = region.getUserData(RENDER) ?: return false
-        if (render == RenderMode.FOLD) return false
-        val raw = editor.document.getText(region.textRange)
-        viewer(ViewerRequest(region, ruleId, render, raw, PayloadTreeParsers.parse(raw, render), at))
-        return true
-    }
-
     /** The rules changed: drop every region of ours and scan the whole output again. EDT. */
     fun reset() {
         ThreadingAssertions.assertEventDispatchThread()
@@ -178,8 +177,21 @@ class TerminalEnhancerController(
         requestSync()
     }
 
+    /** Folds an open block of ours, opens a folded one. EDT. What the chevron does. */
+    fun toggle(region: FoldRegion) {
+        ThreadingAssertions.assertEventDispatchThread()
+        if (editor.isDisposed || !region.isValid || region.getUserData(RULE) == null) return
+        batch { region.isExpanded = !region.isExpanded }
+    }
+
     /** Every region this controller created and that is still valid. */
     fun regions(): List<FoldRegion> = editor.foldingModel.allFoldRegions.filter { it.isValid && it.getUserData(RULE) != null }
+
+    /** The colour highlighters of [region], for the tests. */
+    fun highlightersOf(region: FoldRegion): List<RangeHighlighter> = decorations[region]?.highlighters ?: emptyList()
+
+    /** The chevron in front of [region], for the tests. */
+    fun chevronOf(region: FoldRegion): Inlay<*>? = decorations[region]?.chevron
 
     /** Where the next scan starts; for the tests of the trim arithmetic. */
     val scanPosition: Int get() = scannedUpTo
@@ -213,6 +225,7 @@ class TerminalEnhancerController(
                 region.putUserData(RULE, block.ruleId)
                 region.putUserData(RENDER, block.render)
                 region.isExpanded = false
+                decorate(region, block)
                 created++
             }
         }
@@ -223,6 +236,28 @@ class TerminalEnhancerController(
                     "$created regions created, $dropped dropped by a trim, next scan from ${detection.resumeFrom}",
             )
         }
+    }
+
+    /** The colours of a `tree` or `json` block and the chevron of every block. */
+    private fun decorate(region: FoldRegion, block: EnhancedBlock) {
+        val start = region.startOffset
+        val text = block.payload ?: editor.document.getText(region.textRange)
+        val markup = editor.markupModel
+        val highlighters = BlockColorizer.tokens(text, block.render).mapNotNull { token ->
+            val tokenStart = start + token.range.startOffset
+            val tokenEnd = start + token.range.endOffset
+            if (tokenEnd > editor.document.textLength) return@mapNotNull null
+            markup.addRangeHighlighter(token.kind.key, tokenStart, tokenEnd, HighlighterLayer.ADDITIONAL_SYNTAX, HighlighterTargetArea.EXACT_RANGE)
+        }
+        val chevron = editor.inlayModel.addInlineElement(start, false, Chevron(region))
+        decorations[region] = Decoration(highlighters, chevron)
+    }
+
+    private fun undecorate(region: FoldRegion) {
+        val decoration = decorations.remove(region) ?: return
+        if (editor.isDisposed) return
+        for (highlighter in decoration.highlighters) editor.markupModel.removeHighlighter(highlighter)
+        decoration.chevron?.let { Disposer.dispose(it) }
     }
 
     /** Our batch: the caret is never moved, and our own folding listener stays quiet. */
@@ -239,8 +274,32 @@ class TerminalEnhancerController(
         job?.cancel()
         if (editor.isDisposed) return
         val ours = regions()
-        if (ours.isEmpty()) return
-        batch { for (region in ours) editor.foldingModel.removeFoldRegion(region) }
+        if (ours.isNotEmpty()) batch { for (region in ours) editor.foldingModel.removeFoldRegion(region) }
+        for (region in decorations.keys.toList()) undecorate(region)
+    }
+
+    /**
+     * ▸ in front of a folded block, ▾ in front of an open one, in the folded-text colour: the one click target,
+     * and the way back to folded.
+     */
+    class Chevron(val region: FoldRegion) : EditorCustomElementRenderer {
+        override fun calcWidthInPixels(inlay: Inlay<*>): Int {
+            val editor = inlay.editor
+            return editor.contentComponent.getFontMetrics(editor.colorsScheme.getFont(EditorFontType.PLAIN)).stringWidth("$OPEN ")
+        }
+
+        override fun paint(inlay: Inlay<*>, g: Graphics2D, targetRegion: Rectangle2D, textAttributes: TextAttributes) {
+            val editor: Editor = inlay.editor
+            g.font = editor.colorsScheme.getFont(EditorFontType.PLAIN)
+            g.color = editor.colorsScheme.getAttributes(EditorColors.FOLDED_TEXT_ATTRIBUTES)?.foregroundColor ?: editor.colorsScheme.defaultForeground
+            val glyph = if (region.isValid && !region.isExpanded) FOLDED else OPEN
+            g.drawString(glyph, targetRegion.x.toFloat(), (targetRegion.y + editor.ascent).toFloat())
+        }
+
+        companion object {
+            const val FOLDED = "▸"
+            const val OPEN = "▾"
+        }
     }
 
     companion object {
@@ -250,12 +309,7 @@ class TerminalEnhancerController(
         /** Marks a fold region as ours, with the id of the rule that made it. */
         val RULE: Key<String> = Key.create("agenstorm.terminal.enhancer.rule")
 
-        /** How the block behind a region of ours is shown: what a click on its placeholder does. */
+        /** How the block behind a region of ours is shown: whether it is coloured. */
         val RENDER: Key<RenderMode> = Key.create("agenstorm.terminal.enhancer.render")
-
-        private fun showViewer(editor: EditorEx, request: ViewerRequest) {
-            val project = editor.project ?: return
-            PayloadViewer.show(project, editor, request.at, request.region.placeholderText, request.root, request.raw)
-        }
     }
 }

@@ -126,34 +126,52 @@ class TerminalEnhancerControllerTest : BasePlatformTestCase() {
         assertTrue(controller!!.regions().single().isExpanded)
     }
 
-    fun testAClickOnATreePlaceholderOpensTheViewerAndKeepsTheRegionCollapsed() {
-        val requests = ArrayList<TerminalEnhancerController.ViewerRequest>()
+    fun testATreeBlockIsColouredInPlaceAndGetsAChevron() {
         val text = fixture("var-dump.txt")
-        myFixture.configureByText("out.txt", text)
-        controller = TerminalEnhancerController(myFixture.editor as EditorEx, { rules }, scope, backgroundSync = false, viewer = { requests += it })
-        controller!!.syncNow()
+        open(text)
         val region = controller!!.regions().single()
 
-        assertTrue(controller!!.clickAt(region.startOffset + 3))
-
-        val request = requests.single()
-        assertEquals("php-var-dump", request.ruleId)
-        assertEquals(RenderMode.TREE, request.render)
-        assertTrue(request.raw.startsWith("array(2) {") && request.raw.endsWith("\n}"))
-        assertEquals("array(2)", request.root.label)
-        assertFalse(region.isExpanded)
+        val highlighters = controller!!.highlightersOf(region)
+        val coloured = highlighters.map { text.substring(it.startOffset, it.endOffset) }
+        assertTrue(coloured.toString(), coloured.containsAll(listOf("array", "[\"a\"]", "=>", "int", "stdClass")))
+        assertTrue(highlighters.all { it.startOffset >= region.startOffset && it.endOffset <= region.endOffset })
+        val chevron = controller!!.chevronOf(region)!!
+        assertEquals(region.startOffset, chevron.offset)
+        assertTrue(chevron.renderer is TerminalEnhancerController.Chevron)
     }
 
-    fun testAClickOnAFoldPlaceholderOrPlainTextIsNotOurs() {
-        val requests = ArrayList<TerminalEnhancerController.ViewerRequest>()
-        myFixture.configureByText("out.txt", fixture("stack-trace.txt"))
-        controller = TerminalEnhancerController(myFixture.editor as EditorEx, { rules }, scope, backgroundSync = false, viewer = { requests += it })
-        controller!!.syncNow()
+    fun testAFoldBlockGetsAChevronButNoColour() {
+        open(fixture("stack-trace.txt"))
         val region = controller!!.regions().single()
 
-        assertFalse(controller!!.clickAt(region.startOffset + 3))
-        assertFalse(controller!!.clickAt(0))
-        assertTrue(requests.isEmpty())
+        assertTrue(controller!!.highlightersOf(region).isEmpty())
+        assertNotNull(controller!!.chevronOf(region))
+    }
+
+    fun testTheChevronTogglesTheBlock() {
+        open(fixture("var-dump.txt"))
+        val region = controller!!.regions().single()
+        assertFalse(region.isExpanded)
+
+        controller!!.toggle(region)
+        assertTrue(region.isExpanded)
+        controller!!.toggle(region)
+        assertFalse(region.isExpanded)
+        assertSame("toggling keeps the region", region, controller!!.regions().single())
+    }
+
+    fun testARegionThatGoesTakesItsColoursAndChevronWithIt() {
+        open(fixture("var-dump.txt"))
+        val region = controller!!.regions().single()
+        val highlighter = controller!!.highlightersOf(region).first()
+        val chevron = controller!!.chevronOf(region)!!
+
+        val model = myFixture.editor.foldingModel
+        model.runBatchFoldingOperation { model.removeFoldRegion(region) }
+
+        assertFalse(highlighter.isValid)
+        assertFalse(chevron.isValid)
+        assertTrue(myFixture.editor.inlayModel.getInlineElementsInRange(0, myFixture.editor.document.textLength).isEmpty())
     }
 
     fun testAHostileRuleIsSwitchedOffAndReportedOnceWhileTheOthersKeepWorking() {
@@ -180,5 +198,7 @@ class TerminalEnhancerControllerTest : BasePlatformTestCase() {
         controller = null
 
         assertTrue(myFixture.editor.foldingModel.allFoldRegions.isEmpty())
+        assertTrue(myFixture.editor.inlayModel.getInlineElementsInRange(0, myFixture.editor.document.textLength).isEmpty())
+        assertTrue(myFixture.editor.markupModel.allHighlighters.none { it.layer == com.intellij.openapi.editor.markup.HighlighterLayer.ADDITIONAL_SYNTAX })
     }
 }

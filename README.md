@@ -56,7 +56,7 @@ tool windows keep their place.
 ### Terminal output that folds
 
 In the Reworked terminal, a `var_dump`, `print_r`, `var_export`, JSON line or PHP stack trace collapses
-to one line; click it to open the block as a tree. Rules are JSON files you can add to.
+to one line; click the ▸ to open it in place, coloured like code. Rules are JSON files you can add to.
 
 ### Notification popups that hide themselves
 
@@ -433,16 +433,18 @@ Settings → Tools → Agenstorm → Terminal size.
 Output that a rule recognises collapses to a one-line summary in the Reworked 2025 terminal (the
 Classic engine is left alone). Five rules ship with the plugin:
 
-| Rule | Recognises | Folds to | Click opens |
+| Rule | Recognises | Folds to | Open, it is |
 |---|---|---|---|
-| `php-var-dump` | `array(2) {` … `}` and `object(Foo)#1 (3) {` … `}` | `array(2) …` | a tree |
-| `php-print-r` | `Array` / `Foo Object` + `(` … `)` | `Array ( … )` | a tree |
-| `php-var-export` | `array (` … `)` and `Foo::__set_state(array(` … `))` | `array ( … )` | a tree |
-| `php-stack-trace` | `Stack trace:` … `#N {main}` | `Stack trace …` | the raw lines |
-| `json-line` | one line that is a JSON object or array | `JSON {…}` | a tree |
+| `php-var-dump` | `array(2) {` … `}` and `object(Foo)#1 (3) {` … `}` | `array(2) …` | coloured |
+| `php-print-r` | `Array` / `Foo Object` + `(` … `)` | `Array ( … )` | coloured |
+| `php-var-export` | `array (` … `)` and `Foo::__set_state(array(` … `))` | `array ( … )` | coloured |
+| `php-stack-trace` | `Stack trace:` … `#N {main}` | `Stack trace …` | as printed |
+| `json-line` | one line that is a JSON object or array | `JSON {…}` | coloured |
 
-The tree shows keys, values and types as the output wrote them; its context menu copies a node, a
-subtree or the raw block. A block a rule folds but cannot parse is shown line by line, never refused.
+A ▸ sits in front of every folded block: click it, or the summary, to open the block in place, and
+click the ▾ to fold it again. An open `tree` or `json` block is coloured the way your editor colours
+code — keys, types, class names, strings and numbers in the scheme's own colours — so a dump reads
+without a popup. Text a rule folds but the colouring does not recognise stays as printed, never refused.
 
 ### Your own rules
 
@@ -465,7 +467,7 @@ field and what was expected; every other rule keeps working.
 | `id` | Letters, digits, `.`, `_` or `-`. A built-in's id overrides it. |
 | `start` | Regex matched against one line; the first match opens the block. |
 | `end` | Regex closing the block on a later line. Without it the block is the one matched line. |
-| `render` | `fold` (expand in place), `tree` (the viewer, format sniffed from the first line: var_dump, print_r, var_export or JSON), or `json`. Default `fold`. |
+| `render` | `fold` (opens as printed), `tree` (coloured, the format sniffed from the first line: var_dump, print_r, var_export or JSON), or `json` (coloured as JSON). Default `fold`. |
 | `summary` | The folded line: `{1}`, `{2}` … are `start`'s groups, `{0}` the whole match, `{line}` the whole first line (the default). |
 | `enabled` | `false` keeps the file but not the rule. Default `true`. |
 | `maxLines` | How many lines a block may run before the opener is treated as plain text. Default 500. |
