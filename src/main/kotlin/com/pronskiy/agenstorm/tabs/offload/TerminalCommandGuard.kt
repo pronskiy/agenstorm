@@ -38,8 +38,8 @@ class TerminalCommandGuard(
         if (widgets(project).any(::isRunning)) AgenstormBundle.message("tabs.offload.busy.terminal") else null
 
     private fun isRunning(widget: TerminalWidget): Boolean {
-        if (widget.isCommandRunning()) return true
-        val classic = ShellTerminalWidget.asShellJediTermWidget(widget) ?: return false
+        // A classic widget's isCommandRunning() is hasRunningCommands() as well, so it is asked nothing on the EDT.
+        val classic = ShellTerminalWidget.asShellJediTermWidget(widget) ?: return widget.isCommandRunning()
         val application = ApplicationManager.getApplication()
         if (!application.isDispatchThread && !application.isReadAccessAllowed) return classicHasRunningCommands(classic)
         scope().launch(Dispatchers.IO) { classicAnswers[widget] = classicHasRunningCommands(classic) }
