@@ -1,5 +1,6 @@
 package com.pronskiy.agenstorm.terminal.enhance
 
+import com.intellij.ide.actions.RevealFileAction
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
@@ -14,22 +15,28 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
-import com.intellij.ide.actions.RevealFileAction
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardWatchEventKinds
 import java.util.Collections
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -43,6 +50,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 @OptIn(FlowPreview::class)
 class RuleRepository(scope: CoroutineScope) : Disposable {
 
+    private val LOG = logger<RuleRepository>()
+
     val folder: Path = Path.of(PathManager.getConfigPath(), "agenstorm", "terminal-rules")
 
     private val builtIns: List<EnhancerRule> by lazy { BlockDetector.builtInRules() }
@@ -52,6 +61,9 @@ class RuleRepository(scope: CoroutineScope) : Disposable {
     private var catalog: RuleCatalog? = null
     private val reloadRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private var watch: LocalFileSystem.WatchRequest? = null
+
+    private val scope = scope
+    private var watcher: Job? = null
 
     init {
         scope.launch(CoroutineName("Agenstorm terminal rules")) {
@@ -92,12 +104,41 @@ class RuleRepository(scope: CoroutineScope) : Disposable {
         reloadRequests.tryEmit(Unit)
     }
 
-    /** Creates the folder and starts watching it; harmless to call again. */
+    /**
+     * Creates the folder and starts watching it; harmless to call again. Two watchers, because they see different
+     * things: the VFS one hears a file saved inside the IDE at once, while a file written by another program
+     * reaches the VFS only on the IDE's next refresh (frame activation, mostly), so a plain NIO watch service
+     * polled once a second covers the editor next door.
+     */
     fun ensureFolder() {
         Files.createDirectories(folder)
         if (watch == null) {
             watch = LocalFileSystem.getInstance().addRootToWatch(folder.toString(), true)
             VirtualFileManager.getInstance().refreshAndFindFileByNioPath(folder)
+        }
+        if (watcher == null) {
+            watcher = scope.launch(CoroutineName("Agenstorm terminal rules watch") + Dispatchers.IO) { watchFolder() }
+        }
+    }
+
+    private suspend fun watchFolder() {
+        val service = try {
+            folder.fileSystem.newWatchService().also {
+                folder.register(it, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE)
+            }
+        } catch (e: IOException) {
+            LOG.warn("cannot watch $folder; rules are reread on Reload only", e)
+            return
+        }
+        try {
+            while (currentCoroutineContext().isActive) {
+                val key = service.poll(1, TimeUnit.SECONDS) ?: continue
+                val relevant = key.pollEvents().any { (it.context() as? Path)?.toString()?.endsWith(".json") == true }
+                key.reset()
+                if (relevant) reloadRequests.tryEmit(Unit)
+            }
+        } finally {
+            service.close()
         }
     }
 
@@ -134,6 +175,8 @@ class RuleRepository(scope: CoroutineScope) : Disposable {
     }
 
     override fun dispose() {
+        watcher?.cancel()
+        watcher = null
         watch?.let { LocalFileSystem.getInstance().removeWatchedRoot(it) }
         watch = null
     }
