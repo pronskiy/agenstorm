@@ -11,6 +11,7 @@
 ### Fixed
 
 - Terminal output: a line that only looks like JSON, such as a shell prompt like `[user] ~/dir [ main ?]`, no longer folds as a JSON block. A `json` rule's block now has to parse as JSON.
+- Markdown tables: no more "Cannot read field width" error when an editor with a rendered table is first shown.
 
 ## [1.9.0] - 2026-09-22
 
