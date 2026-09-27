@@ -467,7 +467,7 @@ field and what was expected; every other rule keeps working.
 | `id` | Letters, digits, `.`, `_` or `-`. A built-in's id overrides it. |
 | `start` | Regex matched against one line; the first match opens the block. |
 | `end` | Regex closing the block on a later line. Without it the block is the one matched line. |
-| `render` | `fold` (opens as printed), `tree` (coloured, the format sniffed from the first line: var_dump, print_r, var_export or JSON), or `json` (coloured as JSON). Default `fold`. |
+| `render` | `fold` (opens as printed), `tree` (coloured, the format sniffed from the first line: var_dump, print_r, var_export or JSON), or `json` (coloured as JSON; a block that does not parse as JSON is left as it is). Default `fold`. |
 | `summary` | The folded line: `{1}`, `{2}` … are `start`'s groups, `{0}` the whole match, `{line}` the whole first line (the default). |
 | `enabled` | `false` keeps the file but not the rule. Default `true`. |
 | `maxLines` | How many lines a block may run before the opener is treated as plain text. Default 500. |

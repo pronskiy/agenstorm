@@ -83,6 +83,38 @@ class BlockDetectorTest : TestCase() {
         assertEquals("""[{"id":1},{"id":2}]""", blocks[1].payload)
     }
 
+    fun testABracketedLineThatIsNotJsonIsNotAJsonBlock() {
+        val text = listOf(
+            "[pronskiy] ~/projects/100-million-row-challenge [ main ?]",
+            "[INFO] Building [core]",
+            "{not json}",
+            "[1, 2,]",
+            """{"ok":true}""",
+        ).joinToString("\n")
+
+        val blocks = detect(text).blocks
+
+        blocks.single().covers(text, text.lineRange("""{"ok":true}"""))
+    }
+
+    fun testAJsonRuleLeavesALineThatIsNotJsonToTheNextRule() {
+        val json = rule("""{ "id": "json", "start": "^\\[.*\\]$", "render": "json" }""")
+        val fold = rule("""{ "id": "fold", "start": "^\\[" }""")
+
+        val blocks = detect("[pronskiy] ~ [ main ?]\n[1,2]\n", listOf(json, fold)).blocks
+
+        assertEquals(listOf("fold", "json"), blocks.map { it.ruleId })
+    }
+
+    fun testAMultiLineJsonBlockThatDoesNotParseIsNotABlock() {
+        val json = rule("""{ "id": "json", "start": "^\\{$", "end": "^\\}$", "render": "json" }""")
+
+        assertEmpty(detect("{\n  key: value\n}\n", listOf(json)).blocks)
+        assertEquals(1, detect("{\n  \"key\": \"value\"\n}\n", listOf(json)).blocks.size)
+    }
+
+    private fun assertEmpty(list: List<*>) = assertTrue("expected nothing, got $list", list.isEmpty())
+
     fun testAStackTraceFoldsFromItsHeaderToMain() {
         val text = fixture("stack-trace.txt")
 

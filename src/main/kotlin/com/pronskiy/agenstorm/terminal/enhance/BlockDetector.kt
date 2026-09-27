@@ -1,6 +1,8 @@
 package com.pronskiy.agenstorm.terminal.enhance
 
 import com.intellij.openapi.util.TextRange
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import java.util.regex.Matcher
 
 /** One block a rule recognised: where it is, what the fold says, and — for the viewer — its text. */
@@ -55,7 +57,10 @@ class BlockDetector(
         val lines = LineWalker(text)
         while (lineStart < text.length) {
             val lineEnd = lines.endOf(lineStart)
-            val opened = active.firstOrNull { rule -> rule.id !in disabled && matches(rule, rule.start, text, lineStart, lineEnd) }
+            val opened = active.firstOrNull { rule ->
+                rule.id !in disabled && matches(rule, rule.start, text, lineStart, lineEnd) &&
+                    (!rule.isSingleLine || isItsFormat(rule, text, lineStart, contentEnd(text, lineStart, lineEnd)))
+            }
             if (opened == null) {
                 lineStart = lines.next(lineEnd)
                 continue
@@ -69,9 +74,11 @@ class BlockDetector(
             }
             val closing = findEnd(opened, text, lines, firstLineEnd = lineEnd)
             when (closing) {
-                is EndSearch.Closed -> {
+                is EndSearch.Closed -> if (isItsFormat(opened, text, lineStart, closing.lineEnd)) {
                     blocks += block(opened, text, lineStart, closing.lineEnd, summary)
                     lineStart = lines.next(closing.lineEnd)
+                } else {
+                    lineStart = lines.next(lineEnd)
                 }
                 // The text ran out before the block did: leave it for the next scan, which starts here.
                 EndSearch.Pending -> {
@@ -113,6 +120,20 @@ class BlockDetector(
         rule.render,
         if (rule.render == RenderMode.FOLD) null else text.subSequence(start, end).toString(),
     )
+
+    /**
+     * A `json` block has to parse as JSON. Its regex can only say what JSON looks like, and a shell prompt such as
+     * `[user] ~/dir [ main ?]` looks like it too.
+     */
+    private fun isItsFormat(rule: EnhancerRule, text: CharSequence, start: Int, end: Int): Boolean {
+        if (rule.render != RenderMode.JSON) return true
+        return try {
+            Json.parseToJsonElement(text.subSequence(start, end).toString())
+            true
+        } catch (e: SerializationException) {
+            false
+        }
+    }
 
     /** One guarded `find()`; a blown budget disables the rule and counts as no match. */
     private fun matches(rule: EnhancerRule, pattern: java.util.regex.Pattern, text: CharSequence, start: Int, end: Int): Boolean {
