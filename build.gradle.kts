@@ -161,6 +161,13 @@ tasks {
 
 intellijPlatformTesting {
     runIde {
+        // The plugin compiles against platformVersion, the since-build floor: compiled against 2026.3 it gains calls
+        // 2026.2 lacks. This runs the same build in the newer IDE the until-build admits.
+        register("runIdeNext") {
+            type = IntelliJPlatformType.PhpStorm
+            version = providers.gradleProperty("platformVersionNext")
+        }
+
         register("runIdeForUiTests") {
             task {
                 jvmArgumentProviders += CommandLineArgumentProvider {

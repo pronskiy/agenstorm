@@ -17,6 +17,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
 ./gradlew check              # compile + test + Kover coverage — run before every commit
 ./gradlew test               # unit tests only
 ./gradlew runIde             # PhpStorm 2026.2 sandbox with the plugin loaded
+./gradlew runIdeNext         # the same plugin build in PhpStorm 2026.3 EAP (`platformVersionNext`)
 ./gradlew buildPlugin        # distributable ZIP in build/distributions/
 ./gradlew verifyPlugin       # IntelliJ Plugin Verifier against the recommended IDEs (downloads them; not part of check)
 ./gradlew publishPlugin      # JetBrains Marketplace (needs PUBLISH_TOKEN)
@@ -27,7 +28,8 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
 - **Marketplace metadata:** the plugin description is extracted from `README.md` between the `<!-- Plugin description -->` markers (the build fails without them); change notes come from the `[Unreleased]` section of `CHANGELOG.md` (Keep a Changelog) via the Gradle Changelog Plugin.
 - Kotlin stdlib is not bundled (`kotlin.stdlib.default.dependency = false`) — the platform's copy is used. Gradle configuration cache and build cache are on.
 - **Pitfall:** after adding or removing a parameter of `AgenstormSettings.State` (or any data class whose default constructor tests call), run `./gradlew compileTestKotlin --rerun-tasks` once. Kotlin's incremental compiler does not recompile callers of the synthetic default constructor, the tests then fail with `NoSuchMethodError: State.<init>(...)`, and `clean` alone does not help because the stale test classes come back from the build cache.
-- Sandbox IDE (`runIde`) lives in `.intellijPlatform/sandbox/agenstorm/PS-2026.2/` — logs in `log/idea.log`, persisted settings in `config/options/` (e.g. `agenstorm.xml`); tests use the sibling `*-test` dirs. Verifier reports: `build/reports/pluginVerifier/<IDE>/`.
+- **Compile against the floor, run the next one separately.** `platformVersion` stays the since-build release: compiled against 2026.3, Kotlin emits bridges to `DynamicPluginListener` methods 2026.2 lacks and the verifier reports ten `NoSuchMethodError` risks on 262. So `runIde` can only start 2026.2; `runIdeNext` (an `intellijPlatformTesting.runIde` task) runs the 262-built plugin in `platformVersionNext`, which is what 2026.3 users get.
+- Sandbox IDE (`runIde`) lives in `.intellijPlatform/sandbox/agenstorm/PS-2026.2/` (`runIdeNext` uses the `*_runIdeNext` dirs next to it) — logs in `log/idea.log`, persisted settings in `config/options/` (e.g. `agenstorm.xml`); tests use the sibling `*-test` dirs. Verifier reports: `build/reports/pluginVerifier/<IDE>/`.
 
 ## Code conventions
 
