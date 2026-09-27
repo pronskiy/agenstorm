@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Compatible with PhpStorm 2026.3 and the other 2026.3 IDEs.
+
 ## [1.9.0] - 2026-09-22
 
 ### Added

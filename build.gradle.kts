@@ -119,9 +119,11 @@ intellijPlatform {
             recommended()
             // IntelliJ IDEA does not bundle the PHP plugin: verifying against it proves the plugin
             // loads without its optional dependencies (IDEA Community has no 2026.x release).
+            // EAP is listed so a branch the until-build admits is verified while it is still in preview,
+            // as recommended() already does for PhpStorm.
             select {
                 types = listOf(IntelliJPlatformType.IntellijIdeaUltimate)
-                channels = listOf(ProductRelease.Channel.RELEASE)
+                channels = listOf(ProductRelease.Channel.RELEASE, ProductRelease.Channel.EAP)
                 sinceBuild = providers.gradleProperty("pluginSinceBuild")
                 untilBuild = providers.gradleProperty("pluginUntilBuild")
             }
