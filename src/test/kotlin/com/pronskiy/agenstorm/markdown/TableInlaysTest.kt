@@ -2,13 +2,16 @@ package com.pronskiy.agenstorm.markdown
 
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Inlay
+import com.intellij.openapi.editor.event.VisibleAreaEvent
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.markdown.tables.TableInlayRenderer
+import com.pronskiy.agenstorm.markdown.tables.TableInlays
 import com.pronskiy.agenstorm.markdown.tables.TablePainter
+import java.awt.Rectangle
 import java.awt.image.BufferedImage
 
 /**
@@ -112,6 +115,15 @@ class TableInlaysTest : BasePlatformTestCase() {
         LiveMarkupService.getInstance(project).detach(myFixture.editor)
         assertTrue(Disposer.isDisposed(controller))
         assertTrue(Disposer.isDisposed(owner))
+    }
+
+    fun testTheFirstVisibleAreaEventHasNoOldRectangle() {
+        // Found in the sandbox: an editor's first viewport change reports `oldRectangle` as null.
+        val controller = configured()
+        val inlays = controller.tableInlaysOwner() as TableInlays
+        inlays.visibleAreaChanged(VisibleAreaEvent(myFixture.editor, null, Rectangle(0, 0, 640, 480)))
+        UIUtil.dispatchAllInvocationEvents()
+        assertSize(1, controller.tableInlays())
     }
 
     private fun configured(): LiveMarkupController {

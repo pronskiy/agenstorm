@@ -6,6 +6,7 @@ import com.intellij.openapi.editor.FoldRegion
 import com.intellij.openapi.editor.Inlay
 import com.intellij.openapi.editor.InlayProperties
 import com.intellij.openapi.editor.EditorCustomElementRenderer
+import com.intellij.openapi.editor.event.VisibleAreaEvent
 import com.intellij.openapi.editor.event.VisibleAreaListener
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.util.EditorUtil
@@ -113,9 +114,13 @@ class TableInlays(private val editor: EditorEx) : Disposable {
     private var updateScheduled = false
 
     init {
-        editor.scrollingModel.addVisibleAreaListener(VisibleAreaListener { event ->
-            if (event.newRectangle.width > 0 && event.newRectangle.width != event.oldRectangle.width) scheduleUpdate()
-        }, this)
+        editor.scrollingModel.addVisibleAreaListener(VisibleAreaListener(::visibleAreaChanged), this)
+    }
+
+    /** The old rectangle is null on an editor's first viewport change, which counts as a width change. */
+    internal fun visibleAreaChanged(event: VisibleAreaEvent) {
+        val width = event.newRectangle.width
+        if (width > 0 && width != event.oldRectangle?.width) scheduleUpdate()
     }
 
     /** EDT. [tables] is the collector's latest list; [regions] the controller's regions. */
