@@ -175,4 +175,21 @@ class ClaudeCliBackendTest {
         assertEquals(script, ClaudeCliBackend.discover(script))
         assertNull(ClaudeCliBackend.discover("/definitely/not/here/claude"))
     }
+
+    @Test
+    fun pathLookupSkipsDirectoriesWithoutAnExecutableOfThatName() {
+        val root = Files.createTempDirectory("claude-path").toFile()
+        try {
+            val empty = File(root, "empty").apply { mkdir() }
+            val plain = File(root, "plain").apply { mkdir(); File(this, "claude").writeText("") }
+            val bin = File(root, "bin").apply { mkdir(); File(this, "claude").apply { writeText(""); setExecutable(true) } }
+            val path = listOf(empty, plain, bin).joinToString(File.pathSeparator) { it.path }
+
+            assertEquals(File(bin, "claude").path, ClaudeCliBackend.findOnPath("claude", "${File.pathSeparator}$path"))
+            assertNull(ClaudeCliBackend.findOnPath("claude", empty.path))
+            assertNull(ClaudeCliBackend.findOnPath("claude", null))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
 }

@@ -2,12 +2,12 @@ package com.pronskiy.agenstorm.commit.llm
 
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.process.OSProcessHandler
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputType
 import com.intellij.openapi.util.Key
+import com.intellij.util.EnvironmentUtil
 import com.intellij.util.execution.ParametersListUtil
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import kotlinx.coroutines.Dispatchers
@@ -209,9 +209,20 @@ class ClaudeCliBackend(
         /** Configured path (must exist), else `claude` on the PATH, else the usual install locations. */
         fun discover(configuredPath: String?): String? {
             configuredPath?.trim()?.takeIf { it.isNotEmpty() }?.let { return if (File(it).canExecute()) it else null }
-            PathEnvironmentVariableUtil.findInPath("claude")?.let { return it.path }
+            findOnPath("claude", EnvironmentUtil.getValue("PATH"))?.let { return it }
             val home = System.getProperty("user.home")
             return (FALLBACK_LOCATIONS.map { "$home/$it" } + SYSTEM_LOCATIONS).firstOrNull { File(it).canExecute() }
         }
+
+        /**
+         * The first executable [name] in the directories of [path]. Walked by hand because every
+         * `PathEnvironmentVariableUtil` lookup is deprecated in 2026.3 and its replacement is not in 2026.2.
+         */
+        internal fun findOnPath(name: String, path: String?): String? =
+            path?.split(File.pathSeparatorChar)?.asSequence()
+                ?.filter { it.isNotEmpty() }
+                ?.map { File(it, name) }
+                ?.firstOrNull { it.isFile && it.canExecute() }
+                ?.path
     }
 }

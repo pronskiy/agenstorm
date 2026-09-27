@@ -7,7 +7,7 @@ import org.jetbrains.annotations.PropertyKey
 @NonNls
 private const val BUNDLE = "messages.AgenstormBundle"
 
-object AgenstormBundle : DynamicBundle(BUNDLE) {
+object AgenstormBundle : DynamicBundle(AgenstormBundle::class.java, BUNDLE) {
 
     @JvmStatic
     fun message(@PropertyKey(resourceBundle = BUNDLE) key: String, vararg params: Any) =
