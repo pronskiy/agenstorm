@@ -16,20 +16,19 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
 ./gradlew build              # assemble + check
 ./gradlew check              # compile + test + Kover coverage — run before every commit
 ./gradlew test               # unit tests only
-./gradlew runIde             # PhpStorm 2026.2 sandbox with the plugin loaded
-./gradlew runIdeNext         # the same plugin build in PhpStorm 2026.3 EAP (`platformVersionNext`)
+./gradlew runIde             # PhpStorm 2026.3 EAP sandbox with the plugin loaded
 ./gradlew buildPlugin        # distributable ZIP in build/distributions/
 ./gradlew verifyPlugin       # IntelliJ Plugin Verifier against the recommended IDEs (downloads them; not part of check)
 ./gradlew publishPlugin      # JetBrains Marketplace (needs PUBLISH_TOKEN)
 ```
 
 - **Toolchain:** Kotlin 2.3.10, JVM toolchain 21 (the Foojay resolver provisions a JDK if none matches), Gradle 9.3.1 with Kotlin DSL, IntelliJ Platform Gradle Plugin 2.x. Plugin and library versions live in `gradle/libs.versions.toml`.
-- **`gradle.properties`** holds the plugin metadata (`pluginGroup`, `pluginName`, `pluginVersion`, `pluginSinceBuild`, `pluginUntilBuild`, `platformVersion`) and the platform dependencies (`platformBundledPlugins`: `com.jetbrains.php,org.intellij.plugins.markdown,Git4Idea,org.jetbrains.plugins.terminal`; `platformBundledModules`: the DVCS modules Git4Idea's classes extend, needed only to compile against `GitRepositoryManager`). `build.gradle.kts` reads everything through `providers.gradleProperty(...)` — change the properties, not the script.
+- **`gradle.properties`** holds the plugin metadata (`pluginGroup`, `pluginName`, `pluginVersion`, `pluginSinceBuild`, `pluginUntilBuild`, `platformVersion`) and the platform dependencies (`platformBundledPlugins`: `com.jetbrains.php,org.intellij.plugins.markdown,Git4Idea,org.jetbrains.plugins.terminal`; `platformBundledModules`: the DVCS modules Git4Idea's classes extend, needed only to compile against `GitRepositoryManager`, plus `intellij.platform.vcs` and `intellij.platform.vcs.impl`, which 2026.3 moves out of the core classpath into the bundled `intellij.vcs.plugin`). `build.gradle.kts` reads everything through `providers.gradleProperty(...)` — change the properties, not the script.
 - **Marketplace metadata:** the plugin description is extracted from `README.md` between the `<!-- Plugin description -->` markers (the build fails without them); change notes come from the `[Unreleased]` section of `CHANGELOG.md` (Keep a Changelog) via the Gradle Changelog Plugin.
 - Kotlin stdlib is not bundled (`kotlin.stdlib.default.dependency = false`) — the platform's copy is used. Gradle configuration cache and build cache are on.
 - **Pitfall:** after adding or removing a parameter of `AgenstormSettings.State` (or any data class whose default constructor tests call), run `./gradlew compileTestKotlin --rerun-tasks` once. Kotlin's incremental compiler does not recompile callers of the synthetic default constructor, the tests then fail with `NoSuchMethodError: State.<init>(...)`, and `clean` alone does not help because the stale test classes come back from the build cache.
-- **Compile against the floor, run the next one separately.** `platformVersion` stays the since-build release: compiled against 2026.3, Kotlin emits bridges to `DynamicPluginListener` methods 2026.2 lacks and the verifier reports ten `NoSuchMethodError` risks on 262. So `runIde` can only start 2026.2; `runIdeNext` (an `intellijPlatformTesting.runIde` task) runs the 262-built plugin in `platformVersionNext`, which is what 2026.3 users get.
-- Sandbox IDE (`runIde`) lives in `.intellijPlatform/sandbox/agenstorm/PS-2026.2/` (`runIdeNext` uses the `*_runIdeNext` dirs next to it) — logs in `log/idea.log`, persisted settings in `config/options/` (e.g. `agenstorm.xml`); tests use the sibling `*-test` dirs. Verifier reports: `build/reports/pluginVerifier/<IDE>/`.
+- **Built against 2026.3, shipped for 2026.2 too.** `platformVersion` is the 2026.3 EAP build (`263.5701.46`), so `runIde`, compilation and tests run on 2026.3, while `since-build` stays 262. Nothing but `verifyPlugin` (PS/IU 262 and 263) checks that the plugin still links against 2026.2 — run it before a release and after anything that touches platform API. `kotlin.compilerOptions.jvmDefault = NO_COMPATIBILITY` is what makes this work: in the default mode Kotlin copies every default method of an implemented platform interface into the class as a `super` call, and 2026.3's new no-arg `DynamicPluginListener` methods became ten `NoSuchMethodError` risks on 262.
+- Sandbox IDE (`runIde`) lives in `.intellijPlatform/sandbox/agenstorm/PS-2026.3/` (the 2026.2 one, `PS-2026.2/`, is kept) — logs in `log/idea.log`, persisted settings in `config/options/` (e.g. `agenstorm.xml`); tests use the sibling `*-test` dirs. Verifier reports: `build/reports/pluginVerifier/<IDE>/`.
 
 ## Code conventions
 

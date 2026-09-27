@@ -4,6 +4,7 @@ import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.models.ProductRelease
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 plugins {
     id("java") // Java support
@@ -19,6 +20,12 @@ version = providers.gradleProperty("pluginVersion").get()
 // Set the JVM language level used to build the project.
 kotlin {
     jvmToolchain(21)
+    compilerOptions {
+        // The build compiles against a newer platform than since-build. In the default mode Kotlin copies every
+        // default method of an implemented platform interface into the class as a super call, so a method that
+        // interface only gained later (DynamicPluginListener in 2026.3) would be a NoSuchMethodError on 2026.2.
+        jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
+    }
 }
 
 // Configure project's dependencies
@@ -161,13 +168,6 @@ tasks {
 
 intellijPlatformTesting {
     runIde {
-        // The plugin compiles against platformVersion, the since-build floor: compiled against 2026.3 it gains calls
-        // 2026.2 lacks. This runs the same build in the newer IDE the until-build admits.
-        register("runIdeNext") {
-            type = IntelliJPlatformType.PhpStorm
-            version = providers.gradleProperty("platformVersionNext")
-        }
-
         register("runIdeForUiTests") {
             task {
                 jvmArgumentProviders += CommandLineArgumentProvider {
