@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-09-28
+
 ### Changed
 
 - Compatible with PhpStorm 2026.3 and the other 2026.3 IDEs.
@@ -127,7 +129,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.9.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.9.1...HEAD
+[1.9.1]: https://github.com/pronskiy/agenstorm/compare/1.9.0...1.9.1
 [1.9.0]: https://github.com/pronskiy/agenstorm/compare/1.8.1...1.9.0
 [1.8.1]: https://github.com/pronskiy/agenstorm/compare/1.8.0...1.8.1
 [1.8.0]: https://github.com/pronskiy/agenstorm/compare/1.7.0...1.8.0
