@@ -11,7 +11,6 @@ import com.pronskiy.agenstorm.links.FileLocationNavigationTarget
 import com.pronskiy.agenstorm.links.FileLocationSymbol
 import com.pronskiy.agenstorm.links.FileLocationSymbolReference
 import org.intellij.plugins.markdown.lang.psi.impl.MarkdownLinkDestination
-import org.intellij.plugins.markdown.lang.references.paths.MarkdownUnresolvedFileReferenceInspection
 
 /**
  * Step A1.5: end-to-end over the `testData/links/md/` fixture project. `docs/plan.md` links to a file
@@ -60,7 +59,7 @@ class MarkdownLocationReferenceTest : BasePlatformTestCase() {
     }
 
     fun testOnlyResolvableLocationsAreHighlightedAndEachExactlyOnce() {
-        myFixture.enableInspections(MarkdownUnresolvedFileReferenceInspection::class.java)
+        myFixture.enableInspections(unresolvedFileInspection())
         val infos = myFixture.doHighlighting()
         val byText = destinations()
 

@@ -10,7 +10,6 @@ import com.pronskiy.agenstorm.links.FileLocation
 import com.pronskiy.agenstorm.links.FileLocationSymbol
 import com.pronskiy.agenstorm.links.FileLocationSymbolReference
 import org.intellij.plugins.markdown.lang.psi.impl.MarkdownLinkDestination
-import org.intellij.plugins.markdown.lang.references.paths.MarkdownUnresolvedFileReferenceInspection
 
 /**
  * Step A1.4: the provider is wired to `MarkdownLinkDestination` through `agenstorm-markdown.xml`, HyperlinkAnnotator
@@ -64,7 +63,7 @@ class MarkdownLocationReferenceProviderTest : BasePlatformTestCase() {
     }
 
     fun testUnresolvedFileInspectionIsSuppressedOnlyForResolvableLocations() {
-        myFixture.enableInspections(MarkdownUnresolvedFileReferenceInspection::class.java)
+        myFixture.enableInspections(unresolvedFileInspection())
 
         destination("[x](src/Foo.php:3:5)")
         assertEmpty(myFixture.doHighlighting().filter { it.severity == HighlightSeverity.WARNING })

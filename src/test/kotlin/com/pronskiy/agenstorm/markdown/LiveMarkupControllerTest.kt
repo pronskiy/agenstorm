@@ -356,6 +356,7 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         assertConsistent(controller)
         assertFalse(controller.regions().first { document.getLineNumber(it.startOffset) == 2 }.isExpanded)
 
+        val beforeReformat = document.text
         WriteCommandAction.runWriteCommandAction(project) { CodeStyleManager.getInstance(project).reformat(myFixture.file) }
         commitAndSync(controller)
         assertConsistent(controller)
@@ -363,7 +364,9 @@ class LiveMarkupControllerTest : BasePlatformTestCase() {
         val fileEditor = TextEditorProvider.getInstance().getTextEditor(myFixture.editor)
         val undoManager = UndoManager.getInstance(project)
         assertTrue(undoManager.isUndoAvailable(fileEditor))
-        undoManager.undo(fileEditor)
+        // The 2026.2 formatter puts a space after the `y`; the 2026.3 one leaves the text alone, and a reformat
+        // that changes nothing leaves no undo step.
+        if (document.text != beforeReformat) undoManager.undo(fileEditor)
         undoManager.undo(fileEditor)
         commitAndSync(controller)
         assertEquals("y**xbold** and *em*\n\n**far**\n", document.text)

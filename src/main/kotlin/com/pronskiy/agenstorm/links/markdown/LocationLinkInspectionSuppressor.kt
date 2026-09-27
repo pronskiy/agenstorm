@@ -29,7 +29,10 @@ class LocationLinkInspectionSuppressor : InspectionSuppressor, DumbAware {
     override fun getSuppressActions(element: PsiElement?, toolId: String): Array<SuppressQuickFix> = SuppressQuickFix.EMPTY_ARRAY
 
     private companion object {
-        /** `shortName` of `org.intellij.plugins.markdown.lang.references.paths.MarkdownUnresolvedFileReferenceInspection`. */
+        /**
+         * `shortName` of the Markdown plugin's `MarkdownUnresolvedFileReferenceInspection`, which lives in
+         * `org.intellij.plugins.markdown.lang.references.paths` in 2026.2 and `com.intellij.markdown.backend.inspections` in 2026.3.
+         */
         const val UNRESOLVED_FILE_REFERENCE = "MarkdownUnresolvedFileReference"
     }
 }
