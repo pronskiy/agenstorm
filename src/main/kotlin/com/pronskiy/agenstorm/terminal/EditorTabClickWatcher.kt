@@ -3,21 +3,15 @@ package com.pronskiy.agenstorm.terminal
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.terminal.TerminalMaximizeToggleAction.TerminalWindowState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.awt.AWTEvent
 import java.awt.Component
 import java.awt.Toolkit
@@ -40,16 +34,18 @@ import javax.swing.SwingUtilities
  * leaves the terminal by the shortcut keeps a tab row that just switches tabs. That a tab click did is kept in
  * the project's workspace, so it outlasts a restart.
  *
- * The terminal comes back one double-click interval after the click, not at once: a double click on an editor
- * tab is the platform's Hide All Tool Windows, and its first click must not have maximized the terminal by the
- * time the second one arrives. Any press in that interval calls it off.
+ * A double click on an editor tab is the platform's Hide All Tool Windows, and its first click on the active tab
+ * has already asked for the terminal. So the second press of a double click takes that back — un-maximized and
+ * hidden again, right there in the listener, which sees the press before the tab does — and the double click
+ * then does what it always did. Waiting out the double-click interval before maximizing did the same without the
+ * brief flash, and made every single click feel half a second slow.
  *
  * It listens only while one of the two can happen: [watch] is called when the terminal is maximized, [resume]
  * when a project opens with the row armed, and the listener removes itself on the first click it sees once the
  * terminal is not maximized and the row is not armed, or once the feature is off.
  */
 @Service(Service.Level.PROJECT)
-class EditorTabClickWatcher(private val project: Project, private val scope: CoroutineScope) : Disposable {
+class EditorTabClickWatcher(private val project: Project) : Disposable {
 
     /** What a click on one of the project's editor tabs asks for. */
     enum class TabClick { EDITOR, TERMINAL, NONE }
@@ -64,8 +60,12 @@ class EditorTabClickWatcher(private val project: Project, private val scope: Cor
     /** The tab label the last single press landed on, when its tab was the active one at that moment. */
     private var pressedActiveTab: Component? = null
 
-    /** The terminal asked for by a click, waiting out the double-click interval. */
-    private var pendingTerminal: Job? = null
+    /** A click on the active tab asked for the terminal. Kept until the next press, which may take it back. */
+    private class ClickOpen(val at: Long) {
+        var wanted = true
+    }
+
+    private var clickOpen: ClickOpen? = null
 
     /** EDT. Starts listening, once. */
     fun watch() {
@@ -97,14 +97,29 @@ class EditorTabClickWatcher(private val project: Project, private val scope: Cor
             stop()
             return
         }
-        if (e.id == MouseEvent.MOUSE_PRESSED) pressed(e) else clicked(e, state, terminal)
+        if (e.id == MouseEvent.MOUSE_PRESSED) pressed(e, terminal) else clicked(e, state, terminal)
     }
 
-    private fun pressed(e: MouseEvent) {
-        // The second click of a double click, or a click anywhere else: the terminal is no longer what was asked.
-        cancelPending()
+    private fun pressed(e: MouseEvent, terminal: ToolWindow) {
+        val open = clickOpen
+        clickOpen = null
+        if (open != null && isSecondClickOf(open, e)) takeBack(open, terminal)
         // Read before the press selects its tab. The second press of a double click is not asked.
         pressedActiveTab = e.component.takeIf { e.clickCount == 1 && EditorTabRow.isActiveEditorTab(project, it) }
+    }
+
+    private fun isSecondClickOf(open: ClickOpen, e: MouseEvent): Boolean =
+        e.clickCount > 1 && e.`when` - open.at <= UIUtil.getMultiClickInterval()
+
+    /**
+     * The second press of a double click, before the tab sees it: the terminal the first click asked for goes
+     * back to hidden, so that Hide All Tool Windows finds the window as it was before the double click began.
+     */
+    private fun takeBack(open: ClickOpen, terminal: ToolWindow) {
+        open.wanted = false
+        val manager = ToolWindowManager.getInstance(project)
+        if (manager.isMaximized(terminal)) manager.setMaximized(terminal, false)
+        if (terminal.isVisible) terminal.hide(null)
     }
 
     private fun clicked(e: MouseEvent, state: TerminalWindowState, terminal: ToolWindow) {
@@ -119,27 +134,22 @@ class EditorTabClickWatcher(private val project: Project, private val scope: Cor
                     TerminalMaximizeToggleAction.maximizeEditor(project, terminal)
                 }, ModalityState.nonModal(), project.disposed)
             }
-            TabClick.TERMINAL -> pendingTerminal = scope.launch(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
-                delay(UIUtil.getMultiClickInterval().toLong())
-                pendingTerminal = null
-                // Asked again: the interval is long enough for the terminal to have been shown some other way.
-                val now = TerminalMaximizeToggleAction.stateOf(project, terminal)
-                if (tabClick(now, armed, wasActive = true) == TabClick.TERMINAL) {
-                    TerminalMaximizeToggleAction.maximizeTerminal(project, terminal)
-                }
+            TabClick.TERMINAL -> {
+                val open = ClickOpen(e.`when`)
+                clickOpen = open
+                ApplicationManager.getApplication().invokeLater({
+                    if (open.wanted) {
+                        TerminalMaximizeToggleAction.maximizeTerminal(project, terminal, stillWanted = { open.wanted })
+                    }
+                }, ModalityState.nonModal(), project.disposed)
             }
             TabClick.NONE -> Unit
         }
     }
 
-    private fun cancelPending() {
-        pendingTerminal?.cancel()
-        pendingTerminal = null
-    }
-
     private fun stop() {
         pressedActiveTab = null
-        cancelPending()
+        clickOpen = null
         val registration = listening ?: return
         listening = null
         Disposer.dispose(registration)
@@ -148,7 +158,7 @@ class EditorTabClickWatcher(private val project: Project, private val scope: Cor
     override fun dispose() {
         listening = null
         pressedActiveTab = null
-        pendingTerminal = null
+        clickOpen = null
     }
 
     companion object {

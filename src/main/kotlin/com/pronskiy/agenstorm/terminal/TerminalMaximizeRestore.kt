@@ -8,11 +8,18 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectCloseListener
 import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.openapi.ui.ThreeComponentsSplitter
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.WindowManager
+import com.intellij.openapi.wm.ex.ToolWindowEx
+import com.intellij.ui.ComponentUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.awt.Component
+import kotlin.math.roundToInt
 
 /**
  * Step J1.11. A terminal maximized when the project closes is maximized again when it opens.
@@ -24,29 +31,83 @@ import kotlinx.coroutines.withContext
  *
  * So the terminal is un-maximized before the layout is saved (`projectClosingBeforeSave`, which the platform fires
  * ahead of the save both when a project closes and when the IDE quits), and that it was maximized goes into the
- * project's workspace. On the next open it is maximized again once it is on screen. The tab row's arming (J1.10)
- * comes back the same way, through [EditorTabClickWatcher.resume].
+ * project's workspace. Un-maximizing alone does not reach the file: the platform copies a tool window's new size
+ * into its layout from a debounced resize listener, which runs after this save. So the height it went back to is
+ * measured here, as a share of the splitter it sits in, and kept beside the flag. On the next open, once the
+ * terminal is on screen, it is set to that height and maximized again. The tab row's arming (J1.10) comes back
+ * the same way, through [EditorTabClickWatcher.resume].
  */
 object TerminalMaximizeRestore {
 
     /** Workspace key: the terminal was maximized when the project was last closed. */
     const val MAXIMIZED_KEY = "agenstorm.terminal.maximizedOnClose"
 
+    /** Workspace key: the terminal's own height then, as a share of its splitter. */
+    const val HEIGHT_SHARE_KEY = "agenstorm.terminal.heightShareOnClose"
+
     /** EDT, before the project's layout is saved. */
     fun beforeSave(project: Project) {
         val terminal = TerminalMaximizeToggleAction.terminalOf(project) ?: return
         val maximized = AgenstormSettings.getInstance().state.terminalMaximizeEnabled &&
             TerminalMaximizeToggleAction.stateOf(project, terminal).isTerminalMaximized
-        PropertiesComponent.getInstance(project).setValue(MAXIMIZED_KEY, maximized)
-        // Puts the height the user dragged to back into the layout that is about to be saved.
-        if (maximized) ToolWindowManager.getInstance(project).setMaximized(terminal, false)
+        val properties = PropertiesComponent.getInstance(project)
+        properties.setValue(MAXIMIZED_KEY, maximized)
+        properties.unsetValue(HEIGHT_SHARE_KEY)
+        if (!maximized) return
+        ToolWindowManager.getInstance(project).setMaximized(terminal, false)
+        // Lay the pane out at the height un-maximizing gave back, so there is something to measure.
+        WindowManager.getInstance().getFrame(project)?.validate()
+        heightShare(terminal)?.let { properties.setValue(HEIGHT_SHARE_KEY, it.toString()) }
     }
 
-    /** Whether the terminal was maximized when [project] was last closed; asking forgets it. */
-    fun takeMaximizedOnClose(project: Project): Boolean {
+    /** What was recorded when [project] was last closed; asking forgets it. */
+    fun takeRecord(project: Project): Record {
         val properties = PropertiesComponent.getInstance(project)
-        return properties.getBoolean(MAXIMIZED_KEY).also { properties.unsetValue(MAXIMIZED_KEY) }
+        val record = Record(
+            maximized = properties.getBoolean(MAXIMIZED_KEY),
+            heightShare = parseShare(properties.getValue(HEIGHT_SHARE_KEY)),
+        )
+        properties.unsetValue(MAXIMIZED_KEY)
+        properties.unsetValue(HEIGHT_SHARE_KEY)
+        return record
     }
+
+    data class Record(val maximized: Boolean, val heightShare: Float?)
+
+    /** EDT. Sets the terminal to [share] of its splitter's height and lays the pane out at it. */
+    fun restoreHeight(project: Project, terminal: ToolWindow, share: Float) {
+        val (splitter, area) = splitterAndArea(terminal) ?: return
+        val delta = stretchBy(share, splitter.height, area.height)
+        if (delta == 0) return
+        (terminal as? ToolWindowEx)?.stretchHeight(delta)
+        WindowManager.getInstance().getFrame(project)?.validate()
+    }
+
+    /** The terminal's height as a share of the splitter it sits in, or null when it is not laid out in one. */
+    private fun heightShare(terminal: ToolWindow): Float? {
+        val (splitter, area) = splitterAndArea(terminal) ?: return null
+        if (splitter.height <= 0 || area.height <= 0) return null
+        return area.height.toFloat() / splitter.height
+    }
+
+    /**
+     * The pane's splitter the terminal is in, and the child of it that holds the terminal — the terminal's
+     * decorator, or the splitter that shares the bottom between it and a neighbour. That child is what
+     * `stretchHeight` resizes.
+     */
+    private fun splitterAndArea(terminal: ToolWindow): Pair<ThreeComponentsSplitter, Component>? {
+        val content = terminal.component
+        val splitter = ComponentUtil.getParentOfType(ThreeComponentsSplitter::class.java, content) ?: return null
+        var area: Component = content
+        while (area.parent !== splitter) area = area.parent ?: return null
+        return splitter to area
+    }
+
+    /** Pure: a share read back from the workspace, or null when it is missing or not a share of anything. */
+    fun parseShare(text: String?): Float? = text?.toFloatOrNull()?.takeIf { it > 0f && it < 1f }
+
+    /** Pure: how many pixels to stretch a [current]-high area by to make it [share] of [total]. */
+    fun stretchBy(share: Float, total: Int, current: Int): Int = (share * total).roundToInt() - current
 
     /**
      * Pure: the terminal is on screen at a height that has stopped changing. `setMaximized` records the height to
@@ -68,12 +129,12 @@ class TerminalMaximizeCloseListener : ProjectCloseListener {
 class TerminalMaximizeStartupActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
-        val wasMaximized = TerminalMaximizeRestore.takeMaximizedOnClose(project)
+        val record = TerminalMaximizeRestore.takeRecord(project)
         val edt = Dispatchers.EDT + ModalityState.nonModal().asContextElement()
         withContext(edt) {
             if (!project.isDisposed) project.service<EditorTabClickWatcher>().resume()
         }
-        if (!wasMaximized || !AgenstormSettings.getInstance().state.terminalMaximizeEnabled) return
+        if (!record.maximized || !AgenstormSettings.getInstance().state.terminalMaximizeEnabled) return
         // The layout brings the terminal back at its own height; wait for it to be on screen and laid out.
         var previousHeight = -1
         repeat(ATTEMPTS) {
@@ -86,6 +147,8 @@ class TerminalMaximizeStartupActivity : ProjectActivity {
                 previousHeight = height
                 if (!settled) return@withContext false
                 if (!ToolWindowManager.getInstance(project).isMaximized(terminal)) {
+                    // Back to the user's height first: that is the one maximizing records to return to.
+                    record.heightShare?.let { TerminalMaximizeRestore.restoreHeight(project, terminal, it) }
                     TerminalMaximizeToggleAction.maximizeTerminal(project, terminal, changeLayout = false)
                 }
                 true
