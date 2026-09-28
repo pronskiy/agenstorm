@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Terminal maximize: clicking an editor tab while the terminal is maximized opens that file and gives the editor back, as the toggle's second press does.
+
+### Fixed
+
+- Terminal maximize: the terminal no longer covers the bottom few pixels of the editor tabs above it.
+
 ## [1.9.1] - 2026-09-28
 
 ### Changed

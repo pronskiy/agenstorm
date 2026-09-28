@@ -146,8 +146,10 @@ class TerminalEditSession(private val project: Project) {
             val state = TerminalMaximizeToggleAction.stateOf(project, terminal)
             when {
                 step == StepAside.HIDDEN && !state.visible -> terminal.show(null)
-                step == StepAside.UNMAXIMIZED && shouldRestore(state) ->
+                step == StepAside.UNMAXIMIZED && shouldRestore(state) -> {
                     ToolWindowManager.getInstance(project).setMaximized(terminal, true)
+                    TerminalMaximizeToggleAction.afterMaximized(project, terminal)
+                }
                 else -> LOG.debug("Agenstorm: leaving the terminal as the user left it (was $step)")
             }
         }

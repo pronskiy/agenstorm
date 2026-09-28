@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -86,6 +87,7 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         terminal.activate({
             if (project.isDisposed) return@activate
             ToolWindowManager.getInstance(project).setMaximized(terminal, true)
+            afterMaximized(project, terminal)
             if (LOG.isDebugEnabled) LOG.debug("maximize: pane reshaped, active=${terminal.isActive}, focus=${focusOwner()}")
             focusTerminal(project, terminal)
         }, true, true)
@@ -114,26 +116,6 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         }
     }
 
-    /**
-     * One EDT event later, under the same modality the toggle runs in. A focus request posts its events to the
-     * queue right away, so a runnable posted after it runs once they are dispatched. (`IdeFocusManager`'s
-     * `doWhenFocusSettlesDown` is deprecated in 2026.2 and the verifier counts it.)
-     */
-    private fun afterFocusSettles(project: Project, block: () -> Unit) {
-        ApplicationManager.getApplication().invokeLater(block, ModalityState.nonModal(), project.disposed)
-    }
-
-    private fun maximizeEditor(project: Project, terminal: ToolWindow) {
-        val manager = ToolWindowManager.getInstance(project)
-        // Un-maximize before hiding, so the height the user dragged to is what comes back next time.
-        if (manager.isMaximized(terminal)) manager.setMaximized(terminal, false)
-        terminal.hide(null)
-        manager.activateEditorComponent()
-        afterFocusSettles(project) {
-            if (LOG.isDebugEnabled) LOG.debug("editor: focus settled, focus=${focusOwner()}")
-        }
-    }
-
     companion object {
         private val LOG = logger<TerminalMaximizeToggleAction>()
 
@@ -146,6 +128,36 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
          * action simply finds no tool window. `TerminalMaximizeToggleActionTest` pins the two together.
          */
         const val TERMINAL_TOOL_WINDOW_ID = "Terminal"
+
+        /**
+         * EDT, right after the terminal was maximized: the editor tabs above it stay whole (J1.8), and a click on
+         * one of them gives the editor back (J1.9).
+         */
+        fun afterMaximized(project: Project, terminal: ToolWindow) {
+            EditorTabRow.uncover(project, terminal)
+            project.service<EditorTabClickWatcher>().watch()
+        }
+
+        /** The toggle's second press: the terminal un-maximized and hidden, the caret in the editor. */
+        fun maximizeEditor(project: Project, terminal: ToolWindow) {
+            val manager = ToolWindowManager.getInstance(project)
+            // Un-maximize before hiding, so the height the user dragged to is what comes back next time.
+            if (manager.isMaximized(terminal)) manager.setMaximized(terminal, false)
+            terminal.hide(null)
+            manager.activateEditorComponent()
+            afterFocusSettles(project) {
+                if (LOG.isDebugEnabled) LOG.debug("editor: focus settled, focus=${focusOwner()}")
+            }
+        }
+
+        /**
+         * One EDT event later, under the same modality the toggle runs in. A focus request posts its events to
+         * the queue right away, so a runnable posted after it runs once they are dispatched. (`IdeFocusManager`'s
+         * `doWhenFocusSettlesDown` is deprecated in 2026.2 and the verifier counts it.)
+         */
+        private fun afterFocusSettles(project: Project, block: () -> Unit) {
+            ApplicationManager.getApplication().invokeLater(block, ModalityState.nonModal(), project.disposed)
+        }
 
         /** Pure: what a press does. [wantMaximized] is the state the toggle is being moved to. */
         fun nextStep(state: TerminalWindowState, wantMaximized: Boolean): Step = when {
