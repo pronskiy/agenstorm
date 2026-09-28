@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.9.3] - 2026-09-28
+
 ### Fixed
 
 - The IDE as the terminal's `$EDITOR`: in 2026.3, which writes files in the background, the answer now waits until the IDE has completely finished writing the file, so a program that deletes the file straight after reading it (Claude Code with its prompt file) no longer makes the IDE report an error.
@@ -143,7 +145,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.9.2...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.9.3...HEAD
+[1.9.3]: https://github.com/pronskiy/agenstorm/compare/1.9.2...1.9.3
 [1.9.2]: https://github.com/pronskiy/agenstorm/compare/1.9.1...1.9.2
 [1.9.1]: https://github.com/pronskiy/agenstorm/compare/1.9.0...1.9.1
 [1.9.0]: https://github.com/pronskiy/agenstorm/compare/1.8.1...1.9.0
