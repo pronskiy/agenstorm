@@ -69,6 +69,9 @@
              two the user meant. Ordering the candidates changes nothing in anyone's keymap — switch the feature
              off, or rebind either action, and the keystroke is Extract Method's again. Decision 46. -->
         <actionPromoter implementation="com.pronskiy.agenstorm.terminal.TerminalMaximizeShortcutPromoter"/>
+        <!-- terminal: a terminal maximized when the project closed is maximized again when it opens, and the editor
+             tab row that brings it back listens again (J1.10, J1.11). -->
+        <postStartupActivity implementation="com.pronskiy.agenstorm.terminal.TerminalMaximizeStartupActivity"/>
 
         <!-- frame: window title without the file name. Service override allowed by SPEC.md §2; fails soft. -->
         <applicationService serviceInterface="com.intellij.openapi.wm.impl.FrameTitleBuilder"
@@ -79,6 +82,9 @@
     <applicationListeners>
         <!-- tabs: closed projects leave the tab strip. -->
         <listener class="com.pronskiy.agenstorm.tabs.TabsProjectCloseListener" topic="com.intellij.openapi.project.ProjectCloseListener"/>
+        <!-- terminal: "maximized" lives only in memory while the stretched height is what the layout saves, so the
+             terminal is un-maximized before the save and the fact is kept in the workspace (J1.11). -->
+        <listener class="com.pronskiy.agenstorm.terminal.TerminalMaximizeCloseListener" topic="com.intellij.openapi.project.ProjectCloseListener"/>
         <!-- tabs: a frame coming to the front is what "active" means to the offload policy (P2.2). -->
         <listener class="com.pronskiy.agenstorm.tabs.offload.TabsFrameListener" topic="com.intellij.ide.FrameStateListener"/>
         <!-- tabs: the main-toolbar project slot becomes a strip of project tabs, taken before the first toolbar

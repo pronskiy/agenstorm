@@ -1,14 +1,23 @@
 package com.pronskiy.agenstorm.terminal
 
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
+import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.terminal.TerminalMaximizeToggleAction.TerminalWindowState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.awt.AWTEvent
 import java.awt.Component
 import java.awt.Toolkit
@@ -28,14 +37,19 @@ import javax.swing.SwingUtilities
  * tab only switches to it (J1.10). "Already" is decided when the mouse goes down, because the press is what
  * selects a tab. Only while the terminal is hidden: one shown at its normal size is being used beside the editor,
  * and a click on the active tab is how the caret gets back to the file. And only after a tab click — whoever
- * leaves the terminal by the shortcut keeps a tab row that just switches tabs.
+ * leaves the terminal by the shortcut keeps a tab row that just switches tabs. That a tab click did is kept in
+ * the project's workspace, so it outlasts a restart.
  *
- * It listens only while one of the two can happen: [watch] is called when the terminal is maximized, and the
- * listener removes itself on the first click it sees once the terminal is not maximized and no tab click has
- * given the editor back, or once the feature is off.
+ * The terminal comes back one double-click interval after the click, not at once: a double click on an editor
+ * tab is the platform's Hide All Tool Windows, and its first click must not have maximized the terminal by the
+ * time the second one arrives. Any press in that interval calls it off.
+ *
+ * It listens only while one of the two can happen: [watch] is called when the terminal is maximized, [resume]
+ * when a project opens with the row armed, and the listener removes itself on the first click it sees once the
+ * terminal is not maximized and the row is not armed, or once the feature is off.
  */
 @Service(Service.Level.PROJECT)
-class EditorTabClickWatcher(private val project: Project) : Disposable {
+class EditorTabClickWatcher(private val project: Project, private val scope: CoroutineScope) : Disposable {
 
     /** What a click on one of the project's editor tabs asks for. */
     enum class TabClick { EDITOR, TERMINAL, NONE }
@@ -43,10 +57,15 @@ class EditorTabClickWatcher(private val project: Project) : Disposable {
     private var listening: Disposable? = null
 
     /** A tab click gave the editor back, so a click on the active tab asks for the terminal. J1.10. */
-    private var armed = false
+    private var armed: Boolean
+        get() = PropertiesComponent.getInstance(project).getBoolean(ARMED_KEY)
+        set(value) = PropertiesComponent.getInstance(project).setValue(ARMED_KEY, value)
 
     /** The tab label the last single press landed on, when its tab was the active one at that moment. */
     private var pressedActiveTab: Component? = null
+
+    /** The terminal asked for by a click, waiting out the double-click interval. */
+    private var pendingTerminal: Job? = null
 
     /** EDT. Starts listening, once. */
     fun watch() {
@@ -57,6 +76,11 @@ class EditorTabClickWatcher(private val project: Project) : Disposable {
         val registration = Disposable { toolkit.removeAWTEventListener(listener) }
         Disposer.register(this, registration)
         listening = registration
+    }
+
+    /** EDT, once the project is open: listens again if the row was armed when the project was last closed. */
+    fun resume() {
+        if (armed && AgenstormSettings.getInstance().state.terminalMaximizeEnabled) watch()
     }
 
     private fun mouseEvent(e: MouseEvent) {
@@ -77,8 +101,9 @@ class EditorTabClickWatcher(private val project: Project) : Disposable {
     }
 
     private fun pressed(e: MouseEvent) {
-        // Read before the press selects its tab. The second press of a double click is not asked: by then the
-        // first click has acted, and its tab is the active one.
+        // The second click of a double click, or a click anywhere else: the terminal is no longer what was asked.
+        cancelPending()
+        // Read before the press selects its tab. The second press of a double click is not asked.
         pressedActiveTab = e.component.takeIf { e.clickCount == 1 && EditorTabRow.isActiveEditorTab(project, it) }
     }
 
@@ -90,19 +115,31 @@ class EditorTabClickWatcher(private val project: Project) : Disposable {
             TabClick.EDITOR -> {
                 armed = true
                 // After the click has selected its tab, so the editor that gets the caret is the one clicked.
-                later { TerminalMaximizeToggleAction.maximizeEditor(project, terminal) }
+                ApplicationManager.getApplication().invokeLater({
+                    TerminalMaximizeToggleAction.maximizeEditor(project, terminal)
+                }, ModalityState.nonModal(), project.disposed)
             }
-            TabClick.TERMINAL -> later { TerminalMaximizeToggleAction.maximizeTerminal(project, terminal) }
+            TabClick.TERMINAL -> pendingTerminal = scope.launch(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+                delay(UIUtil.getMultiClickInterval().toLong())
+                pendingTerminal = null
+                // Asked again: the interval is long enough for the terminal to have been shown some other way.
+                val now = TerminalMaximizeToggleAction.stateOf(project, terminal)
+                if (tabClick(now, armed, wasActive = true) == TabClick.TERMINAL) {
+                    TerminalMaximizeToggleAction.maximizeTerminal(project, terminal)
+                }
+            }
             TabClick.NONE -> Unit
         }
     }
 
-    private fun later(block: () -> Unit) {
-        ApplicationManager.getApplication().invokeLater(block, ModalityState.nonModal(), project.disposed)
+    private fun cancelPending() {
+        pendingTerminal?.cancel()
+        pendingTerminal = null
     }
 
     private fun stop() {
         pressedActiveTab = null
+        cancelPending()
         val registration = listening ?: return
         listening = null
         Disposer.dispose(registration)
@@ -111,9 +148,13 @@ class EditorTabClickWatcher(private val project: Project) : Disposable {
     override fun dispose() {
         listening = null
         pressedActiveTab = null
+        pendingTerminal = null
     }
 
     companion object {
+        /** Workspace key: a tab click gave the editor back (J1.10). */
+        private const val ARMED_KEY = "agenstorm.terminal.tabRowArmed"
+
         /**
          * Pure: what a click on one of the editor tabs asks for. [armed]: a tab click has given the editor back
          * before. [wasActive]: the clicked tab was the active one before the click selected it.

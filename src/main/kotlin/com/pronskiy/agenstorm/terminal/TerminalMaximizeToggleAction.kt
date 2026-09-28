@@ -102,13 +102,15 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         }
 
         /**
-         * The toggle's first press, also asked for by a click on the active editor tab (J1.10). Show first and
-         * maximize once it is on screen: a hidden tool window has nothing to expand over.
+         * The toggle's first press, also asked for by a click on the active editor tab (J1.10) and by a project
+         * opening with the terminal maximized when it was closed (J1.11), which passes [changeLayout] false: that
+         * is putting back what was, not a use of the toggle. Show first and maximize once it is on screen: a
+         * hidden tool window has nothing to expand over.
          */
-        fun maximizeTerminal(project: Project, terminal: ToolWindow) {
+        fun maximizeTerminal(project: Project, terminal: ToolWindow, changeLayout: Boolean = true) {
             // Give the editor its own column first, or "maximized" would mean the whole window, side tool windows
             // included — that is the pane's geometry, not something setMaximized can choose. See J2.1.
-            TerminalMaximizeLayout.ensureEditorAreaOnly(project)
+            if (changeLayout) TerminalMaximizeLayout.ensureEditorAreaOnly(project)
             terminal.activate({
                 if (project.isDisposed) return@activate
                 ToolWindowManager.getInstance(project).setMaximized(terminal, true)

@@ -6,7 +6,11 @@
 
 ### Changed
 
-- Terminal maximize: once an editor tab click has given the editor back, clicking the tab that is already active maximizes the terminal again; clicking another tab only switches to it.
+- Terminal maximize: once an editor tab click has given the editor back, clicking the tab that is already active maximizes the terminal again; clicking another tab only switches to it, and a double click still hides all tool windows.
+
+### Fixed
+
+- Terminal maximize: a terminal maximized when the project closes is maximized again when it opens, instead of coming back stretched to full height but not maximized, with the height you had dragged it to lost.
 
 ## [1.9.3] - 2026-09-28
 
