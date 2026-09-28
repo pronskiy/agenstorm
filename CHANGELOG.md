@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- The IDE as the terminal's `$EDITOR`: in 2026.3, which writes files in the background, the answer now waits until the IDE has completely finished writing the file, so a program that deletes the file straight after reading it (Claude Code with its prompt file) no longer makes the IDE report an error.
+
 ## [1.9.2] - 2026-09-28
 
 ### Changed

@@ -162,23 +162,14 @@ class TerminalEditSession(private val project: Project) {
      * instant this request is answered, so those milliseconds are the whole window in which it reads an
      * empty file and takes it for an edit: the plan, the prompt or the commit message, gone.
      *
-     * So the answer waits for the bytes. [VirtualFile.getLength] is what the VFS recorded for the save and
-     * the file's size only ever reaches it once the write is through, which needs no charset or line
-     * separator to be guessed at. Never longer than [FLUSH_BUDGET_MS]: a caller kept waiting forever would
-     * be worse than one that reads a file the IDE could not flush.
+     * So the answer waits for the write to be through, in [awaitWrittenOut]. Never longer than
+     * [FLUSH_BUDGET_MS]: a caller kept waiting forever would be worse than one that reads a file the IDE
+     * could not flush.
      */
-    private suspend fun awaitBytesOnDisk(file: VirtualFile, path: Path) = withContext(Dispatchers.IO) {
-        val deadline = System.nanoTime() + FLUSH_BUDGET_MS * 1_000_000
-        while (System.nanoTime() < deadline) {
-            val onDisk = try {
-                Files.size(path)
-            } catch (_: IOException) {
-                return@withContext
-            }
-            if (onDisk == file.length) return@withContext
-            delay(FLUSH_POLL_MS)
+    private suspend fun awaitBytesOnDisk(file: VirtualFile, path: Path) {
+        if (!awaitWrittenOut(file, path, FLUSH_BUDGET_MS)) {
+            LOG.warn("Agenstorm: $path was still not written out ${FLUSH_BUDGET_MS} ms after saving it")
         }
-        LOG.warn("Agenstorm: $path was still not ${file.length} bytes on disk ${FLUSH_BUDGET_MS} ms after saving it")
     }
 
     /** What was done to give the file room, and so what has to be undone when its tab closes. */
@@ -220,6 +211,35 @@ class TerminalEditSession(private val project: Project) {
         private const val COVERING_SHARE = 0.8
 
         private val LOG = logger<TerminalEditSession>()
+
+        /**
+         * Waits until the IDE has finished writing [file] to [path]; false if [budgetMs] ran out first, true
+         * as well when the file is gone (nothing left to wait for).
+         *
+         * "Finished" is two things matching what the VFS recorded for the save. The size, which the file only
+         * reaches once the bytes are through — no charset or line separator to guess at. And the timestamp:
+         * 2026.3 writes content asynchronously, bytes first and the file's timestamp after them, and a caller
+         * that deletes the file in between — Claude Code with its prompt file — makes that last step fail and
+         * log an error. The timestamp is re-read on every pass because the platform corrects the VFS's copy
+         * to the file system's granularity once it has written it; a synchronous save has both in place
+         * before this is called.
+         */
+        @VisibleForTesting
+        suspend fun awaitWrittenOut(file: VirtualFile, path: Path, budgetMs: Long): Boolean = withContext(Dispatchers.IO) {
+            val deadline = System.nanoTime() + budgetMs * 1_000_000
+            var written = isWrittenOut(file, path)
+            while (!written && System.nanoTime() < deadline) {
+                delay(FLUSH_POLL_MS)
+                written = isWrittenOut(file, path)
+            }
+            written
+        }
+
+        private fun isWrittenOut(file: VirtualFile, path: Path): Boolean = try {
+            Files.size(path) == file.length && Files.getLastModifiedTime(path).toMillis() == file.timeStamp
+        } catch (_: IOException) {
+            true
+        }
 
         /** Measured at a few milliseconds; the budget is generous because overshooting it costs nothing. */
         private const val FLUSH_BUDGET_MS = 2_000L

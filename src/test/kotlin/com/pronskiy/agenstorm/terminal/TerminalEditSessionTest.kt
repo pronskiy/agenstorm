@@ -5,10 +5,12 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.util.io.NioFiles
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import kotlinx.coroutines.runBlocking
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -16,6 +18,7 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -90,6 +93,10 @@ class TerminalEditSessionTest : BasePlatformTestCase() {
             // Read first, explain later: building a failure message before the read would widen the very
             // window this test exists to close.
             val onDisk = Files.readString(file.path)
+            // And then gone, as Claude Code's prompt file is the moment it has been read: the IDE must have
+            // finished writing it by now, or its last step (2026.3's asynchronous write sets the timestamp
+            // after the bytes) fails on a missing file and logs an error.
+            Files.delete(file.path)
 
             assertEquals(
                 "round $round: the caller reads the file from disk the instant it is answered, so the bytes" +
@@ -98,6 +105,36 @@ class TerminalEditSessionTest : BasePlatformTestCase() {
                 onDisk,
             )
         }
+    }
+
+    /**
+     * The half of the write 2026.3 does after the bytes: the file's timestamp. Held back by hand here, since
+     * the platform's own window is too narrow to hit on purpose — CI hit it once.
+     */
+    fun testTheAnswerWaitsForTheTimestampAsWellAsTheBytes() {
+        val (file, path) = inVfs("prompt.md", "the prompt\n")
+        Files.setLastModifiedTime(path, FileTime.fromMillis(file.timeStamp - 5_000))
+
+        val done = CompletableFuture.supplyAsync { runBlocking { TerminalEditSession.awaitWrittenOut(file, path, 10_000) } }
+        Thread.sleep(300)
+        assertFalse("the bytes are there but the timestamp is not the one the VFS recorded", done.isDone)
+
+        Files.setLastModifiedTime(path, FileTime.fromMillis(file.timeStamp))
+        assertTrue(done.get(5, TimeUnit.SECONDS))
+    }
+
+    fun testTheWaitGivesUpOnceItsBudgetIsSpent() {
+        val (file, path) = inVfs("prompt.md", "the prompt\n")
+        Files.setLastModifiedTime(path, FileTime.fromMillis(file.timeStamp - 5_000))
+
+        assertFalse(runBlocking { TerminalEditSession.awaitWrittenOut(file, path, 100) })
+    }
+
+    fun testAFileAlreadyGoneIsNothingToWaitFor() {
+        val (file, path) = inVfs("prompt.md", "the prompt\n")
+        Files.delete(path)
+
+        assertTrue(runBlocking { TerminalEditSession.awaitWrittenOut(file, path, 10_000) })
     }
 
     fun testTheFeatureToggleTurnsTheEndpointIntoAFallback() {
@@ -171,6 +208,14 @@ class TerminalEditSessionTest : BasePlatformTestCase() {
         val path = cwd.resolve(name)
         Files.writeString(path, text)
         return Fixture(name, path)
+    }
+
+    /** A file written to disk and known to the VFS, whose recorded length and timestamp match the disk. */
+    private fun inVfs(name: String, text: String): Pair<VirtualFile, Path> {
+        val path = write(name, text).path
+        val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path) ?: error("VFS does not see $path")
+        assertEquals(Files.getLastModifiedTime(path).toMillis(), file.timeStamp)
+        return file to path
     }
 
     private fun edit(vararg argv: String): CompletableFuture<HttpResponse<Void>> {
