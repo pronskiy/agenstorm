@@ -10,7 +10,8 @@
 
 ### Fixed
 
-- Terminal maximize: a terminal maximized when the project closes is maximized again when it opens, instead of coming back stretched to full height but not maximized, with the height you had dragged it to lost.
+- Terminal maximize: after the terminal has been maximized and put away, it comes back at the height you had dragged it to the next time you open it, rather than at full height.
+- Terminal maximize: a terminal maximized when the project closes is maximized again when it opens, instead of coming back stretched to full height but not maximized.
 
 ## [1.9.3] - 2026-09-28
 

@@ -119,6 +119,9 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
             if (changeLayout) TerminalMaximizeLayout.ensureEditorAreaOnly(project)
             terminal.activate({
                 if (project.isDisposed || !stillWanted()) return@activate
+                // From the terminal's own height, not a stretched one left in the layout: that is the height
+                // setMaximized records to come back to. J1.11.
+                TerminalMaximizeRestore.restoreOwnHeight(project, terminal)
                 ToolWindowManager.getInstance(project).setMaximized(terminal, true)
                 afterMaximized(project, terminal)
                 if (LOG.isDebugEnabled) LOG.debug("maximize: pane reshaped, active=${terminal.isActive}, focus=${focusOwner()}")
@@ -151,11 +154,10 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
 
         /** The toggle's second press: the terminal un-maximized and hidden, the caret in the editor. */
         fun maximizeEditor(project: Project, terminal: ToolWindow) {
-            val manager = ToolWindowManager.getInstance(project)
-            // Un-maximize before hiding, so the height the user dragged to is what comes back next time.
-            if (manager.isMaximized(terminal)) manager.setMaximized(terminal, false)
-            terminal.hide(null)
-            manager.activateEditorComponent()
+            // Un-maximize before hiding, so the height the user dragged to is what comes back next time — kept
+            // by us, because the platform does not record it for a window hidden straight away. J1.11.
+            TerminalMaximizeRestore.unmaximizeAndHide(project, terminal)
+            ToolWindowManager.getInstance(project).activateEditorComponent()
             afterFocusSettles(project) {
                 if (LOG.isDebugEnabled) LOG.debug("editor: focus settled, focus=${focusOwner()}")
             }

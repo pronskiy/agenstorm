@@ -8,7 +8,6 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.terminal.TerminalMaximizeToggleAction.TerminalWindowState
@@ -117,9 +116,7 @@ class EditorTabClickWatcher(private val project: Project) : Disposable {
      */
     private fun takeBack(open: ClickOpen, terminal: ToolWindow) {
         open.wanted = false
-        val manager = ToolWindowManager.getInstance(project)
-        if (manager.isMaximized(terminal)) manager.setMaximized(terminal, false)
-        if (terminal.isVisible) terminal.hide(null)
+        if (terminal.isVisible) TerminalMaximizeRestore.unmaximizeAndHide(project, terminal)
     }
 
     private fun clicked(e: MouseEvent, state: TerminalWindowState, terminal: ToolWindow) {

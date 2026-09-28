@@ -109,6 +109,9 @@
         <!-- notifications: Notifications.TOPIC is BroadcastDirection.NONE and a project-scoped notification is
              published on that project's bus, so the application listener above never sees it. -->
         <listener class="com.pronskiy.agenstorm.notifications.NotificationAutoDismissListener" topic="com.intellij.notification.Notifications"/>
+        <!-- terminal: a terminal un-maximized and hidden at once leaves its stretched height in the layout, so it
+             is set back to its own height whenever it is shown (J1.11). -->
+        <listener class="com.pronskiy.agenstorm.terminal.TerminalShownListener" topic="com.intellij.openapi.wm.ex.ToolWindowManagerListener"/>
     </projectListeners>
 
     <actions resource-bundle="messages.AgenstormBundle">
