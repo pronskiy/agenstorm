@@ -23,7 +23,8 @@ class TerminalMaximizeRestoreTest : BasePlatformTestCase() {
 
         val properties = PropertiesComponent.getInstance(project)
         assertNull(properties.getValue(TerminalMaximizeRestore.MAXIMIZED_KEY))
-        assertNull(properties.getValue(TerminalMaximizeRestore.OWN_HEIGHT_KEY))
+        assertNull(properties.getValue(TerminalMaximizeRestore.TERMINAL_HEIGHT_KEY))
+        assertNull(properties.getValue(TerminalMaximizeRestore.SHARED_HEIGHT_KEY))
     }
 
     fun testOnlyAShareOfSomethingIsReadBack() {
@@ -51,5 +52,37 @@ class TerminalMaximizeRestoreTest : BasePlatformTestCase() {
         assertFalse(TerminalMaximizeRestore.isSettled(visible = true, showing = true, height = 0, previousHeight = 0))
         assertFalse(TerminalMaximizeRestore.isSettled(visible = true, showing = false, height = 300, previousHeight = 300))
         assertFalse(TerminalMaximizeRestore.isSettled(visible = false, showing = true, height = 300, previousHeight = 300))
+    }
+
+    fun testTheHeightUnmaximizingGaveBackIsTheShare() {
+        assertEquals(0.25f, TerminalMaximizeRestore.ownShare(restored = 200, total = 800, maximized = 780))
+    }
+
+    /** A layout stretched by an earlier version: un-maximizing gives back what maximizing recorded, the full height. */
+    fun testAlmostTheFullHeightBackMeansItWasLost() {
+        assertEquals(1f / 3, TerminalMaximizeRestore.ownShare(restored = 760, total = 800, maximized = 780))
+        assertEquals(1f / 3, TerminalMaximizeRestore.ownShare(restored = 780, total = 800, maximized = 780))
+    }
+
+    fun testNoMaximizedHeightToCompareWithTakesWhatCameBack() {
+        assertEquals(0.95f, TerminalMaximizeRestore.ownShare(restored = 760, total = 800, maximized = 0))
+    }
+
+    fun testTheTerminalAlwaysTakesItsHeightBack() {
+        assertTrue(TerminalMaximizeRestore.receivesOwnHeight(isTerminal = true, sizesShared = false, sameSide = true, docked = true))
+    }
+
+    /** The shared bottom height was stretched too, so the next bottom tool window shown puts it right. */
+    fun testAnotherToolWindowAtItsSideTakesItWhileSizesAreShared() {
+        assertTrue(TerminalMaximizeRestore.receivesOwnHeight(isTerminal = false, sizesShared = true, sameSide = true, docked = true))
+    }
+
+    fun testNotWhenEachToolWindowRemembersItsOwnSize() {
+        assertFalse(TerminalMaximizeRestore.receivesOwnHeight(isTerminal = false, sizesShared = false, sameSide = true, docked = true))
+    }
+
+    fun testNotForAnotherSideOrAFloatingWindow() {
+        assertFalse(TerminalMaximizeRestore.receivesOwnHeight(isTerminal = false, sizesShared = true, sameSide = false, docked = true))
+        assertFalse(TerminalMaximizeRestore.receivesOwnHeight(isTerminal = false, sizesShared = true, sameSide = true, docked = false))
     }
 }
