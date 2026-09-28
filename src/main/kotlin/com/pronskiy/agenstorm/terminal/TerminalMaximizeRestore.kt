@@ -18,7 +18,7 @@ import com.intellij.openapi.wm.WindowManager
 import com.intellij.openapi.wm.ex.ToolWindowEx
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.ui.ComponentUtil
-import com.intellij.ui.ExperimentalUI
+import com.intellij.ui.NewUI
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -163,7 +163,7 @@ object TerminalMaximizeRestore {
     fun receivesOwnHeight(project: Project, toolWindow: ToolWindow): Boolean {
         val terminal = TerminalMaximizeToggleAction.terminalOf(project) ?: return false
         val ui = UISettings.getInstance()
-        val sizesShared = !(if (ExperimentalUI.isNewUI()) ui.rememberSizeForEachToolWindowNewUI else ui.rememberSizeForEachToolWindowOldUI)
+        val sizesShared = !(if (NewUI.isEnabled()) ui.rememberSizeForEachToolWindowNewUI else ui.rememberSizeForEachToolWindowOldUI)
         return receivesOwnHeight(
             isTerminal = toolWindow.id == terminal.id,
             sizesShared = sizesShared,
