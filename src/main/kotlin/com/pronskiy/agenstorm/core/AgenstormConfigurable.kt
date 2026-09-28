@@ -207,6 +207,11 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                 comment(AgenstormBundle.message("settings.toolWindows.hideRightBar.comment"))
             }
         }
+        featureGroup("settings.group.statusBar", "settings.statusBar.hideStatusText", AgenstormSettings.State::statusBarHideStatusText, onApply = AgenstormSettingsListener::fire) {
+            row {
+                comment(AgenstormBundle.message("settings.statusBar.hideStatusText.comment"))
+            }
+        }
         featureGroup("settings.group.markdownEditor", "settings.markdown.hideLayoutSwitcher", AgenstormSettings.State::markdownHideLayoutSwitcher, onApply = AgenstormSettingsListener::fire) {
             row {
                 comment(AgenstormBundle.message("settings.markdown.hideLayoutSwitcher.comment"))

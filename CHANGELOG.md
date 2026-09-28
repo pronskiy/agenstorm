@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- The status bar's status text (the last message at the bottom left) is hidden, on by default under Settings | Tools | Agenstorm | Status bar; progress bars stay.
+
 ### Changed
 
 - Terminal maximize: once an editor tab click has given the editor back, clicking the tab that is already active maximizes the terminal again; clicking another tab only switches to it, and a double click still hides all tool windows.

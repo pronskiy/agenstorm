@@ -65,6 +65,9 @@
              empty bar by itself. MovedToolWindows is a light @Service (no XML registration needed). -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.toolwindows.RightBarStartupActivity"/>
 
+        <!-- statusbar: the status text is hidden; the platform can only swap it for the navigation bar (Epic S). -->
+        <postStartupActivity implementation="com.pronskiy.agenstorm.statusbar.StatusTextStartupActivity"/>
+
         <!-- terminal: ⌘⌥M is Extract Method in the macOS keymaps, so the dispatch needs to be told which of the
              two the user meant. Ordering the candidates changes nothing in anyone's keymap — switch the feature
              off, or rebind either action, and the keystroke is Extract Method's again. Decision 46. -->
@@ -99,6 +102,8 @@
         <listener class="com.pronskiy.agenstorm.notifications.NotificationAutoDismissListener" topic="com.intellij.notification.Notifications"/>
         <!-- toolwindows: the windows Agenstorm moved off the right side go back before the plugin's classes do. -->
         <listener class="com.pronskiy.agenstorm.toolwindows.RightBarUnloadListener" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+        <!-- statusbar: the status text comes back before the plugin's classes go. -->
+        <listener class="com.pronskiy.agenstorm.statusbar.StatusTextUnloadListener" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
         <!-- projectview: New File and New Directory name the element in an editable row on the tree; the
              platform's own actions are put back when the feature goes off or the plugin is unloaded. -->
         <listener class="com.pronskiy.agenstorm.projectview.ProjectViewLifecycleListener" topic="com.intellij.ide.AppLifecycleListener"/>

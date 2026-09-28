@@ -2155,6 +2155,19 @@ outside the write-intent lock), both fixed the same evening.
 
 ---
 
+
+### Epic S — The status text goes  ·  after 1.9.3
+
+**Why:** Roman, 2026-09-28: "I also want status text to be off by default in all projects." In the New UI the status bar's status text and the bottom navigation bar share one slot — `InfoAndProgressPanel` shows the text whenever `UISettings.showNavigationBarInBottom` is false — and the platform's **Status Text** item (`StatusTextModeAction`, `@ApiStatus.Internal`) is only `showNavigationBar = !state`. There is no switch for the text alone, and E3 hides the navigation bar for the branch widget, so the text always showed beside the branch. Asked which bottom-left he wanted, Roman chose the branch alone over bringing the breadcrumbs back or respecting the platform toggle.
+
+**Platform facts (262, 263):** the text is `com.intellij.openapi.wm.impl.status.StatusPanel`, a package-private `JPanel` that never sets its own visibility; `InfoAndProgressPanelImpl` creates it once and only moves it between containers when the navigation bar setting changes. `StatusBar.getComponent()` is public.
+
+| Step | Deliverable | Status | Notes |
+|---|---|---|---|
+| S1.1 | `statusbar/StatusTextHider`: find the text by class name under the status bar, `setVisible(false)`; `StatusTextStartupActivity` (project open, settings topic), `StatusTextUnloadListener` (text back on unload); setting `statusBarHideStatusText`, **on** by default, its own "Status bar" group | ✅ | The class is named, not referenced, so no platform class is linked and the verifier has nothing to count; a status bar laid out differently finds nothing and is left alone. Progress bars live beside the text and stay. `StatusTextHiderTest` (6, a stand-in class matched by name, plus a check that the platform class exists under that name). Robot-harness run on 2026.3 EAP: hidden after `StatusBar.setInfo`, shown with the setting off, hidden again with it on, and still hidden after a navigation bar on/off round. Needs Roman's look |
+
+---
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.

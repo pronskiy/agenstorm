@@ -116,6 +116,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var markdownHideLayoutSwitcher: Boolean = false,
         /** Epic N: right-anchored tool windows move to the left, which empties the right bar and makes the IDE hide it. */
         var hideRightToolWindowBar: Boolean = false,
+        /** Epic S: the status bar's status text is hidden, so the bottom-left holds only what Agenstorm puts there. */
+        var statusBarHideStatusText: Boolean = true,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */

@@ -44,6 +44,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
   │   ├── commit/      GenerateCommitMessageAction, DiffCollector, PromptBuilder, MessagePostProcessor, llm/ (backends), context/
   │   ├── tabs/        ProjectTabsModel, ProjectTabsWidgetAction + Installer, NativeTabsRegistryGuard, ui/, git/
   │   ├── notifications/ AutoDismissPolicy, NotificationAutoDismissService, NotificationAutoDismissListener
+  │   ├── statusbar/   StatusTextHider (+ startup activity, unload listener) — Epic S
   │   ├── markdown/    MarkupRangeCollector, LiveMarkupController, LiveMarkupService (+ editor listener, startup activity), LiveMarkupAnnotator, LinkTextGotoDeclarationHandler, LinkDestinations, ToggleLiveMarkupAction, MarkdownBlockRenderer (Phase H1), tables/ (Epic Q: TableModel + TableModelBuilder, TableLayout, TableInlays + TableInlayRenderer, TablePainter)
   │   └── terminal/    OpenRequestServer, OpenCommandRouter, OpenShimScriptHolder, TerminalOpenExecOptionsCustomizer, TerminalOpenNotice, enhance/ (Epic I: EnhancerRule + RuleParser, BlockDetector, RuleCatalog + RuleRepository, TerminalEnhancerController + Service + EditorListener, EnhancerRulesTable, viewer/ PayloadNode + PayloadTreeParsers + PayloadViewer)
   ├── src/main/resources/
