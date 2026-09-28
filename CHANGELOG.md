@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Terminal maximize: once an editor tab click has given the editor back, clicking the tab that is already active maximizes the terminal again; clicking another tab only switches to it.
+
 ## [1.9.3] - 2026-09-28
 
 ### Fixed

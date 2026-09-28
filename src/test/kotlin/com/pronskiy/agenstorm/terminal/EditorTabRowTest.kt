@@ -11,8 +11,8 @@ import java.awt.Container
 import javax.swing.JPanel
 
 /**
- * Steps J1.8 and J1.9: how much of the editor tab row a maximized terminal covers, and which clicks are clicks on
- * a tab. Real `JBTabs`, laid out at a size of our choosing.
+ * Steps J1.8–J1.10: how much of the editor tab row a maximized terminal covers, and which clicks are clicks on
+ * a tab, or on the selected one. Real `JBTabs`, laid out at a size of our choosing.
  */
 class EditorTabRowTest : BasePlatformTestCase() {
 
@@ -80,5 +80,24 @@ class EditorTabRowTest : BasePlatformTestCase() {
         val close = InplaceButton("Close", AllIcons.Actions.Close) {}
         label.add(close, BorderLayout.EAST)
         assertFalse(EditorTabRow.isTabLabelClick(close, tabs))
+    }
+
+    fun testAClickOnTheSelectedTabIsASelectedTabClick() {
+        layOut(400)
+        assertTrue(EditorTabRow.isSelectedTabClick(tabs.getTabLabel(first)!!, tabs))
+    }
+
+    fun testAClickOnAnotherTabIsNot() {
+        layOut(400)
+        val second = tabs.tabs.single { it !== first }
+        assertFalse(EditorTabRow.isSelectedTabClick(tabs.getTabLabel(second)!!, tabs))
+    }
+
+    fun testAClickOnAButtonOnTheSelectedTabIsNot() {
+        layOut(400)
+        val label = tabs.getTabLabel(first) as Container
+        val close = InplaceButton("Close", AllIcons.Actions.Close) {}
+        label.add(close, BorderLayout.EAST)
+        assertFalse(EditorTabRow.isSelectedTabClick(close, tabs))
     }
 }

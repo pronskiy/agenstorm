@@ -79,43 +79,6 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         }
     }
 
-    /** Show first and maximize once it is on screen: a hidden tool window has nothing to expand over. */
-    private fun maximizeTerminal(project: Project, terminal: ToolWindow) {
-        // Give the editor its own column first, or "maximized" would mean the whole window, side tool windows
-        // included — that is the pane's geometry, not something setMaximized can choose. See J2.1.
-        TerminalMaximizeLayout.ensureEditorAreaOnly(project)
-        terminal.activate({
-            if (project.isDisposed) return@activate
-            ToolWindowManager.getInstance(project).setMaximized(terminal, true)
-            afterMaximized(project, terminal)
-            if (LOG.isDebugEnabled) LOG.debug("maximize: pane reshaped, active=${terminal.isActive}, focus=${focusOwner()}")
-            focusTerminal(project, terminal)
-        }, true, true)
-    }
-
-    /**
-     * `activate` asks for the focus before the pane is reshaped; ask once more one event later, through the
-     * content manager — the same call the Terminal plugin makes for a tab it opens itself
-     * (`setSelectedContent(content, requestFocus = true)`). J1.7.
-     */
-    private fun focusTerminal(project: Project, terminal: ToolWindow) {
-        afterFocusSettles(project) {
-            val contentManager = terminal.contentManagerIfCreated
-            val content = contentManager?.selectedContent
-            if (LOG.isDebugEnabled) {
-                LOG.debug(
-                    "maximize: focus settled, focus=${focusOwner()}, tab=${content?.displayName}, " +
-                        "target=${content?.preferredFocusableComponent?.let { "${it.javaClass.name} showing=${it.isShowing}" }}",
-                )
-            }
-            if (content == null) return@afterFocusSettles
-            contentManager.requestFocus(content, true)
-            afterFocusSettles(project) {
-                if (LOG.isDebugEnabled) LOG.debug("maximize: after re-request, active=${terminal.isActive}, focus=${focusOwner()}")
-            }
-        }
-    }
-
     companion object {
         private val LOG = logger<TerminalMaximizeToggleAction>()
 
@@ -131,11 +94,51 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
 
         /**
          * EDT, right after the terminal was maximized: the editor tabs above it stay whole (J1.8), and a click on
-         * one of them gives the editor back (J1.9).
+         * one of them gives the editor back (J1.9, J1.10).
          */
         fun afterMaximized(project: Project, terminal: ToolWindow) {
             EditorTabRow.uncover(project, terminal)
             project.service<EditorTabClickWatcher>().watch()
+        }
+
+        /**
+         * The toggle's first press, also asked for by a click on the active editor tab (J1.10). Show first and
+         * maximize once it is on screen: a hidden tool window has nothing to expand over.
+         */
+        fun maximizeTerminal(project: Project, terminal: ToolWindow) {
+            // Give the editor its own column first, or "maximized" would mean the whole window, side tool windows
+            // included — that is the pane's geometry, not something setMaximized can choose. See J2.1.
+            TerminalMaximizeLayout.ensureEditorAreaOnly(project)
+            terminal.activate({
+                if (project.isDisposed) return@activate
+                ToolWindowManager.getInstance(project).setMaximized(terminal, true)
+                afterMaximized(project, terminal)
+                if (LOG.isDebugEnabled) LOG.debug("maximize: pane reshaped, active=${terminal.isActive}, focus=${focusOwner()}")
+                focusTerminal(project, terminal)
+            }, true, true)
+        }
+
+        /**
+         * `activate` asks for the focus before the pane is reshaped; ask once more one event later, through the
+         * content manager — the same call the Terminal plugin makes for a tab it opens itself
+         * (`setSelectedContent(content, requestFocus = true)`). J1.7.
+         */
+        private fun focusTerminal(project: Project, terminal: ToolWindow) {
+            afterFocusSettles(project) {
+                val contentManager = terminal.contentManagerIfCreated
+                val content = contentManager?.selectedContent
+                if (LOG.isDebugEnabled) {
+                    LOG.debug(
+                        "maximize: focus settled, focus=${focusOwner()}, tab=${content?.displayName}, " +
+                            "target=${content?.preferredFocusableComponent?.let { "${it.javaClass.name} showing=${it.isShowing}" }}",
+                    )
+                }
+                if (content == null) return@afterFocusSettles
+                contentManager.requestFocus(content, true)
+                afterFocusSettles(project) {
+                    if (LOG.isDebugEnabled) LOG.debug("maximize: after re-request, active=${terminal.isActive}, focus=${focusOwner()}")
+                }
+            }
         }
 
         /** The toggle's second press: the terminal un-maximized and hidden, the caret in the editor. */

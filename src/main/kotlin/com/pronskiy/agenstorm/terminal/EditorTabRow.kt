@@ -10,13 +10,14 @@ import com.intellij.openapi.wm.ex.ToolWindowEx
 import com.intellij.ui.ComponentUtil
 import com.intellij.ui.InplaceButton
 import com.intellij.ui.tabs.JBTabs
+import com.intellij.ui.tabs.TabInfo
 import java.awt.Component
 import javax.swing.AbstractButton
 import javax.swing.SwingConstants
 import javax.swing.SwingUtilities
 
 /**
- * Steps J1.8 and J1.9. The row of editor tabs a maximized terminal leaves showing above it.
+ * Steps J1.8, J1.9 and J1.10. The row of editor tabs a maximized terminal leaves showing above it.
  *
  * `setMaximized` stretches the terminal until the editor's area is down to the pane splitter's minimum, the
  * `ide.mainSplitter.min.size` registry value, and that is a few pixels shorter than a tab row: the terminal's
@@ -70,23 +71,49 @@ object EditorTabRow {
     /** True when [target] is on one of the tab labels of [project]'s editors — the label, not a button on it. */
     fun isEditorTabClick(project: Project, target: Component?): Boolean {
         target ?: return false
-        val tabs = ComponentUtil.getParentOfType(JBTabs::class.java, target) ?: return false
-        // Every window's clicks reach the listener; only this project's editor tabs count.
-        val editors = FileEditorManager.getInstance(project).selectedEditors
-        if (editors.none { SwingUtilities.isDescendingFrom(it.component, tabs.component) }) return false
+        val tabs = editorTabsAround(project, target) ?: return false
         return isTabLabelClick(target, tabs)
     }
 
+    /**
+     * Step J1.10. True when [target] is on the label of the tab [project] is showing right now: the selected tab
+     * of the current editor window. Asked when the mouse goes down, before the press selects the tab it lands on.
+     */
+    fun isActiveEditorTab(project: Project, target: Component?): Boolean {
+        target ?: return false
+        val tabs = editorTabsAround(project, target) ?: return false
+        if (!isSelectedTabClick(target, tabs)) return false
+        // With the editor split, each window has a selected tab; only the current window's is the active one.
+        val current = FileEditorManager.getInstance(project).selectedEditor ?: return false
+        return SwingUtilities.isDescendingFrom(current.component, tabs.component)
+    }
+
+    /** The tab row of [project]'s editors that [target] is in, or null. */
+    private fun editorTabsAround(project: Project, target: Component): JBTabs? {
+        val tabs = ComponentUtil.getParentOfType(JBTabs::class.java, target) ?: return null
+        // Every window's clicks reach the listener; only this project's editor tabs count.
+        val editors = FileEditorManager.getInstance(project).selectedEditors
+        return tabs.takeIf { editors.any { SwingUtilities.isDescendingFrom(it.component, tabs.component) } }
+    }
+
     /** True when [target] is inside a tab label of [tabs], and not on a button there such as the close cross. */
-    fun isTabLabelClick(target: Component, tabs: JBTabs): Boolean {
-        val label = tabs.tabs.firstNotNullOfOrNull { info ->
-            tabs.getTabLabel(info)?.takeIf { SwingUtilities.isDescendingFrom(target, it) }
-        } ?: return false
+    fun isTabLabelClick(target: Component, tabs: JBTabs): Boolean = tabAt(target, tabs) != null
+
+    /** True when [target] is on the label of the tab [tabs] has selected, and not on a button there. */
+    fun isSelectedTabClick(target: Component, tabs: JBTabs): Boolean =
+        tabAt(target, tabs)?.let { it == tabs.selectedInfo } == true
+
+    /** The tab of [tabs] whose label [target] is inside, unless it is on a button there such as the close cross. */
+    private fun tabAt(target: Component, tabs: JBTabs): TabInfo? {
+        val info = tabs.tabs.firstOrNull { info ->
+            tabs.getTabLabel(info)?.let { SwingUtilities.isDescendingFrom(target, it) } == true
+        } ?: return null
+        val label = tabs.getTabLabel(info)
         var c: Component? = target
         while (c != null && c !== label) {
-            if (c is InplaceButton || c is ActionButton || c is AbstractButton) return false
+            if (c is InplaceButton || c is ActionButton || c is AbstractButton) return null
             c = c.parent
         }
-        return true
+        return info
     }
 }

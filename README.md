@@ -411,6 +411,8 @@ button in the terminal's title bar.
 
 - The terminal fills the editor's area; the same key gives the editor back and returns the caret.
 - The editor tabs stay visible above it; clicking one opens that file and gives the editor back.
+- After that, clicking the tab that is already active fills the editor's area with the terminal again;
+  clicking any other tab just switches to it.
 - Other tool windows keep their place and full height.
 - The terminal opens first if it was closed, and the height you dragged it to is what comes back.
 
