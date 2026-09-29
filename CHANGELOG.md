@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Project tabs: right-clicking a tab opens only the tab's menu, no longer the main toolbar's "Customize Toolbar" menu on top of it; a right click on a tab's × opens the tab's menu too.
+
 ## [1.10.0] - 2026-09-28
 
 ### Added

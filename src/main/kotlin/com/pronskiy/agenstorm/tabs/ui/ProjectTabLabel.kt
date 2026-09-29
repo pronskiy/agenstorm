@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
+import com.intellij.ui.PopupHandler
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.hover.HoverListener
 import com.intellij.util.text.DateFormatUtil
@@ -50,6 +51,10 @@ import javax.swing.JPanel
  * still over the tab when its window went behind another project's — never told the tab it had left, and the
  * hover fill plus the × stayed on and looked like a second active tab. The hover service watches every mouse
  * event in the IDE and reports one exit for the tab as soon as the pointer is no longer over it.
+ *
+ * The right click goes through a [PopupHandler] on the tab, its name and its ×. The main toolbar adds its own
+ * "Customize Toolbar…" handler to every component in its tree that has no `PopupHandler` yet, so a plain mouse
+ * listener here opened both menus at once.
  */
 class ProjectTabLabel(
     val tab: ProjectTab,
@@ -133,23 +138,20 @@ class ProjectTabLabel(
         alignmentY = CENTER_ALIGNMENT
         hoverListener.addTo(this)
         val mouse = object : MouseAdapter() {
-            override fun mousePressed(e: MouseEvent) {
-                if (e.isPopupTrigger) onContextMenu(e.component, e.point)
-            }
-            override fun mouseReleased(e: MouseEvent) {
-                if (e.isPopupTrigger) onContextMenu(e.component, e.point)
-            }
             override fun mouseClicked(e: MouseEvent) {
                 when {
                     e.isPopupTrigger -> Unit
                     e.button == MouseEvent.BUTTON1 -> onSelect()
                     e.button == MouseEvent.BUTTON2 -> onClose()
-                    e.button == MouseEvent.BUTTON3 -> onContextMenu(e.component, e.point)
                 }
             }
         }
         addMouseListener(mouse)
         nameLabel.addMouseListener(mouse)
+        val popup = object : PopupHandler() {
+            override fun invokePopup(comp: Component, x: Int, y: Int) = onContextMenu(comp, Point(x, y))
+        }
+        for (component in listOf(this, nameLabel, closeLabel)) component.addMouseListener(popup)
     }
 
     /** Lets the strip watch presses and drags on the tab surface (not on the ×) for reordering. */

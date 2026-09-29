@@ -1,6 +1,7 @@
 package com.pronskiy.agenstorm.tabs
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.PopupHandler
 import com.pronskiy.agenstorm.tabs.ui.ProjectTabLabel
 import com.intellij.util.ui.NamedColorUtil
 import java.awt.Component
@@ -114,6 +115,40 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
         label.isLoading = true
         assertTrue(label.isLoading)
         assertTrue("still a bookmark while loading", label.isOffloaded)
+    }
+
+    /**
+     * The double-menu bug: the main toolbar adds its "Customize Toolbar…" `PopupHandler` to every component in its
+     * tree that does not carry one already, so each part of the tab that listens to the mouse must bring its own.
+     */
+    fun testEveryPartOfTheTabCarriesAPopupHandler() {
+        val label = ProjectTabLabel(ProjectTab.Loaded(project), selected = false, onSelect = {}, onClose = {})
+        for (component in listOf(label) + label.components) {
+            assertTrue("$component has no PopupHandler", component.mouseListeners.any { it is PopupHandler })
+        }
+    }
+
+    /** One right click, one menu: the press is the trigger on macOS, the release on Windows, never the click too. */
+    fun testRightClickOpensTheMenuOnce() {
+        var menus = 0
+        val label = ProjectTabLabel(ProjectTab.Loaded(project), selected = false, onSelect = {}, onClose = {}, onContextMenu = { _, _ -> menus++ })
+
+        rightClick(label, triggerOnPress = true)
+        assertEquals(1, menus)
+
+        rightClick(label, triggerOnPress = false)
+        assertEquals(2, menus)
+
+        rightClick(label.closeLabel, triggerOnPress = true)
+        assertEquals("the × is part of the tab", 3, menus)
+    }
+
+    private fun rightClick(target: Component, triggerOnPress: Boolean) {
+        fun event(id: Int, trigger: Boolean) =
+            MouseEvent(target, id, System.currentTimeMillis(), 0, 2, 2, 1, trigger, MouseEvent.BUTTON3)
+        target.dispatchEvent(event(MouseEvent.MOUSE_PRESSED, triggerOnPress))
+        target.dispatchEvent(event(MouseEvent.MOUSE_RELEASED, !triggerOnPress))
+        target.dispatchEvent(event(MouseEvent.MOUSE_CLICKED, false))
     }
 
     private fun mouse(target: Component, id: Int, x: Int, y: Int) {

@@ -79,7 +79,7 @@ class ProjectTabActionsTest : BasePlatformTestCase() {
         panel.onContextMenu = { target, _, _ -> asked = target }
         val label = panel.tabLabels().single { it.project === project }
 
-        label.dispatchEvent(MouseEvent(label, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, 3, 3, 1, false, MouseEvent.BUTTON3))
+        label.dispatchEvent(MouseEvent(label, MouseEvent.MOUSE_PRESSED, System.currentTimeMillis(), 0, 3, 3, 1, true, MouseEvent.BUTTON3))
 
         assertEquals(ProjectTab.Loaded(project), asked)
         assertNotNull(Point(3, 3))
