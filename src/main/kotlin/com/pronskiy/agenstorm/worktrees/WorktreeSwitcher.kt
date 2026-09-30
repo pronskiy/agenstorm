@@ -83,7 +83,8 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
     private val runner = SwitchRunner(PlatformEnv())
     private val mutex = Mutex()
 
-    fun switch(from: Project, target: String) {
+    /** [onArrived] gets the target's project once the window shows it (T2.5 runs the setup there). */
+    fun switch(from: Project, target: String, onArrived: (Project) -> Unit = {}) {
         val current = from.basePath?.let(FileUtil::toSystemIndependentName) ?: return
         val snapshot = WorktreeRegistry.getInstance(from).state.value
         val worktrees = snapshot.worktrees.map { it.path }.toSet()
@@ -92,7 +93,11 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
             if (!mutex.tryLock()) return@launch
             try {
                 withContext(Dispatchers.IO) { seedIdea(target, listOfNotNull(main, current)) }
-                runner.switch(current, target, worktrees)
+                if (runner.switch(current, target, worktrees)) {
+                    ProjectManager.getInstance().openProjects
+                        .firstOrNull { !it.isDisposed && it.basePath?.let(FileUtil::toSystemIndependentName) == target }
+                        ?.let(onArrived)
+                }
             } finally {
                 mutex.unlock()
             }

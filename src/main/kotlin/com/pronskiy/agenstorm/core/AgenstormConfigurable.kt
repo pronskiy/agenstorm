@@ -221,6 +221,12 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .applyToComponent { name = "worktrees.cloneFolders" }
                     .comment(AgenstormBundle.message("settings.worktrees.cloneFolders.comment"))
             }
+            row {
+                checkBox(AgenstormBundle.message("settings.worktrees.runSetup"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.worktreesRunSetup }, { AgenstormSettings.getInstance().state.worktreesRunSetup = it })
+                    .applyToComponent { name = "worktrees.runSetup" }
+                    .comment(AgenstormBundle.message("settings.worktrees.runSetup.comment"))
+            }
         }
         featureGroup("settings.group.statusBar", "settings.statusBar.hideStatusText", AgenstormSettings.State::statusBarHideStatusText, onApply = AgenstormSettingsListener::fire) {
             row {
