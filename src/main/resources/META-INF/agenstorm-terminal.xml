@@ -16,7 +16,7 @@
 
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
         <!-- P2.4: a terminal tab with a command running keeps its project loaded. -->
-        <offloadGuard implementation="com.pronskiy.agenstorm.tabs.offload.TerminalCommandGuard"/>
+        <offloadGuard implementation="com.pronskiy.agenstorm.core.busy.TerminalCommandGuard"/>
     </extensions>
 
     <actions>

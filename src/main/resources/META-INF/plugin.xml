@@ -25,15 +25,15 @@
         <extensionPoint qualifiedName="com.pronskiy.agenstorm.commitContextProvider"
                         interface="com.pronskiy.agenstorm.commit.context.CommitContextProvider"
                         dynamic="true"/>
-        <!-- tabs: what keeps a project from being offloaded (P2.4); the terminal guard is registered in agenstorm-terminal.xml. -->
+        <!-- core: what keeps a project open when offloading (P2.4) or switching worktrees (T1.1); the terminal guard is registered in agenstorm-terminal.xml. -->
         <extensionPoint qualifiedName="com.pronskiy.agenstorm.offloadGuard"
-                        interface="com.pronskiy.agenstorm.tabs.offload.OffloadGuard"
+                        interface="com.pronskiy.agenstorm.core.busy.ProjectBusyGuard"
                         dynamic="true"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
-        <!-- tabs: a live run/debug process keeps its project loaded (P2.4). -->
-        <offloadGuard implementation="com.pronskiy.agenstorm.tabs.offload.RunningProcessesGuard"/>
+        <!-- core: a live run/debug process keeps its project open (P2.4). -->
+        <offloadGuard implementation="com.pronskiy.agenstorm.core.busy.RunningProcessesGuard"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">

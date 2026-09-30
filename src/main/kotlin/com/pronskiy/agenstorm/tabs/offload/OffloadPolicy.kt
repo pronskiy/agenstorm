@@ -4,7 +4,7 @@ package com.pronskiy.agenstorm.tabs.offload
  * Step P2.3. The one rule of offloading, with nothing of the platform in it: given the loaded projects, which of
  * them go, in which order. Idle ones first — every candidate whose window has not been active for [idleMs] —
  * then, while more than [maxLoaded] would stay, the least recently active of the rest. Three projects never go:
- * the active one, a busy one (a terminal command or a process running, see [OffloadGuard]) and the last loaded
+ * the active one, a busy one (a terminal command or a process running, see `core/busy/ProjectBusyGuard`) and the last loaded
  * one, because closing it would leave the IDE on the welcome screen. A project with no recorded activity counts
  * as active now.
  */

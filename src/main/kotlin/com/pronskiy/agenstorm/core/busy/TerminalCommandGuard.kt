@@ -1,4 +1,4 @@
-package com.pronskiy.agenstorm.tabs.offload
+package com.pronskiy.agenstorm.core.busy
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -30,12 +30,12 @@ import java.util.concurrent.ConcurrentHashMap
 class TerminalCommandGuard(
     private val widgets: (Project) -> Collection<TerminalWidget> = { TerminalToolWindowManager.getInstance(it).terminalWidgets },
     private val scope: () -> CoroutineScope = { service<AgenstormAppScope>().scope },
-) : OffloadGuard {
+) : ProjectBusyGuard {
 
     private val classicAnswers = ConcurrentHashMap<TerminalWidget, Boolean>()
 
     override fun busyReason(project: Project): String? =
-        if (widgets(project).any(::isRunning)) AgenstormBundle.message("tabs.offload.busy.terminal") else null
+        if (widgets(project).any(::isRunning)) AgenstormBundle.message("core.busy.terminal") else null
 
     private fun isRunning(widget: TerminalWidget): Boolean {
         // A classic widget's isCommandRunning() is hasRunningCommands() as well, so it is asked nothing on the EDT.

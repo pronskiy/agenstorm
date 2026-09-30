@@ -1,4 +1,4 @@
-package com.pronskiy.agenstorm.tabs.offload
+package com.pronskiy.agenstorm.core.busy
 
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.process.ProcessHandler
@@ -12,8 +12,8 @@ import com.pronskiy.agenstorm.core.AgenstormBundle
  */
 class RunningProcessesGuard(
     private val processes: (Project) -> List<ProcessHandler> = { ExecutionManager.getInstance(it).getRunningProcesses().toList() },
-) : OffloadGuard {
+) : ProjectBusyGuard {
 
     override fun busyReason(project: Project): String? =
-        if (processes(project).any { !it.isProcessTerminated }) AgenstormBundle.message("tabs.offload.busy.process") else null
+        if (processes(project).any { !it.isProcessTerminated }) AgenstormBundle.message("core.busy.process") else null
 }

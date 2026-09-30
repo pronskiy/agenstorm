@@ -12,6 +12,7 @@ import com.intellij.openapi.wm.IdeFocusManager
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.tabs.ProjectTab
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
 import kotlinx.coroutines.CoroutineScope
@@ -49,7 +50,7 @@ class ProjectOffloadService(private val scope: CoroutineScope) {
             OffloadSettings(state.projectsOffloadEnabled, state.projectsOffloadAfterMinutes * 60_000L, state.projectsMaxLoaded)
         },
         activeKey = { IdeFocusManager.getGlobalInstance().lastFocusedFrame?.project?.takeUnless { it.isDisposed }?.let(ProjectTabsModel::keyOf) },
-        busyReason = OffloadGuard::busyReason,
+        busyReason = ProjectBusyGuard::busyReason,
         close = { ProjectManager.getInstance().closeAndDispose(it) },
         clock = System::currentTimeMillis,
         onOffloaded = OffloadNotice::showOnce,

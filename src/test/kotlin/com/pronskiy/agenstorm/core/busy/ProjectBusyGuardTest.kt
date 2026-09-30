@@ -1,4 +1,4 @@
-package com.pronskiy.agenstorm.tabs.offload
+package com.pronskiy.agenstorm.core.busy
 
 import com.intellij.execution.process.NopProcessHandler
 import com.intellij.terminal.ui.TerminalWidget
@@ -6,13 +6,13 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.lang.reflect.Proxy
 
 /** Step P2.4: the guards are the whole reason no "terminate?" dialog can ever appear for a background project. */
-class OffloadGuardTest : BasePlatformTestCase() {
+class ProjectBusyGuardTest : BasePlatformTestCase() {
 
     fun testBothGuardsAreRegisteredAndAnIdleProjectIsNotBusy() {
-        val guards = OffloadGuard.EP_NAME.extensionList
+        val guards = ProjectBusyGuard.EP_NAME.extensionList
         assertTrue(guards.any { it is RunningProcessesGuard })
         assertTrue("the terminal plugin is bundled in the test IDE", guards.any { it is TerminalCommandGuard })
-        assertNull(OffloadGuard.busyReason(project))
+        assertNull(ProjectBusyGuard.busyReason(project))
     }
 
     fun testALiveProcessKeepsTheProjectLoadedATerminatedOneDoesNot() {
