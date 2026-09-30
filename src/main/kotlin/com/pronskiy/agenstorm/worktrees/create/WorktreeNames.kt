@@ -19,6 +19,9 @@ object WorktreeNames {
             .removeSuffix(".lock")
         return slug.ifEmpty { null }
     }
+
+    /** Step T4.2: the name a worktree for an existing [branch] gets unless one is typed — its last segment, as a slug. */
+    fun fromBranch(branch: String): String? = slug(branch.substringAfterLast('/')) ?: slug(branch)
 }
 
 /** Step T2.1, pure. `info/exclude` with [entry] added once; null when it is there already, so the file is left alone. */

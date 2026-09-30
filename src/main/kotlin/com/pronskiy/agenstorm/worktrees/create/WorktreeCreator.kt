@@ -20,7 +20,9 @@ import java.nio.file.Path
  * `<slug>`, through `git worktree add` run by git4idea's public `GitLineHandler` (`Git.createWorkingTree` changed its
  * signature between 262 and 263, decision 78). `--no-track` keeps a branch made from the default branch from
  * tracking `origin/…`. The folder is ignored through `<common git dir>/info/exclude`, so no tracked file changes, and the
- * base is recorded in `branch.<slug>.agenstormBase` for T4's merge back. Blocking: call it off the EDT.
+ * base is recorded in `branch.<slug>.agenstormBase` for T4's merge back. T4.2: [createFromBranch] checks out a branch
+ * that exists already — an archived worktree's, say — with no new branch and its recorded base left as it was.
+ * Blocking: call it off the EDT.
  */
 class WorktreeCreator(private val project: Project, private val repository: GitRepository) {
 
@@ -30,7 +32,28 @@ class WorktreeCreator(private val project: Project, private val repository: GitR
     }
 
     /** [base] is what `git worktree add` starts from (`HEAD`, `origin/HEAD`); [baseName] is what gets recorded. */
-    fun create(slug: String, base: String, baseName: String): Result {
+    fun create(slug: String, base: String, baseName: String): Result =
+        add(slug, { target -> listOf("add", "--no-track", "-b", slug, target, base) }) {
+            val config = GitLineHandler(project, repository.root, GitCommand.CONFIG)
+            config.addParameters("branch.$slug.agenstormBase", baseName)
+            val recorded = Git.getInstance().runCommand(config)
+            if (!recorded.success()) LOG.warn("Could not record the base of $slug: ${recorded.errorOutputAsJoinedString}")
+        }
+
+    fun createFromBranch(slug: String, branch: String): Result = add(slug, { target -> listOf("add", target, branch) }) {}
+
+    /** Local branches, most recently committed first, that no worktree has checked out — the ones [createFromBranch] can take. */
+    fun freeBranches(): List<String> {
+        val list = GitLineHandler(project, repository.root, GitCommand.FOR_EACH_REF)
+        list.addParameters("--sort=-committerdate", "--format=%(refname:short)", "refs/heads")
+        list.setSilent(true)
+        val result = Git.getInstance().runCommand(list)
+        if (!result.success()) return emptyList()
+        val checkedOut = WorktreeRegistry.getInstance(project).state.value.worktrees.mapNotNull { it.branch }.toSet()
+        return result.output.map { it.trim() }.filter { it.isNotEmpty() && it !in checkedOut }
+    }
+
+    private fun add(slug: String, arguments: (String) -> List<String>, afterAdd: () -> Unit): Result {
         val snapshot = WorktreeRegistry.getInstance(project).state.value
         val main = snapshot.worktrees.firstOrNull { it.isMain }?.path ?: FileUtil.toSystemIndependentName(repository.root.path)
         val commonDir = snapshot.commonDir ?: FileUtil.toSystemIndependentName(repository.repositoryFiles.worktreesDirFile.parent)
@@ -39,16 +62,12 @@ class WorktreeCreator(private val project: Project, private val repository: GitR
         if (Files.exists(Path.of(target))) return Result.Failed(AgenstormBundle.message("worktrees.new.error.folder", target))
 
         val add = GitLineHandler(project, repository.root, GitCommand.WORKTREE)
-        add.addParameters("add", "--no-track", "-b", slug, target, base)
+        add.addParameters(arguments(target))
         val added = Git.getInstance().runCommand(add)
         if (!added.success()) return Result.Failed(added.errorOutputAsJoinedString)
 
         ignore(Path.of(commonDir, "info", "exclude"), "/$folder/")
-        val config = GitLineHandler(project, repository.root, GitCommand.CONFIG)
-        config.addParameters("branch.$slug.agenstormBase", baseName)
-        val recorded = Git.getInstance().runCommand(config)
-        if (!recorded.success()) LOG.warn("Could not record the base of $slug: ${recorded.errorOutputAsJoinedString}")
-
+        afterAdd()
         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(target))
         WorktreeRegistry.getInstance(project).refresh()
         return Result.Created(target, main)

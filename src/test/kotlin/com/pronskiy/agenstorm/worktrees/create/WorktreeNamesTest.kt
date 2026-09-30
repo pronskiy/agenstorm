@@ -16,6 +16,13 @@ class WorktreeNamesTest {
     }
 
     @Test
+    fun anExistingBranchSuggestsItsLastSegment() {
+        assertEquals("tables", WorktreeNames.fromBranch("feat/tables"))
+        assertEquals("worktree-bright-fox", WorktreeNames.fromBranch("worktree-bright-fox"))
+        assertEquals("feat", WorktreeNames.fromBranch("feat/--"))
+    }
+
+    @Test
     fun nothingUsableIsNoSlug() {
         assertNull(WorktreeNames.slug("   "))
         assertNull(WorktreeNames.slug("!!!"))
