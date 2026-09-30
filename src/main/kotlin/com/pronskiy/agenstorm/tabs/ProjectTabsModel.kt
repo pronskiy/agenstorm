@@ -10,6 +10,7 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Disposer
+import com.pronskiy.agenstorm.core.ProjectNameProvider
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -72,7 +73,7 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
     fun markOffloaded(project: Project, now: Long = System.currentTimeMillis()) {
         val key = keyOf(project)
         remember(key, openProjects().map(::keyOf))
-        if (state.offloaded.none { it.key == key }) state.offloaded.add(OffloadedEntry(key, project.name, now))
+        if (state.offloaded.none { it.key == key }) state.offloaded.add(OffloadedEntry(key, ProjectNameProvider.displayName(project), now))
         while (state.offloaded.size > MAX_OFFLOADED) state.offloaded.removeAt(0)
         fire()
     }

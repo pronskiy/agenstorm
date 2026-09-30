@@ -1,11 +1,13 @@
 package com.pronskiy.agenstorm.tabs
 
 import com.intellij.openapi.project.Project
+import com.pronskiy.agenstorm.core.ProjectNameProvider
 
 /**
  * Step P2.1. One tab of the strip: a project that is open, or one Agenstorm offloaded — closed with everything
  * saved, remembered by its base path so a click can load it again. [key] is [ProjectTabsModel.keyOf] for both,
- * which is what keeps an offloaded project in its place in the stored order.
+ * which is what keeps an offloaded project in its place in the stored order. A tab's [name] is the project's display
+ * name ([ProjectNameProvider]) — `app:fix-login` for a linked worktree.
  */
 sealed class ProjectTab {
     abstract val key: String
@@ -13,7 +15,7 @@ sealed class ProjectTab {
 
     data class Loaded(val project: Project) : ProjectTab() {
         override val key: String get() = ProjectTabsModel.keyOf(project)
-        override val name: String get() = project.name
+        override val name: String get() = ProjectNameProvider.displayName(project)
     }
 
     /** [sinceMs] is when the project was offloaded (epoch millis), for the tooltip. */

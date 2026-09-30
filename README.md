@@ -414,6 +414,8 @@ repository, the main checkout first and named after its branch, the rest oldest 
   - None of them touches a worktree whose window has a command running, or one an agent has locked while
     that agent still runs; the main checkout has none of them.
 - When the tabs do not fit, the rest go under a chevron; the current one always stays.
+- A worktree's window is named after the repository and the worktree, `app:fix-login`, in the project
+  tabs and the window title; the main checkout keeps its own name.
 - `.worktrees/` and Claude Code's `.claude/worktrees/` are excluded from the project that holds them, so
   they are neither indexed twice nor picked up as extra Git roots, and `open .worktrees/x` in the
   terminal opens that worktree.

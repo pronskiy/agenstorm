@@ -3,6 +3,8 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
         <commitContextProvider implementation="com.pronskiy.agenstorm.commit.context.GitCommitContextProvider"/>
+        <!-- worktrees (Epic T): a linked worktree's project is named "<main checkout>:<worktree>" in the tabs and the title. -->
+        <projectNameProvider implementation="com.pronskiy.agenstorm.worktrees.WorktreeProjectNames"/>
     </extensions>
 
     <!-- tabs (Phase E3): the Git branch moves from the main toolbar to the status bar's left slot. -->
