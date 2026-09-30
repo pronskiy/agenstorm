@@ -13,7 +13,7 @@
         <postStartupActivity implementation="com.pronskiy.agenstorm.tabs.git.BranchStartupActivity"/>
     </extensions>
 
-    <!-- worktrees (Epic T): the worktrees of the project's repository, kept current (T1.2). -->
+    <!-- worktrees (Epic T): the worktrees of the project's repository, kept current (T1.2), and the strip above the Project tree (T1.4). -->
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="com.pronskiy.agenstorm.worktrees.WorktreeStartupActivity"/>
     </extensions>

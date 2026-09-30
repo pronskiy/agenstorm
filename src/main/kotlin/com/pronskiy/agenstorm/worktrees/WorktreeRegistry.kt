@@ -17,6 +17,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.wm.IdeFrame
+import com.pronskiy.agenstorm.worktrees.ui.WorktreeStripService
 import git4idea.commands.Git
 import git4idea.repo.GitRepository
 import git4idea.repo.GitRepositoryChangeListener
@@ -132,10 +133,11 @@ class WorktreeRegistry(private val project: Project, private val scope: Coroutin
     }
 }
 
-/** Step T1.2: starts the registry when a project opens. Registered in `agenstorm-git.xml`. */
+/** Step T1.2: starts the registry when a project opens, and (T1.4) the strip. Registered in `agenstorm-git.xml`. */
 class WorktreeStartupActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
         WorktreeRegistry.getInstance(project).start()
+        WorktreeStripService.getInstance(project).start()
     }
 }
