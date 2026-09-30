@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Worktrees: the worktrees of the repository appear as tabs above the Project tree, including the ones agents create; a click swaps the window to one in place, and a worktree with a command or process still running stays open behind it instead of closing. "+" creates a worktree under `.worktrees/` in the main checkout, and worktrees nested in the repository (`.worktrees/`, `.claude/worktrees/`) are excluded from the project that holds them. On by default under Settings | Tools | Agenstorm | Worktrees.
+
 ### Fixed
 
 - Project tabs: right-clicking a tab opens only the tab's menu, no longer the main toolbar's "Customize Toolbar" menu on top of it; a right click on a tab's × opens the tab's menu too.

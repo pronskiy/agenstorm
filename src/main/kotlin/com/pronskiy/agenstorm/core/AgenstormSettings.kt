@@ -118,6 +118,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var hideRightToolWindowBar: Boolean = false,
         /** Epic S: the status bar's status text is hidden, so the bottom-left holds only what Agenstorm puts there. */
         var statusBarHideStatusText: Boolean = true,
+        /** Epic T: the worktree strip above the Project tree — a tab per worktree of the repository, "+" makes one, a click swaps the window. */
+        var worktreesEnabled: Boolean = true,
+        /** Epic T: the folder under the main checkout that "+" puts worktrees in; excluded from the project along with `.claude/worktrees`. */
+        var worktreesFolder: String = ".worktrees",
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */

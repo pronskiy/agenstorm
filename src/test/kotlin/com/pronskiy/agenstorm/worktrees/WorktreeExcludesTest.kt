@@ -31,4 +31,16 @@ class WorktreeExcludesTest {
     fun aCustomFolderReplacesOursAndKeepsClaudeCodes() {
         assertEquals(listOf("/r/wt", "/r/.claude/worktrees"), WorktreeExcludes.paths("/r", "/wt/", emptyList()))
     }
+
+    @Test
+    fun theFolderSettingIsARelativePathOrTheDefault() {
+        assertEquals(".worktrees", WorktreeExcludes.folder(null))
+        assertEquals(".worktrees", WorktreeExcludes.folder("   "))
+        assertEquals("wt", WorktreeExcludes.folder(" /wt/ "))
+        assertEquals("tmp/agents", WorktreeExcludes.folder("tmp\\agents"))
+        assertEquals(".worktrees", WorktreeExcludes.folder("../outside"))
+        assertEquals(".worktrees", WorktreeExcludes.folder("a/./b"))
+        assertEquals(".worktrees", WorktreeExcludes.folder("C:/wt"))
+        assertEquals(".worktrees", WorktreeExcludes.folder("a//b"))
+    }
 }

@@ -1,6 +1,7 @@
 package com.pronskiy.agenstorm.worktrees.ui
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -11,6 +12,8 @@ import com.intellij.openapi.wm.ToolWindowId
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.util.ui.UIUtil
+import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.AgenstormSettingsListener
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
 import com.pronskiy.agenstorm.worktrees.WorktreeSwitcher
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
@@ -44,13 +47,14 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
                 val next = WorktreeTabsModel.tabs(snapshot, project.basePath?.let(FileUtil::toSystemIndependentName))
                 withContext(Dispatchers.EDT) {
                     tabs = next
-                    panels.forEach { it.show(next) }
+                    render()
                 }
             }
         }
         project.messageBus.connect(this).subscribe(ToolWindowManagerListener.TOPIC, object : ToolWindowManagerListener {
             override fun stateChanged(toolWindowManager: ToolWindowManager) = installAboveTree()
         })
+        ApplicationManager.getApplication().messageBus.connect(this).subscribe(AgenstormSettingsListener.TOPIC, AgenstormSettingsListener { render() })
         ToolWindowManager.getInstance(project).invokeLater { installAboveTree() }
     }
 
@@ -61,8 +65,16 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
             onContextMenu = { tab, component, point -> WorktreeStripActions.showContextMenu(project, tab, component, point) },
         ).also {
             panels += it
-            it.show(tabs)
+            it.show(visibleTabs())
         }
+
+    /** Step T1.8: with the feature off the strip shows no tabs, which hides it; on again, it comes back without a restart. */
+    private fun visibleTabs(): List<WorktreeTab> = if (AgenstormSettings.getInstance().state.worktreesEnabled) tabs else emptyList()
+
+    private fun render() {
+        val shown = visibleTabs()
+        panels.forEach { it.show(shown) }
+    }
 
     private fun installAboveTree() {
         val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(ToolWindowId.PROJECT_VIEW) ?: return

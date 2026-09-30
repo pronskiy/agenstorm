@@ -48,6 +48,13 @@ before they turn into icons. A project you have not touched for two hours is off
 everything saved, its tab kept as a dotted bookmark that loads it again on click. The Git branch moves
 down to the status bar, and window titles name the project rather than whichever file is open.
 
+### Worktrees, one tab each
+
+The worktrees of the repository, yours and the ones Claude Code, Cursor or Conductor make for their
+agents, become tabs above the Project tree. A click swaps the window to that worktree in place; one with
+a command still running in its terminal stays open behind, so no agent is cut off. "+" makes a new one,
+and worktrees nested in the repository stay out of the project that holds them.
+
 ### A terminal that fills the window
 
 One key fills the editor's area with the terminal, and the same key gives the editor back. Other
@@ -98,6 +105,7 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 | [AI commit messages](#ai-commit-messages-1) | on | Commit messages |
 | [Project tabs in the toolbar](#project-tabs) | on | Project tabs |
 | [Idle projects offloaded](#offloaded-projects) | on | Project tabs |
+| [Worktrees as tabs](#worktrees) | on | Worktrees |
 | [Window title without file names](#window-title) | on | Window title |
 | [Terminal fills the window](#filling-the-window-with-the-terminal) | on | Terminal size |
 | [Terminal output that folds](#terminal-output-that-folds-1) | on | Terminal output |
@@ -369,6 +377,32 @@ Three actions ship without shortcuts so they never collide with your keymap: **N
 Tab". `Ctrl+Alt+Shift+]` and `Ctrl+Alt+Shift+[` are a natural pair.
 
 ---
+
+## Worktrees
+
+With a Git repository open, a row of tabs sits above the Project tree: one per worktree of the
+repository, the main checkout first and named after its branch, the rest oldest first.
+
+- Click a tab to swap the window to that worktree: it opens where the window is, and the worktree you
+  left closes. If a command or a run configuration is still running there (an agent in the terminal,
+  say), it stays open behind instead and closes on a later switch, once it is idle.
+- Worktrees made anywhere show up on their own within seconds: `git worktree add`, Claude Code's
+  `claude -w`, the Git tool window, Cursor, Conductor.
+- "+" asks for a name and what to branch off (the current HEAD, or the default branch) and creates
+  `.worktrees/<name>` in the main checkout on a branch of the same name. The folder is ignored through
+  `.git/info/exclude`, so no tracked file changes.
+- Right-click a tab for Open in New Window, Copy Path and Open in Terminal, which starts a terminal in
+  that worktree without leaving the window.
+- When the tabs do not fit, the rest go under a chevron; the current one always stays.
+- `.worktrees/` and Claude Code's `.claude/worktrees/` are excluded from the project that holds them, so
+  they are neither indexed twice nor picked up as extra Git roots, and `open .worktrees/x` in the
+  terminal opens that worktree.
+
+> A worktree made with "+" opens without the main checkout's project settings, `.env` or `vendor/` for
+> now; carrying them over is the next step.
+
+Options, under **Worktrees**: the switch, and the folder new worktrees go in. The exclusion stays with
+the tabs switched off, and a changed folder takes effect when the project is reopened.
 
 ## Window title
 

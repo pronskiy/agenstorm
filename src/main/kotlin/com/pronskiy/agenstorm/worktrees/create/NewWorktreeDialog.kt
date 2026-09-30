@@ -42,7 +42,7 @@ class NewWorktreeDialog(
                 .bindText(::name)
                 .focused()
                 .columns(COLUMNS_MEDIUM)
-                .comment(AgenstormBundle.message("worktrees.new.name.comment", WorktreeExcludes.DEFAULT_FOLDER))
+                .comment(AgenstormBundle.message("worktrees.new.name.comment", WorktreeExcludes.configuredFolder()))
                 .validationOnApply { field: JBTextField -> validate(field.text) }
                 .validationOnInput { field: JBTextField -> validate(field.text) }
         }

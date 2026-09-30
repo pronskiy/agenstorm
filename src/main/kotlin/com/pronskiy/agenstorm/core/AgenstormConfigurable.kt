@@ -207,6 +207,14 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                 comment(AgenstormBundle.message("settings.toolWindows.hideRightBar.comment"))
             }
         }
+        featureGroup("settings.group.worktrees", "settings.worktrees.enabled", AgenstormSettings.State::worktreesEnabled, onApply = AgenstormSettingsListener::fire) {
+            row(AgenstormBundle.message("settings.worktrees.folder")) {
+                textField()
+                    .bindText({ AgenstormSettings.getInstance().state.worktreesFolder }, { AgenstormSettings.getInstance().state.worktreesFolder = it.trim() })
+                    .applyToComponent { name = "worktrees.folder" }
+                    .comment(AgenstormBundle.message("settings.worktrees.folder.comment"))
+            }
+        }
         featureGroup("settings.group.statusBar", "settings.statusBar.hideStatusText", AgenstormSettings.State::statusBarHideStatusText, onApply = AgenstormSettingsListener::fire) {
             row {
                 comment(AgenstormBundle.message("settings.statusBar.hideStatusText.comment"))
