@@ -8,7 +8,9 @@ import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.startup.StartupManager
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.changes.VcsDirtyScopeManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.wm.ToolWindowId
@@ -29,9 +31,13 @@ import git4idea.commands.Git
 import git4idea.commands.GitCommand
 import git4idea.commands.GitLineHandler
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Step T4.3. A tab's *Merge Back…*: read the facts, refuse with the reason when [MergePlan] says so, otherwise ask how
@@ -55,6 +61,8 @@ object MergeBackFlow {
         "reset" to GitCommand.RESET,
     )
     private val WRITES = setOf("add", "commit", "merge", "rebase", "reset")
+    private val OPENED_TIMEOUT = 30.seconds
+    private val OPENED_POLL = 100.milliseconds
 
     fun start(project: Project, worktree: Worktree) {
         val worktrees = WorktreeRegistry.getInstance(project).state.value.worktrees
@@ -84,7 +92,7 @@ object MergeBackFlow {
                 outcome is MergeRunner.Outcome.Merged && strategy == MergePlan.Strategy.SQUASH ->
                     arrive(project, current, plan.baseWorktree) { there ->
                         VcsDirtyScopeManager.getInstance(there).markEverythingDirty()
-                        ToolWindowManager.getInstance(there).getToolWindow(ToolWindowId.COMMIT)?.activate(null)
+                        showCommit(there)
                         notify(there, message, NotificationType.INFORMATION, worktree)
                     }
                 outcome is MergeRunner.Outcome.Merged -> notify(project, message, NotificationType.INFORMATION, worktree)
@@ -102,6 +110,24 @@ object MergeBackFlow {
     private suspend fun arrive(project: Project, current: String?, path: String, then: (Project) -> Unit) {
         withContext(Dispatchers.EDT) {
             if (current == path || project.isDisposed) then(project) else WorktreeSwitcher.getInstance().switch(project, path, then)
+        }
+    }
+
+    /**
+     * A project the switch has just opened is still restoring its tool window layout — the Project view, on the same
+     * side, took the Commit tool window's place again in the T4 guardrail run — so the Commit tool window is shown once
+     * the project's post-startup activities have run (`runAfterOpened` would say it directly, but it is internal) and
+     * its VCS mappings are in.
+     */
+    private fun showCommit(project: Project) {
+        service<AgenstormAppScope>().scope.launch {
+            val startup = StartupManager.getInstance(project)
+            withTimeoutOrNull(OPENED_TIMEOUT) { while (!startup.postStartupActivityPassed()) delay(OPENED_POLL) }
+            if (project.isDisposed) return@launch
+            ProjectLevelVcsManager.getInstance(project).runAfterInitialization {
+                val windows = ToolWindowManager.getInstance(project)
+                windows.invokeLater { if (!project.isDisposed) windows.getToolWindow(ToolWindowId.COMMIT)?.activate(null) }
+            }
         }
     }
 
