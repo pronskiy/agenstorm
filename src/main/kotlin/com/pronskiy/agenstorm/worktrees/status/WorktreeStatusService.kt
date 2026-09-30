@@ -8,6 +8,8 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.debug
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.io.FileUtil
@@ -192,12 +194,14 @@ class WorktreeStatusService(private val project: Project, private val scope: Cor
         handler.setStdoutSuppressed(true)
         handler.addParameters(args)
         val result = Git.getInstance().runCommand(handler)
+        LOG.debug { "git ${command.name.lowercase()} in $dir: ${if (result.success()) "ok" else "failed (${result.exitCode})"}" }
         return if (result.success()) result.output else null
     }
 
     override fun dispose() = Unit
 
     companion object {
+        private val LOG = logger<WorktreeStatusService>()
         private val DEBOUNCE = 300.milliseconds
         private val THROTTLE = 3.seconds
         private val TICK = 5.seconds
