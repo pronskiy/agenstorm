@@ -11,6 +11,7 @@ import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
 import com.pronskiy.agenstorm.worktrees.WorktreeSwitcher
+import com.pronskiy.agenstorm.worktrees.carry.Preparations
 import com.pronskiy.agenstorm.worktrees.carry.WorktreePreparer
 import com.pronskiy.agenstorm.worktrees.setup.SetupRunner
 import git4idea.repo.GitRepositoryManager
@@ -37,21 +38,29 @@ object NewWorktreeFlow {
                 NewWorktreeDialog(project, repository.currentBranchName, defaultBranch, freeBranches, taken).takeIf { it.showAndGet() }
             } ?: return@launch
             val slug = dialog.slug ?: return@launch
-            val result = withBackgroundProgress(project, AgenstormBundle.message("worktrees.new.progress", slug)) {
-                withContext(Dispatchers.IO) {
-                    val existing = dialog.branch
-                    when {
-                        dialog.base == NewWorktreeDialog.Base.EXISTING_BRANCH && existing != null -> creator.createFromBranch(slug, existing)
-                        dialog.base == NewWorktreeDialog.Base.DEFAULT_BRANCH && defaultBranch != null -> creator.create(slug, "origin/HEAD", defaultBranch)
-                        else -> creator.create(slug, "HEAD", repository.currentBranchName ?: repository.currentRevision ?: "HEAD")
+            // T4.8: the new worktree is this flow's to prepare; the watcher that prepares arrivals waits for it.
+            val target = creator.targetFor(slug)
+            Preparations.forget(target)
+            var created: WorktreeCreator.Result = WorktreeCreator.Result.Failed("")
+            Preparations.once(target) {
+                created = withBackgroundProgress(project, AgenstormBundle.message("worktrees.new.progress", slug)) {
+                    withContext(Dispatchers.IO) {
+                        val existing = dialog.branch
+                        when {
+                            dialog.base == NewWorktreeDialog.Base.EXISTING_BRANCH && existing != null -> creator.createFromBranch(slug, existing)
+                            dialog.base == NewWorktreeDialog.Base.DEFAULT_BRANCH && defaultBranch != null -> creator.create(slug, "origin/HEAD", defaultBranch)
+                            else -> creator.create(slug, "HEAD", repository.currentBranchName ?: repository.currentRevision ?: "HEAD")
+                        }
+                    }
+                }
+                (created as? WorktreeCreator.Result.Created)?.let { made ->
+                    withBackgroundProgress(project, AgenstormBundle.message("worktrees.new.preparing", slug)) {
+                        withContext(Dispatchers.IO) { WorktreePreparer.prepare(project, Path.of(made.main), Path.of(made.path)) }
                     }
                 }
             }
-            when (result) {
+            when (val result = created) {
                 is WorktreeCreator.Result.Created -> {
-                    withBackgroundProgress(project, AgenstormBundle.message("worktrees.new.preparing", slug)) {
-                        withContext(Dispatchers.IO) { WorktreePreparer.prepare(project, Path.of(result.main), Path.of(result.path)) }
-                    }
                     val runSetup = AgenstormSettings.getInstance().state.worktreesRunSetup
                     withContext(Dispatchers.EDT) {
                         WorktreeSwitcher.getInstance().switch(project, result.path) { arrived ->
@@ -59,9 +68,12 @@ object NewWorktreeFlow {
                         }
                     }
                 }
-                is WorktreeCreator.Result.Failed -> AgenstormNotifications.group()
-                    .createNotification(AgenstormBundle.message("worktrees.notice.title"), AgenstormBundle.message("worktrees.new.failed", slug, result.reason), NotificationType.WARNING)
-                    .notify(project)
+                is WorktreeCreator.Result.Failed -> {
+                    Preparations.forget(target)
+                    AgenstormNotifications.group()
+                        .createNotification(AgenstormBundle.message("worktrees.notice.title"), AgenstormBundle.message("worktrees.new.failed", slug, result.reason), NotificationType.WARNING)
+                        .notify(project)
+                }
             }
         }
     }

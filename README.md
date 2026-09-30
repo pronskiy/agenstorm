@@ -447,11 +447,17 @@ Before the window switches to a worktree "+" made, Agenstorm gives it what a fre
 
   For a worktree made elsewhere, right-click its tab and choose **Run Setup Script**.
 
+A worktree made elsewhere — `git worktree add` in a terminal, `claude -w` — gets the settings, the
+ignored files and the dependencies too, the first time a tab opens it; the dependencies only where it
+has none, so an agent's own `vendor/` is left alone. Or, with **Prepare one as soon as it appears** on,
+within seconds of being made, so an agent working there has `.env` and `vendor/` without the worktree
+ever being opened.
+
 A new worktree is indexed once when it first opens; after that, switching back to it takes about a
 second.
 
-Options, under **Worktrees**: the switch, the folder new worktrees go in, the folders to clone, and
-whether to run the setup. The exclusion stays with the tabs switched off, and a changed folder takes
+Options, under **Worktrees**: the switch, the folder new worktrees go in, the folders to clone, when
+to prepare a worktree made elsewhere, and whether to run the setup. The exclusion stays with the tabs switched off, and a changed folder takes
 effect when the project is reopened.
 
 ## Window title

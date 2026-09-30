@@ -15,11 +15,13 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.wm.WindowManager
 import com.intellij.openapi.wm.impl.ProjectFrameHelper
+import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
-import com.pronskiy.agenstorm.worktrees.carry.IdeaSeeder
+import com.pronskiy.agenstorm.worktrees.carry.Preparations
+import com.pronskiy.agenstorm.worktrees.carry.WorktreePreparer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -95,7 +97,7 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
         scope.launch(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
             if (!mutex.tryLock()) return@launch
             try {
-                withContext(Dispatchers.IO) { seedIdea(target, listOfNotNull(main, current)) }
+                prepareFirstOpen(from, target, main, current)
                 if (runner.switch(current, target, worktrees, AgenstormSettings.getInstance().state.worktreesKeepCurrentOpen)) {
                     ProjectManager.getInstance().openProjects
                         .firstOrNull { !it.isDisposed && it.basePath?.let(FileUtil::toSystemIndependentName) == target }
@@ -108,14 +110,30 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
     }
 
     /**
-     * Step T2.4, lazily: a worktree made outside the IDE (an agent, the Git tool window) gets the main checkout's
-     * `.idea` — or, if the main checkout has none, the current worktree's — before its first open.
+     * Step T2.4, lazily, and T4.8: a worktree made outside the IDE (an agent, a terminal, the Git tool window) that has
+     * no `.idea` yet has never been opened here, so before its first open it gets the main checkout's `.idea` — or, if
+     * the main checkout has none, the current worktree's — and, with `worktreesPrepareOnOpen` on (the default), what
+     * "+" would have given it: the ignored files `.worktreeinclude` names and the heavy folders it has none of
+     * ([WorktreePreparer.prepareMadeElsewhere]). One that is being prepared already (it just appeared) is waited for.
      */
-    private fun seedIdea(target: String, sources: List<String>) {
-        val idea = Path.of(target, ".idea")
-        if (Files.exists(idea) || !Files.isDirectory(Path.of(target))) return
-        val source = sources.filter { it != target }.map { Path.of(it, ".idea") }.firstOrNull(Files::isDirectory) ?: return
-        IdeaSeeder.seed(source, idea)
+    private suspend fun prepareFirstOpen(from: Project, target: String, main: String?, current: String) {
+        val worktree = Path.of(target)
+        if (Files.exists(worktree.resolve(".idea")) || !Files.isDirectory(worktree)) {
+            Preparations.once(target) {}
+            return
+        }
+        val sources = listOfNotNull(main, current).map { Path.of(it) }
+        Preparations.once(target) {
+            withBackgroundProgress(from, AgenstormBundle.message("worktrees.prepare.progress", worktree.fileName.toString())) {
+                withContext(Dispatchers.IO) {
+                    if (main != null && AgenstormSettings.getInstance().state.worktreesPrepareOnOpen) {
+                        WorktreePreparer.prepareMadeElsewhere(from, Path.of(main), worktree, sources)
+                    } else {
+                        WorktreePreparer.seedIdea(worktree, sources)
+                    }
+                }
+            }
+        }
     }
 
     private class PlatformEnv : SwitchRunner.Env {

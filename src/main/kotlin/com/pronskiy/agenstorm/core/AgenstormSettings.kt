@@ -128,6 +128,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var worktreesRunSetup: Boolean = true,
         /** Epic T: a switch opens the worktree as a project of its own, next to the current one, instead of replacing it in its window. */
         var worktreesKeepCurrentOpen: Boolean = false,
+        /** Epic T: a worktree made elsewhere (a terminal, Claude Code) gets what "+" would give it — ignored files, heavy folders — on its first open here. */
+        var worktreesPrepareOnOpen: Boolean = true,
+        /** Epic T: …or as soon as it appears, so an agent working there has them without the worktree being opened. */
+        var worktreesPrepareOnAppear: Boolean = false,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */

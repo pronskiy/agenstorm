@@ -19,6 +19,7 @@ import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.worktrees.Worktree
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
 import com.pronskiy.agenstorm.worktrees.WorktreeSwitcher
+import com.pronskiy.agenstorm.worktrees.carry.Preparations
 import com.pronskiy.agenstorm.worktrees.status.LockOwner
 import git4idea.commands.Git
 import git4idea.commands.GitCommand
@@ -97,6 +98,7 @@ object RemoveWorktreeFlow {
         val outcome = withBackgroundProgress(project, RemovalText.progress(mode, name)) {
             withContext(Dispatchers.IO) { remover(project).remove(Path.of(main.path), worktree, plan) }
         }
+        if (outcome is WorktreeRemover.Outcome.Removed) Preparations.forget(worktree.path)
         val type = if (outcome is WorktreeRemover.Outcome.Removed) NotificationType.INFORMATION else NotificationType.WARNING
         notify(project, RemovalText.outcome(name, outcome, mode), type)
         WorktreeRegistry.getInstance(project).refresh()

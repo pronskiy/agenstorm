@@ -17,6 +17,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.wm.IdeFrame
+import com.pronskiy.agenstorm.worktrees.carry.WorktreeArrivals
 import com.pronskiy.agenstorm.worktrees.status.WorktreeStatusService
 import com.pronskiy.agenstorm.worktrees.ui.WorktreeStripService
 import git4idea.commands.Git
@@ -154,6 +155,7 @@ class WorktreeStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         WorktreeRegistry.getInstance(project).start()
         WorktreeStatusService.getInstance(project).start()
+        WorktreeArrivals.getInstance(project).start()
         WorktreeStripService.getInstance(project).start()
     }
 }

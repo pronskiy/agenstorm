@@ -13,6 +13,7 @@
   - A linked worktree's project is named `<project>:<worktree>` (`app:fix-login`) in the project tabs and the window title, rather than by its folder alone.
   - A setting chooses what a click on a worktree tab does: replace the current project in its window (the default), or open the worktree as a project of its own next to it.
   - The folders holding worktrees (`.worktrees/`, `.claude/worktrees/`) are left out of the Project view, as `.idea` is; Project Files still lists them.
+  - A worktree made in a terminal or by `claude -w` gets the ignored files and cloned dependencies too, on its first open (on by default) or, by a setting, as soon as it appears; a dependency folder it has already is left alone.
 
 ### Fixed
 

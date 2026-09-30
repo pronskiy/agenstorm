@@ -55,6 +55,22 @@ class WorktreesSettingsTest : BasePlatformTestCase() {
         assertTrue(state.worktreesKeepCurrentOpen)
     }
 
+    fun testWorktreesMadeElsewhereArePreparedOnFirstOpenButNotOnArrivalByDefault() {
+        val state = AgenstormSettings.getInstance().state
+        val boxes = UIUtil.uiTraverser(panel).filter(com.intellij.ui.components.JBCheckBox::class.java).toList().associateBy { it.name }
+        assertTrue(state.worktreesPrepareOnOpen)
+        assertFalse(state.worktreesPrepareOnAppear)
+        assertTrue(boxes.getValue("worktrees.prepareOnOpen").isSelected)
+        assertFalse(boxes.getValue("worktrees.prepareOnAppear").isSelected)
+
+        boxes.getValue("worktrees.prepareOnOpen").isSelected = false
+        boxes.getValue("worktrees.prepareOnAppear").isSelected = true
+        configurable.apply()
+
+        assertFalse(state.worktreesPrepareOnOpen)
+        assertTrue(state.worktreesPrepareOnAppear)
+    }
+
     fun testTurningTheFeatureOffIsAnnounced() {
         var announced = 0
         com.intellij.openapi.application.ApplicationManager.getApplication().messageBus.connect(testRootDisposable)

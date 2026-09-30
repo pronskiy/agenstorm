@@ -53,12 +53,18 @@ class WorktreeCreator(private val project: Project, private val repository: GitR
         return result.output.map { it.trim() }.filter { it.isNotEmpty() && it !in checkedOut }
     }
 
+    /** Where [create] or [createFromBranch] put the worktree named [slug]: `<main checkout>/<folder>/<slug>`. */
+    fun targetFor(slug: String): String = "${mainPath()}/${WorktreeExcludes.configuredFolder()}/$slug"
+
+    private fun mainPath(): String =
+        WorktreeRegistry.getInstance(project).state.value.worktrees.firstOrNull { it.isMain }?.path ?: FileUtil.toSystemIndependentName(repository.root.path)
+
     private fun add(slug: String, arguments: (String) -> List<String>, afterAdd: () -> Unit): Result {
         val snapshot = WorktreeRegistry.getInstance(project).state.value
-        val main = snapshot.worktrees.firstOrNull { it.isMain }?.path ?: FileUtil.toSystemIndependentName(repository.root.path)
+        val main = mainPath()
         val commonDir = snapshot.commonDir ?: FileUtil.toSystemIndependentName(repository.repositoryFiles.worktreesDirFile.parent)
         val folder = WorktreeExcludes.configuredFolder()
-        val target = "$main/$folder/$slug"
+        val target = targetFor(slug)
         if (Files.exists(Path.of(target))) return Result.Failed(AgenstormBundle.message("worktrees.new.error.folder", target))
 
         val add = GitLineHandler(project, repository.root, GitCommand.WORKTREE)

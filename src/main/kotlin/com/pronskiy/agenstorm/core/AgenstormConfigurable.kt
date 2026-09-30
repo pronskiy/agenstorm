@@ -235,6 +235,20 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                         .comment(AgenstormBundle.message("settings.worktrees.switch.keep.comment"))
                 }
             }
+            buttonsGroup(AgenstormBundle.message("settings.worktrees.prepare")) {
+                row {
+                    checkBox(AgenstormBundle.message("settings.worktrees.prepareOnOpen"))
+                        .bindSelected({ AgenstormSettings.getInstance().state.worktreesPrepareOnOpen }, { AgenstormSettings.getInstance().state.worktreesPrepareOnOpen = it })
+                        .applyToComponent { name = "worktrees.prepareOnOpen" }
+                        .comment(AgenstormBundle.message("settings.worktrees.prepareOnOpen.comment"))
+                }
+                row {
+                    checkBox(AgenstormBundle.message("settings.worktrees.prepareOnAppear"))
+                        .bindSelected({ AgenstormSettings.getInstance().state.worktreesPrepareOnAppear }, { AgenstormSettings.getInstance().state.worktreesPrepareOnAppear = it })
+                        .applyToComponent { name = "worktrees.prepareOnAppear" }
+                        .comment(AgenstormBundle.message("settings.worktrees.prepareOnAppear.comment"))
+                }
+            }
             row {
                 checkBox(AgenstormBundle.message("settings.worktrees.runSetup"))
                     .bindSelected({ AgenstormSettings.getInstance().state.worktreesRunSetup }, { AgenstormSettings.getInstance().state.worktreesRunSetup = it })
