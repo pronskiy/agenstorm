@@ -23,10 +23,13 @@ object WorktreeExcludes {
      * Step T1.8. The folder setting as a path relative to the main checkout, slashes trimmed; empty, with a drive
      * letter, or with a `.` or `..` segment it falls back to [DEFAULT_FOLDER].
      */
-    fun folder(setting: String?): String {
-        val folder = setting.orEmpty().trim().replace('\\', '/').trim('/')
-        val segments = folder.split('/')
-        return if (folder.isEmpty() || folder.contains(':') || segments.any { it.isEmpty() || it == "." || it == ".." }) DEFAULT_FOLDER else folder
+    fun folder(setting: String?): String = relativeOrNull(setting) ?: DEFAULT_FOLDER
+
+    /** A safe path relative to the main checkout, slashes trimmed, or null when [raw] is empty, has a drive letter or a `.`/`..` segment. */
+    fun relativeOrNull(raw: String?): String? {
+        val path = raw.orEmpty().trim().replace('\\', '/').trim('/')
+        val segments = path.split('/')
+        return if (path.isEmpty() || path.contains(':') || segments.any { it.isEmpty() || it == "." || it == ".." }) null else path
     }
 
     /** The configured folder, see [folder]. */

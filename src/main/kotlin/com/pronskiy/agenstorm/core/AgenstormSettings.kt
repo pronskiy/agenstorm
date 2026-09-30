@@ -122,6 +122,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var worktreesEnabled: Boolean = true,
         /** Epic T: the folder under the main checkout that "+" puts worktrees in; excluded from the project along with `.claude/worktrees`. */
         var worktreesFolder: String = ".worktrees",
+        /** Epic T: folders cloned whole, copy-on-write, from the main checkout into a worktree "+" makes; comma separated. */
+        var worktreesCloneFolders: String = "vendor, node_modules",
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */
