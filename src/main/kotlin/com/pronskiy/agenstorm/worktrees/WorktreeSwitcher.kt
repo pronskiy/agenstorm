@@ -17,11 +17,12 @@ import com.intellij.openapi.wm.impl.ProjectFrameHelper
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
+import com.pronskiy.agenstorm.worktrees.carry.IdeaSeeder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JFrame
@@ -84,15 +85,29 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
 
     fun switch(from: Project, target: String) {
         val current = from.basePath?.let(FileUtil::toSystemIndependentName) ?: return
-        val worktrees = WorktreeRegistry.getInstance(from).state.value.worktrees.map { it.path }.toSet()
+        val snapshot = WorktreeRegistry.getInstance(from).state.value
+        val worktrees = snapshot.worktrees.map { it.path }.toSet()
+        val main = snapshot.worktrees.firstOrNull { it.isMain }?.path
         scope.launch(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
             if (!mutex.tryLock()) return@launch
             try {
+                withContext(Dispatchers.IO) { seedIdea(target, listOfNotNull(main, current)) }
                 runner.switch(current, target, worktrees)
             } finally {
                 mutex.unlock()
             }
         }
+    }
+
+    /**
+     * Step T2.4, lazily: a worktree made outside the IDE (an agent, the Git tool window) gets the main checkout's
+     * `.idea` — or, if the main checkout has none, the current worktree's — before its first open.
+     */
+    private fun seedIdea(target: String, sources: List<String>) {
+        val idea = Path.of(target, ".idea")
+        if (Files.exists(idea) || !Files.isDirectory(Path.of(target))) return
+        val source = sources.filter { it != target }.map { Path.of(it, ".idea") }.firstOrNull(Files::isDirectory) ?: return
+        IdeaSeeder.seed(source, idea)
     }
 
     private class PlatformEnv : SwitchRunner.Env {
