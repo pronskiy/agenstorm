@@ -2269,7 +2269,7 @@ Throwaway code on a branch; what comes out is numbers and a go/no-go in §6.
 | No nesting | Main's *Version Control* settings list one root, no "unregistered roots" balloon; Find in Files in main finds nothing under `.worktrees/`; indexing main does not grow when a worktree is added | 🔲 | |
 | `open` | `open .worktrees/a` in main's terminal switches to worktree `a` | 🔲 | |
 | Off switch | Feature off: the strip goes and nothing else changes; on again: it comes back without a restart | 🔲 | |
-| Log + verifier | No `com.pronskiy.agenstorm` exceptions; `verifyPlugin` Compatible on PS/IU 262 and 263, zero internal | 🔲 | |
+| Log + verifier | No `com.pronskiy.agenstorm` exceptions; `verifyPlugin` Compatible on PS/IU 262 and 263, zero internal | 🔄 | **Verifier ✅** 2026-09-30 on `ff626af`: Compatible on PS-262.10968.76, PS-263.5701.46, IU-262.10968.63 and IU-263.5701.42, **zero internal usages**; experimental 56 (unchanged); deprecated 1 on 262 (unchanged), 9 on 263 (was 5) — the four new ones are `OpenProjectTask.build()` / `withForceOpenInNewFrame` in `WorktreeSwitcher` and `WorktreeStripActions`, the same kind `ProjectLoader` and `OpenRequestServer` carry (the replacement builder is inline for JVM 25). The log half waits for the `runIde` session |
 
 #### Phase T2 — A new worktree, ready to work in
 
