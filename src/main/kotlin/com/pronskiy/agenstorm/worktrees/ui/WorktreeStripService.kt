@@ -1,7 +1,5 @@
 package com.pronskiy.agenstorm.worktrees.ui
 
-import com.intellij.ide.impl.OpenProjectTask
-import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
@@ -13,15 +11,14 @@ import com.intellij.openapi.wm.ToolWindowId
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.util.ui.UIUtil
-import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
+import com.pronskiy.agenstorm.worktrees.WorktreeSwitcher
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
 import com.pronskiy.agenstorm.worktrees.WorktreeTabsModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -29,8 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Step T1.4 (decision 82). Feeds the strip of this project from [WorktreeRegistry] and puts it above the Project tree:
  * the Project view's root is a `SimpleToolWindowPanel` whose toolbar slot `ProjectViewImpl` never uses (262 and 263),
  * so the strip becomes that toolbar — no content is wrapped or replaced, and a recreated panel gets a new strip on the
- * next tool window state change. A click opens the worktree through the platform for now; the real swap, which does
- * not depend on the user's "open project in" choice, and the busy rule are T1.6.
+ * next tool window state change. A click hands the switch to [WorktreeSwitcher] (T1.6).
  */
 @Service(Service.Level.PROJECT)
 class WorktreeStripService(private val project: Project, private val scope: CoroutineScope) : Disposable {
@@ -77,16 +73,8 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
         host = panel
     }
 
-    /**
-     * Interim until T1.6. Launched in the application scope, never this service's: if the platform reuses this window
-     * it closes this project, which cancels the project's scope and joins its children — a child waiting in
-     * `openOrImportAsync` would wait for itself (the hang `OpenRequestServer.openProject` documents).
-     */
-    private fun switchTo(tab: WorktreeTab) {
-        service<AgenstormAppScope>().scope.launch(Dispatchers.EDT) {
-            ProjectUtil.openOrImportAsync(Path.of(tab.path), OpenProjectTask.build().withProjectToClose(project))
-        }
-    }
+    /** The switch runs in the application's [WorktreeSwitcher]: it closes this project, and this service with it. */
+    private fun switchTo(tab: WorktreeTab) = WorktreeSwitcher.getInstance().switch(project, tab.path)
 
     override fun dispose() {
         host?.let { if (it.toolbar is WorktreeStripPanel) it.toolbar = null }
