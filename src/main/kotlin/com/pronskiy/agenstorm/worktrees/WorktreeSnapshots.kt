@@ -24,6 +24,7 @@ object WorktreeSnapshots {
                     isLocked = tree.isLocked,
                     lockReason = data?.lockReason?.takeIf { tree.isLocked },
                     createdAt = data?.createdAt ?: 0L,
+                    adminId = data?.id,
                 )
             },
         )

@@ -17,6 +17,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.wm.IdeFrame
+import com.pronskiy.agenstorm.worktrees.status.WorktreeStatusService
 import com.pronskiy.agenstorm.worktrees.ui.WorktreeStripService
 import git4idea.commands.Git
 import git4idea.repo.GitRepository
@@ -67,7 +68,7 @@ class WorktreeRegistry(private val project: Project, private val scope: Coroutin
         bus.subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
             override fun after(events: List<VFileEvent>) {
                 val dir = watchedDir ?: return
-                if (events.any { FileUtil.isAncestor(dir, it.path, false) }) refresh()
+                if (events.any { changesList(dir, it.path) }) refresh()
             }
         })
         ApplicationManager.getApplication().messageBus.connect(this).subscribe(ApplicationActivationListener.TOPIC, object : ApplicationActivationListener {
@@ -110,14 +111,20 @@ class WorktreeRegistry(private val project: Project, private val scope: Coroutin
         mutableState.value = snapshot
     }
 
-    /** Puts the admin dirs under the file watcher and loads their VFS children, so a new one produces an event. */
+    /**
+     * Puts the admin dirs under the file watcher and loads them and their files into the VFS — the VFS reports a change
+     * only for a file it has loaded — so a new admin dir, a `locked` file coming or going and (T3.2) a worktree's index
+     * or HEAD changing each produce an event.
+     */
     private fun watch(worktreesDir: Path) {
         val path = FileUtil.toSystemIndependentName(worktreesDir.toString())
-        if (path == watchedDir) return
-        watch?.let(LocalFileSystem.getInstance()::removeWatchedRoot)
-        watch = LocalFileSystem.getInstance().addRootToWatch(path, true)
-        watchedDir = path
-        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(worktreesDir)?.children
+        if (path != watchedDir) {
+            watch?.let(LocalFileSystem.getInstance()::removeWatchedRoot)
+            watch = LocalFileSystem.getInstance().addRootToWatch(path, true)
+            watchedDir = path
+            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(worktreesDir)
+        }
+        LocalFileSystem.getInstance().findFileByNioFile(worktreesDir)?.children?.forEach { it.children }
     }
 
     override fun dispose() {
@@ -128,16 +135,25 @@ class WorktreeRegistry(private val project: Project, private val scope: Coroutin
     companion object {
         private val LOG = logger<WorktreeRegistry>()
         private val DEBOUNCE = 300.milliseconds
+        private val LIST_FILES = setOf("gitdir", "locked", "HEAD")
+
+        /** An admin dir coming or going, or its `gitdir`, `locked` or `HEAD` changing; not an index write or a reflog line. */
+        internal fun changesList(worktreesDir: String, path: String): Boolean {
+            if (!path.startsWith("$worktreesDir/")) return false
+            val parts = path.removePrefix("$worktreesDir/").split('/')
+            return parts.size == 1 || parts.size == 2 && parts[1] in LIST_FILES
+        }
 
         fun getInstance(project: Project): WorktreeRegistry = project.service()
     }
 }
 
-/** Step T1.2: starts the registry when a project opens, and (T1.4) the strip. Registered in `agenstorm-git.xml`. */
+/** Step T1.2: starts the registry when a project opens, (T1.4) the strip and (T3.2) the tabs' status. Registered in `agenstorm-git.xml`. */
 class WorktreeStartupActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
         WorktreeRegistry.getInstance(project).start()
+        WorktreeStatusService.getInstance(project).start()
         WorktreeStripService.getInstance(project).start()
     }
 }

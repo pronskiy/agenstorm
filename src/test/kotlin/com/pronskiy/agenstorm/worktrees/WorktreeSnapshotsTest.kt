@@ -29,8 +29,8 @@ class WorktreeSnapshotsTest {
         assertEquals(
             listOf(
                 Worktree("/r", "main", isMain = true, isLocked = false, lockReason = null, createdAt = 0),
-                Worktree("/r/.worktrees/a", "fix-login", isMain = false, isLocked = true, lockReason = "claude agent", createdAt = 100),
-                Worktree("/r/.worktrees/b", null, isMain = false, isLocked = false, lockReason = null, createdAt = 200),
+                Worktree("/r/.worktrees/a", "fix-login", isMain = false, isLocked = true, lockReason = "claude agent", createdAt = 100, adminId = "a"),
+                Worktree("/r/.worktrees/b", null, isMain = false, isLocked = false, lockReason = null, createdAt = 200, adminId = "b"),
             ),
             snapshot.worktrees,
         )

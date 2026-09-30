@@ -19,10 +19,12 @@ import com.pronskiy.agenstorm.worktrees.WorktreeSwitcher
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
 import com.pronskiy.agenstorm.worktrees.WorktreeTabsModel
 import com.pronskiy.agenstorm.worktrees.create.NewWorktreeFlow
+import com.pronskiy.agenstorm.worktrees.status.WorktreeStatusService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.event.HierarchyEvent
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -63,9 +65,14 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
             onSelect = ::switchTo,
             onAdd = { NewWorktreeFlow.start(project) },
             onContextMenu = { tab, component, point -> WorktreeStripActions.showContextMenu(project, tab, component, point) },
-        ).also {
-            panels += it
-            it.show(visibleTabs())
+        ).also { panel ->
+            panels += panel
+            panel.show(visibleTabs())
+            panel.addHierarchyListener { event ->
+                if (event.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong() != 0L) {
+                    WorktreeStatusService.getInstance(project).setShowing(panels.any { it.isShowing })
+                }
+            }
         }
 
     /** Step T1.8: with the feature off the strip shows no tabs, which hides it; on again, it comes back without a restart. */
