@@ -15,6 +15,7 @@ import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
 import com.pronskiy.agenstorm.worktrees.WorktreeSwitcher
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
 import com.pronskiy.agenstorm.worktrees.WorktreeTabsModel
+import com.pronskiy.agenstorm.worktrees.create.NewWorktreeFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,7 +57,7 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
     private fun newPanel(): WorktreeStripPanel =
         WorktreeStripPanel(
             onSelect = ::switchTo,
-            onAdd = {},
+            onAdd = { NewWorktreeFlow.start(project) },
             onContextMenu = { tab, component, point -> WorktreeStripActions.showContextMenu(project, tab, component, point) },
         ).also {
             panels += it
