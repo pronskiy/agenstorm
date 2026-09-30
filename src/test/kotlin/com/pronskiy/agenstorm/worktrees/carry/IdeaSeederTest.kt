@@ -74,6 +74,22 @@ class IdeaSeederTest {
     }
 
     @Test
+    fun aSourceWithoutModulesXmlGetsTheDefaultModuleAndOneWithItKeepsItsOwn() {
+        IdeaSeeder.seed(source, target)
+        assertEquals("<project/>", Files.readString(target.resolve("modules.xml")))
+
+        val bare = root.resolve("bare/.idea")
+        write(bare, "php.xml", "<project/>")
+        val worktree = root.resolve("disk-check/.idea")
+
+        val copied = IdeaSeeder.seed(bare, worktree)
+
+        assertEquals(listOf("disk-check.iml", "modules.xml", "php.xml"), copied)
+        assertTrue(Files.readString(worktree.resolve("modules.xml")).contains("\$PROJECT_DIR\$/.idea/disk-check.iml"))
+        assertTrue(Files.readString(worktree.resolve("disk-check.iml")).contains("<content url=\"file://\$MODULE_DIR\$\" />"))
+    }
+
+    @Test
     fun aWorkspaceThatDoesNotParseIsCopiedAsItIsAndNoSourceMeansNothing() {
         assertEquals("<project", IdeaSeeder.workspace("<project"))
         assertEquals(emptyList<String>(), IdeaSeeder.seed(root.resolve("nothing/.idea"), target))

@@ -22,6 +22,22 @@ class TreeCloner(
     private val exec: (List<String>) -> Boolean = ::run,
 ) {
 
+    /**
+     * Like [clone], but a folder that exists at [target] already is filled in rather than skipped: each child of
+     * [source] it lacks is cloned, folders it has are descended into, files it has are left alone. Returns whether
+     * anything was copied.
+     */
+    fun cloneMissing(source: Path, target: Path): Boolean {
+        if (!Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS) || !Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)) return clone(source, target)
+        val children = try {
+            Files.list(source).use { it.toList() }
+        } catch (e: IOException) {
+            LOG.warn("Could not list $source", e)
+            return false
+        }
+        return children.map { cloneMissing(it, target.resolve(it.fileName.toString())) }.any { it }
+    }
+
     /** True when [target] was created; false when something was there already or nothing could be copied. */
     fun clone(source: Path, target: Path): Boolean {
         if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS) || Files.exists(target, LinkOption.NOFOLLOW_LINKS)) return false

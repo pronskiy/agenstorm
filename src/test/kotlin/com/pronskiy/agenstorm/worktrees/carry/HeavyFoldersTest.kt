@@ -36,4 +36,26 @@ class HeavyFoldersTest {
             NioFiles.deleteRecursively(root)
         }
     }
+
+    @Test
+    fun aFolderTheWorktreeHasInPartIsFilledInNotSkipped() {
+        val root = Files.createTempDirectory("heavy").toRealPath()
+        try {
+            val main = Files.createDirectories(root.resolve("main"))
+            val worktree = Files.createDirectories(root.resolve("wt"))
+            for (file in listOf("vendor/acme/Lib.php", "vendor/acme/skeleton/.env.example", "vendor/other/Other.php")) {
+                Files.createDirectories(main.resolve(file).parent)
+                Files.writeString(main.resolve(file), "main")
+            }
+            Files.createDirectories(worktree.resolve("vendor/acme/skeleton"))
+            Files.writeString(worktree.resolve("vendor/acme/skeleton/.env.example"), "already here")
+
+            assertEquals(listOf("vendor"), HeavyFolders.clone(main, worktree, listOf("vendor")))
+            assertEquals("main", Files.readString(worktree.resolve("vendor/acme/Lib.php")))
+            assertEquals("main", Files.readString(worktree.resolve("vendor/other/Other.php")))
+            assertEquals("already here", Files.readString(worktree.resolve("vendor/acme/skeleton/.env.example")))
+        } finally {
+            NioFiles.deleteRecursively(root)
+        }
+    }
 }

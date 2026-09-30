@@ -49,6 +49,7 @@ class CarryOverTest {
         write(".env.local")
         write("notes.txt")
         write("vendor/acme/Lib.php")
+        write("vendor/acme/skeleton/.env.example")
         write("config/secrets/db.json")
         write("app.key")
     }
@@ -63,7 +64,7 @@ class CarryOverTest {
         assertEquals(listOf(".env", ".env.local"), carry())
         assertEquals(".env", Files.readString(worktree.resolve(".env")))
         assertFalse(Files.exists(worktree.resolve(".env.example")))
-        assertFalse(Files.exists(worktree.resolve("vendor")))
+        assertFalse("the default pattern is anchored: nothing from inside vendor/", Files.exists(worktree.resolve("vendor")))
     }
 
     @Test

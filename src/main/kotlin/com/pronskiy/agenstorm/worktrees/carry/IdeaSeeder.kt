@@ -14,7 +14,13 @@ import java.nio.file.StandardCopyOption
  * copied — the tracked ones arrive with the checkout and are never overwritten. `*.iml` and `modules.xml` go as they
  * are, their `$PROJECT_DIR$` paths being relative. The copied `workspace.xml` loses the per-checkout state: `ProjectId`
  * (a shared id makes the platform take two worktrees for one project), `ChangeListManager` and `TaskManager` (§7).
- * `shelf/` and `httpRequests/` hold local history and stay behind. Blocking.
+ * `shelf/` and `httpRequests/` hold local history and stay behind.
+ *
+ * A composer project opened in 2026.3 may keep its module out of `.idea` altogether (no `modules.xml`, no `.iml`) in
+ * the per-location workspace-model cache; a copied `.idea` without `modules.xml` then opens as an existing project with
+ * no module, and its own sources are never indexed (T2 guardrail, laravel/framework). So when the source has no
+ * `modules.xml`, the target gets the default module a directory project gets — a `WEB_MODULE` over the whole folder —
+ * and Composer sync adds the source roots as usual. Blocking.
  */
 object IdeaSeeder {
 
@@ -42,8 +48,21 @@ object IdeaSeeder {
         } catch (e: IOException) {
             LOG.warn("Could not seed $target from $source", e)
         }
+        if (!Files.exists(source.resolve(MODULES)) && !Files.exists(target.resolve(MODULES))) copied += defaultModule(target)
         LOG.info("Seeded ${copied.size} files into $target")
         return copied.sorted()
+    }
+
+    /** Writes `modules.xml` and `<folder>.iml` for a single module over the project folder; returns what it wrote. */
+    private fun defaultModule(idea: Path): List<String> = try {
+        val name = idea.toAbsolutePath().parent.fileName.toString()
+        Files.createDirectories(idea)
+        Files.writeString(idea.resolve(MODULES), MODULES_XML.replace("NAME", name))
+        Files.writeString(idea.resolve("$name.iml"), MODULE_IML)
+        listOf(MODULES, "$name.iml")
+    } catch (e: IOException) {
+        LOG.warn("Could not write a default module into $idea", e)
+        emptyList()
     }
 
     /** `workspace.xml` without [DROPPED_COMPONENTS]; unchanged if it does not parse. */
@@ -55,6 +74,28 @@ object IdeaSeeder {
         LOG.info("workspace.xml does not parse; copied as it is", e)
         xml
     }
+
+    private const val MODULES = "modules.xml"
+    private val MODULES_XML = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <project version="4">
+          <component name="ProjectModuleManager">
+            <modules>
+              <module fileurl="file://${'$'}PROJECT_DIR${'$'}/.idea/NAME.iml" filepath="${'$'}PROJECT_DIR${'$'}/.idea/NAME.iml" />
+            </modules>
+          </component>
+        </project>
+    """.trimIndent() + "\n"
+    private val MODULE_IML = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <module type="WEB_MODULE" version="4">
+          <component name="NewModuleRootManager">
+            <content url="file://${'$'}MODULE_DIR${'$'}" />
+            <orderEntry type="inheritedJdk" />
+            <orderEntry type="sourceFolder" forTests="false" />
+          </component>
+        </module>
+    """.trimIndent() + "\n"
 
     private val LOG = logger<IdeaSeeder>()
 }

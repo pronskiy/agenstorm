@@ -9,7 +9,7 @@ class CarryPlanTest {
 
     @Test
     fun withoutAnIncludeFileTheDefaultPatternIsDotEnv() {
-        assertEquals(listOf("--others", "--ignored", "--directory", "-z", "--exclude=.env*"), CarryPlan.candidateArgs(null))
+        assertEquals(listOf("--others", "--ignored", "--directory", "-z", "--exclude=/.env*"), CarryPlan.candidateArgs(null))
         assertEquals("--exclude-from=/r/.worktreeinclude", CarryPlan.candidateArgs(Path.of("/r/.worktreeinclude")).last())
     }
 
