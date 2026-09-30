@@ -8,6 +8,7 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
@@ -86,6 +87,7 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
     /** [onArrived] gets the target's project once the window shows it (T2.5 runs the setup there). */
     fun switch(from: Project, target: String, onArrived: (Project) -> Unit = {}) {
         val current = from.basePath?.let(FileUtil::toSystemIndependentName) ?: return
+        LOG.debug(Throwable("switch requested")) { "switch $current -> $target" }
         val snapshot = WorktreeRegistry.getInstance(from).state.value
         val worktrees = snapshot.worktrees.map { it.path }.toSet()
         val main = snapshot.worktrees.firstOrNull { it.isMain }?.path
