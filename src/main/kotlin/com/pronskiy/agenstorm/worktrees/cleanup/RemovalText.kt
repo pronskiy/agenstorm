@@ -68,7 +68,8 @@ object RemovalText {
         is Risk.Locked -> risk.reason?.let { AgenstormBundle.message("worktrees.remove.risk.locked", it) } ?: AgenstormBundle.message("worktrees.remove.risk.locked.plain")
     }
 
-    private fun files(paths: List<String>): String {
+    /** At most five paths, then "and N more". */
+    fun files(paths: List<String>): String {
         val listed = paths.take(LISTED_FILES).joinToString(", ")
         return if (paths.size <= LISTED_FILES) listed else AgenstormBundle.message("worktrees.remove.more", listed, paths.size - LISTED_FILES)
     }

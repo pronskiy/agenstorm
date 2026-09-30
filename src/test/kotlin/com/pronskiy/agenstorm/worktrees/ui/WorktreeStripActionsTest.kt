@@ -18,11 +18,11 @@ class WorktreeStripActionsTest : BasePlatformTestCase() {
         WorktreeStripActions.contextMenuGroup(project, tab(current, main)).getChildren(null).map { if (it is Separator) "---" else it.templatePresentation.text }
 
     fun testAnotherWorktreeCanBeOpenedCopiedOpenedInTheTerminalAndRemoved() {
-        assertEquals(listOf("Open in New Window", "Copy Path", "Open in Terminal", "---", "Archive Worktree\u2026", "Remove Worktree\u2026"), texts(current = false))
+        assertEquals(listOf("Open in New Window", "Copy Path", "Open in Terminal", "---", "Merge Back\u2026", "Archive Worktree\u2026", "Remove Worktree\u2026"), texts(current = false))
     }
 
     fun testTheCurrentWorktreeHasNoOpenInNewWindow() {
-        assertEquals(listOf("Copy Path", "Open in Terminal", "---", "Archive Worktree\u2026", "Remove Worktree\u2026"), texts(current = true))
+        assertEquals(listOf("Copy Path", "Open in Terminal", "---", "Merge Back\u2026", "Archive Worktree\u2026", "Remove Worktree\u2026"), texts(current = true))
     }
 
     fun testTheMainCheckoutCannotBeRemoved() {
