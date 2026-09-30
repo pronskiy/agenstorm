@@ -22,6 +22,7 @@ import com.pronskiy.agenstorm.worktrees.create.NewWorktreeFlow
 import com.pronskiy.agenstorm.worktrees.status.WorktreeStatusService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.event.HierarchyEvent
@@ -29,7 +30,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Step T1.4 (decision 82). Feeds the strip of this project from [WorktreeRegistry] and puts it above the Project tree:
+ * Step T1.4 (decision 82). Feeds the strip of this project from [WorktreeRegistry] — and, since T3.3, the tabs' badges
+ * from [WorktreeStatusService], which it tells whether a strip is on screen — and puts it above the Project tree:
  * the Project view's root is a `SimpleToolWindowPanel` whose toolbar slot `ProjectViewImpl` never uses (262 and 263),
  * so the strip becomes that toolbar — no content is wrapped or replaced, and a recreated panel gets a new strip on the
  * next tool window state change. A click hands the switch to [WorktreeSwitcher] (T1.6).
@@ -40,15 +42,20 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
     private val panels = CopyOnWriteArrayList<WorktreeStripPanel>()
     private val started = AtomicBoolean()
     private var tabs: List<WorktreeTab> = emptyList()
+    private var badges: Map<String, TabBadge> = emptyMap()
     private var host: SimpleToolWindowPanel? = null
 
     fun start() {
         if (!started.compareAndSet(false, true)) return
         scope.launch {
-            WorktreeRegistry.getInstance(project).state.collect { snapshot ->
-                val next = WorktreeTabsModel.tabs(snapshot, project.basePath?.let(FileUtil::toSystemIndependentName))
+            val current = project.basePath?.let(FileUtil::toSystemIndependentName)
+            combine(WorktreeRegistry.getInstance(project).state, WorktreeStatusService.getInstance(project).state) { snapshot, statuses ->
+                val next = WorktreeTabsModel.tabs(snapshot, current)
+                next to next.associate { it.path to TabBadge.of(it.worktree, statuses.git[it.path], statuses.busy[it.path]) }
+            }.collect { (nextTabs, nextBadges) ->
                 withContext(Dispatchers.EDT) {
-                    tabs = next
+                    tabs = nextTabs
+                    badges = nextBadges
                     render()
                 }
             }
@@ -67,7 +74,7 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
             onContextMenu = { tab, component, point -> WorktreeStripActions.showContextMenu(project, tab, component, point) },
         ).also { panel ->
             panels += panel
-            panel.show(visibleTabs())
+            panel.show(visibleTabs(), badges)
             panel.addHierarchyListener { event ->
                 if (event.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong() != 0L) {
                     WorktreeStatusService.getInstance(project).setShowing(panels.any { it.isShowing })
@@ -80,7 +87,7 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
 
     private fun render() {
         val shown = visibleTabs()
-        panels.forEach { it.show(shown) }
+        panels.forEach { it.show(shown, badges) }
     }
 
     private fun installAboveTree() {

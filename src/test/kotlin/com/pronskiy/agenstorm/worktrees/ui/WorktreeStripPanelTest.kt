@@ -5,10 +5,11 @@ import com.pronskiy.agenstorm.worktrees.Worktree
 import com.pronskiy.agenstorm.worktrees.WorktreeSnapshot
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
 import com.pronskiy.agenstorm.worktrees.WorktreeTabsModel
+import com.pronskiy.agenstorm.worktrees.status.WorktreeStatus
 import java.awt.Font
 import java.awt.event.MouseEvent
 
-/** Step T1.5: the strip lays tabs out, keeps the current one, lists the rest under "»" and reports clicks. */
+/** Step T1.5: the strip lays tabs out, keeps the current one, lists the rest under "»" and reports clicks; T3.3: badges. */
 class WorktreeStripPanelTest : BasePlatformTestCase() {
 
     private val selected = mutableListOf<WorktreeTab>()
@@ -55,6 +56,32 @@ class WorktreeStripPanelTest : BasePlatformTestCase() {
         click(first)
 
         assertEquals(listOf("/r/.worktrees/feature-number-1"), selected.map { it.path })
+    }
+
+    fun testABadgeWidensItsTabKeepsTheNameAsTextAndJoinsTheTooltip() {
+        val tabs = tabs("/r")
+        val plain = panel(tabs, width = 3000).tabLabels()[1]
+        val badge = TabBadge.of(tabs[1].worktree, WorktreeStatus(2, 1, 0, "main"), busyReason = null)
+        val strip = panel(tabs, width = 3000).apply { show(tabs, mapOf(tabs[1].path to badge)) }
+        val badged = strip.tabLabels()[1]
+
+        assertEquals("feature-number-1", badged.text)
+        assertSame(badge, strip.badgeOf(badged))
+        assertTrue(badged.preferredSize.width > plain.preferredSize.width)
+        assertEquals(plain.preferredSize.width, strip.tabLabels()[2].preferredSize.width)
+        assertTrue(badged.toolTipText.contains("2 uncommitted changes"))
+        assertTrue(badged.toolTipText.contains("1 commit ahead of main"))
+        assertEquals("/r/.worktrees/feature-number-2 \u2014 branch f2", strip.tabLabels()[2].toolTipText)
+    }
+
+    fun testTheSameTabsAndBadgesKeepTheLabels() {
+        val tabs = tabs("/r")
+        val strip = panel(tabs, width = 3000)
+        val before = strip.tabLabels()
+
+        strip.show(tabs)
+
+        assertSame(before, strip.tabLabels())
     }
 
     fun testNoTabsHideTheStrip() {

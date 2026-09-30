@@ -8,6 +8,7 @@
 
 - Worktrees: the worktrees of the repository appear as tabs above the Project tree, including the ones agents create; a click swaps the window to one in place, and a worktree with a command or process still running stays open behind it instead of closing. "+" creates a worktree under `.worktrees/` in the main checkout, and worktrees nested in the repository (`.worktrees/`, `.claude/worktrees/`) are excluded from the project that holds them. On by default under Settings | Tools | Agenstorm | Worktrees.
   - A worktree made with "+" gets the main checkout's `.idea` (without its project id, change lists and tasks), the git-ignored files `.worktreeinclude` names (`.env*` at the root by default), and `vendor/` and `node_modules/` cloned copy-on-write; then the setup from `.cursor/worktrees.json` or `.agenstorm/worktrees.json` runs in a terminal tab of the new worktree.
+  - Each worktree tab shows `●` for uncommitted changes, `↑n ↓m` for commits ahead of and behind its upstream or base, and `⚙` while a command runs in it or it is locked (Claude Code locks the worktree its agent works in); the tooltip says it in words.
 
 ### Fixed
 

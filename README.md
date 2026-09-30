@@ -52,7 +52,8 @@ down to the status bar, and window titles name the project rather than whichever
 
 The worktrees of the repository, yours and the ones Claude Code, Cursor or Conductor make for their
 agents, become tabs above the Project tree. A click swaps the window to that worktree in place; one with
-a command still running in its terminal stays open behind, so no agent is cut off. "+" makes a new one
+a command still running in its terminal stays open behind, so no agent is cut off. Each tab says whether
+its worktree has uncommitted changes, commits ahead or behind, or an agent at work. "+" makes a new one
 that is ready to work in: project settings, `.env` and `vendor/` carried over, the repository's setup
 started in a terminal. Worktrees nested in the repository stay out of the project that holds them.
 
@@ -392,6 +393,11 @@ repository, the main checkout first and named after its branch, the rest oldest 
 - "+" asks for a name and what to branch off (the current HEAD, or the default branch) and creates
   `.worktrees/<name>` in the main checkout on a branch of the same name. The folder is ignored through
   `.git/info/exclude`, so no tracked file changes.
+- Each tab shows its worktree's state after the name: `●` uncommitted changes, `↑2 ↓1` commits ahead of
+  and behind its upstream (or, without one, the branch it was made from, else the default branch), and
+  `⚙` while a command runs in it or it is locked, as Claude Code locks the worktree its agent works in.
+  Hover for the details. The status follows file and Git changes and the IDE coming to the front; while
+  nothing changes, the only Git run is a check at most once a minute on a locked worktree.
 - Right-click a tab for Open in New Window, Copy Path and Open in Terminal, which starts a terminal in
   that worktree without leaving the window.
 - When the tabs do not fit, the rest go under a chevron; the current one always stays.

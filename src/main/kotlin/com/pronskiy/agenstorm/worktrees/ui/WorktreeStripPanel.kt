@@ -2,14 +2,18 @@ package com.pronskiy.agenstorm.worktrees.ui
 
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
+import com.intellij.ide.ui.UISettings
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.util.text.HtmlBuilder
+import com.intellij.openapi.vcs.FileStatus
 import com.intellij.ui.JBColor
 import com.intellij.ui.PopupHandler
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
 import java.awt.Component
@@ -30,7 +34,8 @@ import javax.swing.JPanel
  * Steps T1.4–T1.5. The worktree strip above the Project tree (decision 82): one tab per worktree, the current one
  * filled, "+" at the end, and "»" with whatever does not fit ([StripLayout] decides, and the current tab always shows).
  * A click switches, a right click opens the tab's menu, and a line under the row separates it from the tree. Hidden
- * while there are no tabs.
+ * while there are no tabs. T3.3: a tab's [TabBadge] is painted after its name — the dot in the IDE's "modified"
+ * colour, the rest dimmed — and its lines join the tooltip; the label's text stays the name.
  */
 class WorktreeStripPanel(
     private val onSelect: (WorktreeTab) -> Unit,
@@ -39,6 +44,7 @@ class WorktreeStripPanel(
 ) : JPanel(null) {
 
     private var tabs: List<WorktreeTab> = emptyList()
+    private var badges: Map<String, TabBadge> = emptyMap()
     private var labels: List<TabLabel> = emptyList()
     private var overflow: List<WorktreeTab> = emptyList()
 
@@ -51,10 +57,12 @@ class WorktreeStripPanel(
         isVisible = false
     }
 
-    fun show(tabs: List<WorktreeTab>) {
+    fun show(tabs: List<WorktreeTab>, badges: Map<String, TabBadge> = emptyMap()) {
+        if (tabs == this.tabs && badges == this.badges && componentCount > 0) return
         this.tabs = tabs
+        this.badges = badges
         removeAll()
-        labels = tabs.map(::TabLabel)
+        labels = tabs.map { TabLabel(it, badges[it.path] ?: TabBadge.NONE) }
         labels.forEach(::add)
         add(addButton)
         add(moreButton)
@@ -67,6 +75,8 @@ class WorktreeStripPanel(
     internal fun overflowTabs(): List<WorktreeTab> = overflow
 
     internal fun tabLabels(): List<JBLabel> = labels
+
+    internal fun badgeOf(label: JBLabel): TabBadge? = (label as? TabLabel)?.badge
 
     internal fun moreButton(): JComponent = moreButton
 
@@ -130,13 +140,14 @@ class WorktreeStripPanel(
         })
     }
 
-    private inner class TabLabel(private val tab: WorktreeTab) : JBLabel(tab.label) {
+    private inner class TabLabel(private val tab: WorktreeTab, val badge: TabBadge) : JBLabel(tab.label) {
 
         private var hovered = false
 
         init {
             border = JBUI.Borders.empty(3, 8)
-            toolTipText = tab.worktree.branch?.let { AgenstormBundle.message("worktrees.strip.tab.tooltip", tab.path, it) } ?: tab.path
+            val title = tab.worktree.branch?.let { AgenstormBundle.message("worktrees.strip.tab.tooltip", tab.path, it) } ?: tab.path
+            toolTipText = if (badge.tooltip.isEmpty()) title else tooltip(title, badge.tooltip)
             if (tab.isCurrent) font = font.deriveFont(Font.BOLD) else cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
             addMouseListener(object : MouseAdapter() {
                 override fun mouseClicked(e: MouseEvent) {
@@ -151,6 +162,12 @@ class WorktreeStripPanel(
             addMouseListener(object : PopupHandler() {
                 override fun invokePopup(comp: Component, x: Int, y: Int) = onContextMenu(tab, comp, Point(x, y))
             })
+        }
+
+        override fun getPreferredSize(): Dimension {
+            val size = super.getPreferredSize()
+            if (badge.parts.isEmpty()) return size
+            return Dimension(size.width + BADGE_GAP + getFontMetrics(font).stringWidth(badge.text), size.height)
         }
 
         private fun setHovered(value: Boolean) {
@@ -177,10 +194,35 @@ class WorktreeStripPanel(
                 }
             }
             super.paintComponent(g)
+            if (badge.parts.isNotEmpty()) paintBadge(g)
+        }
+
+        /** Where `BasicLabelUI` puts a left-aligned, vertically centred text, then the badge after it. */
+        private fun paintBadge(g: Graphics) {
+            val g2 = g.create() as Graphics2D
+            try {
+                UISettings.setupAntialiasing(g2)
+                g2.font = font
+                val metrics = g2.fontMetrics
+                val insets = insets
+                var x = insets.left + metrics.stringWidth(text) + BADGE_GAP
+                val y = insets.top + (height - insets.top - insets.bottom - metrics.height) / 2 + metrics.ascent
+                for (part in badge.parts) {
+                    g2.color = if (part.kind == TabBadge.Kind.DIRTY) FileStatus.MODIFIED.color ?: foreground else UIUtil.getContextHelpForeground()
+                    g2.drawString(part.text, x, y)
+                    x += metrics.stringWidth(part.text + " ")
+                }
+            } finally {
+                g2.dispose()
+            }
         }
     }
 
     companion object {
         private val GAP get() = JBUI.scale(2)
+        private val BADGE_GAP get() = JBUI.scale(5)
+
+        private fun tooltip(title: String, lines: List<String>): String =
+            HtmlBuilder().append(title).apply { lines.forEach { br().append(it) } }.wrapWithHtmlBody().toString()
     }
 }
