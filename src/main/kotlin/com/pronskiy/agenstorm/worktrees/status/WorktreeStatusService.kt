@@ -57,8 +57,9 @@ data class WorktreeStatuses(val git: Map<String, WorktreeStatus>, val busy: Map<
  * is showing ([setShowing]), the feature is on and there are at least two worktrees; requests made meanwhile wait.
  *
  * A worktree nobody opened in this IDE has no files in the VFS, so an agent editing it produces no event until it
- * touches git. Claude Code locks the worktree its agent works in, so every 5 s — only while the IDE is in front — a
- * locked worktree not loaded here is asked for as well; the same tick re-reads the busy guards
+ * touches git. Claude Code locks the worktree its agent works in, so a tick every 5 s — only while the IDE is in
+ * front — asks for the locked worktrees not loaded here as well, each as often as [PollBackoff] allows (5 s while it
+ * keeps changing, down to once a minute for a lock left behind); the same tick re-reads the busy guards
  * ([ProjectBusyGuard], on the EDT like the switcher does) of the worktrees that are loaded. `git status` is git4idea's
  * `readOptional` command: it runs with `GIT_OPTIONAL_LOCKS=0` and never writes an agent's index.
  */
@@ -71,6 +72,7 @@ class WorktreeStatusService(private val project: Project, private val scope: Cor
     private val pending = ConcurrentHashMap.newKeySet<String>()
     private val wake = Channel<Unit>(Channel.CONFLATED)
     private val throttle = StatusThrottle(THROTTLE.inWholeMilliseconds)
+    private val backoff = PollBackoff(TICK.inWholeMilliseconds, POLL_MAX.inWholeMilliseconds)
     private val reader = StatusReader(::runGit)
     private val started = AtomicBoolean()
 
@@ -138,11 +140,13 @@ class WorktreeStatusService(private val project: Project, private val scope: Cor
             val known = snapshot.worktrees.map { it.path }.toSet()
             pending.retainAll(known)
             throttle.retain(known)
+            backoff.retain(known)
             val now = System.currentTimeMillis()
             for (path in throttle.due(pending, now)) {
                 pending.remove(path)
                 throttle.ran(path, now)
                 val status = withContext(Dispatchers.IO) { reader.read(Path.of(path)) }
+                backoff.observed(path, changed = status != state.value.git[path], now = now)
                 mutableState.update { current ->
                     val git = if (status != null) current.git + (path to status) else current.git - path
                     current.copy(git = git.filterKeys { it in known })
@@ -156,7 +160,8 @@ class WorktreeStatusService(private val project: Project, private val scope: Cor
 
     private suspend fun tick() {
         val loaded = loadedProjects().keys
-        request(snapshot.worktrees.filter { it.isLocked && it.path !in loaded }.map { it.path })
+        val locked = snapshot.worktrees.filter { it.isLocked && it.path !in loaded }.map { it.path }
+        request(backoff.due(locked, System.currentTimeMillis()))
         refreshBusy()
     }
 
@@ -196,6 +201,7 @@ class WorktreeStatusService(private val project: Project, private val scope: Cor
         private val DEBOUNCE = 300.milliseconds
         private val THROTTLE = 3.seconds
         private val TICK = 5.seconds
+        private val POLL_MAX = 60.seconds
 
         fun getInstance(project: Project): WorktreeStatusService = project.service()
     }
