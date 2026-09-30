@@ -26,6 +26,10 @@
                         interface="com.pronskiy.agenstorm.commit.context.CommitContextProvider"
                         dynamic="true"/>
         <!-- core: what keeps a project open when offloading (P2.4) or switching worktrees (T1.1); the terminal guard is registered in agenstorm-terminal.xml. -->
+        <!-- worktrees: where a new worktree's setup runs when a terminal tab is available (T2.5); implemented in agenstorm-terminal.xml. -->
+        <extensionPoint qualifiedName="com.pronskiy.agenstorm.worktreeSetupTerminal"
+                        interface="com.pronskiy.agenstorm.worktrees.setup.SetupTerminal"
+                        dynamic="true"/>
         <extensionPoint qualifiedName="com.pronskiy.agenstorm.offloadGuard"
                         interface="com.pronskiy.agenstorm.core.busy.ProjectBusyGuard"
                         dynamic="true"/>

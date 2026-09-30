@@ -17,6 +17,8 @@
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
         <!-- P2.4: a terminal tab with a command running keeps its project loaded. -->
         <offloadGuard implementation="com.pronskiy.agenstorm.core.busy.TerminalCommandGuard"/>
+        <!-- T2.5: a new worktree's setup runs in a reworked terminal tab. -->
+        <worktreeSetupTerminal implementation="com.pronskiy.agenstorm.worktrees.setup.ReworkedSetupTerminal"/>
     </extensions>
 
     <actions>

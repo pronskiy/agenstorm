@@ -11,10 +11,11 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Step T2.5. Runs a worktree's setup in the Run tool window of the project it belongs to (decision 84): output stays
- * visible and the run can be stopped, and while it runs `RunningProcessesGuard` counts the worktree as busy, so no
- * switch closes it halfway. The script gets Cursor's `ROOT_WORKTREE_PATH` (the main checkout) and
- * `AGENSTORM_WORKTREE_PATH` / `AGENSTORM_WORKTREE_NAME`, runs in the worktree, and sees the environment a terminal would.
+ * Step T2.5 (decision 84). Runs a worktree's setup in the project it belongs to: in a tab of the reworked terminal when
+ * the Terminal plugin provides one ([SetupTerminal]) — the tab stays for whoever works there next — and otherwise in the
+ * Run tool window, with output and a stop button. Either way something is running while it runs, so the busy guards
+ * keep the worktree open through a switch. The setup gets Cursor's `ROOT_WORKTREE_PATH` (the main checkout) and
+ * `AGENSTORM_WORKTREE_PATH` / `AGENSTORM_WORKTREE_NAME`, and runs in the worktree.
  */
 object SetupRunner {
 
@@ -27,10 +28,13 @@ object SetupRunner {
     fun run(project: Project, main: Path, worktree: Path): Boolean {
         val setup = load(main) ?: return false
         val name = worktree.fileName.toString()
+        val title = AgenstormBundle.message("worktrees.setup.title", name)
+        val terminal = SetupTerminal.EP_NAME.extensionList.firstOrNull()
+        if (terminal != null && terminal.run(project, worktree, environment(main, worktree), title, shellLine(setup, SystemInfo.isWindows))) return true
         return try {
             val handler = KillableColoredProcessHandler(commandLine(setup, main, worktree, SystemInfo.isWindows))
             RunContentExecutor(project, handler)
-                .withTitle(AgenstormBundle.message("worktrees.setup.title", name))
+                .withTitle(title)
                 .withActivateToolWindow(true)
                 .run()
             true
@@ -50,14 +54,25 @@ object SetupRunner {
         }
         return GeneralCommandLine(command)
             .withWorkingDirectory(worktree)
-            .withEnvironment(
-                mapOf(
-                    "ROOT_WORKTREE_PATH" to main.toString(),
-                    "AGENSTORM_WORKTREE_PATH" to worktree.toString(),
-                    "AGENSTORM_WORKTREE_NAME" to worktree.fileName.toString(),
-                ),
-            )
+            .withEnvironment(environment(main, worktree))
     }
+
+    fun environment(main: Path, worktree: Path): Map<String, String> = mapOf(
+        "ROOT_WORKTREE_PATH" to main.toString(),
+        "AGENSTORM_WORKTREE_PATH" to worktree.toString(),
+        "AGENSTORM_WORKTREE_NAME" to worktree.fileName.toString(),
+    )
+
+    /**
+     * The line typed into an interactive shell: the commands joined with `&&`, so the first failure stops the rest
+     * without ending the shell the way `set -e` would; a script goes to `sh`.
+     */
+    fun shellLine(setup: SetupConfig.Setup, windows: Boolean): String = when (setup) {
+        is SetupConfig.Setup.Commands -> setup.commands.joinToString(" && ")
+        is SetupConfig.Setup.Script -> if (windows) "\"${setup.path}\"" else "sh ${quote(setup.path.toString())}"
+    }
+
+    private fun quote(text: String): String = "'" + text.replace("'", "'\\''") + "'"
 
     private fun load(main: Path): SetupConfig.Setup? {
         val file = SetupConfig.find(main) ?: return null

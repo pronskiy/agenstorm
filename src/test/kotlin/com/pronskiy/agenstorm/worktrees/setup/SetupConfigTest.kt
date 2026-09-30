@@ -67,4 +67,11 @@ class SetupConfigTest {
         assertEquals(listOf("/bin/sh", "/r/setup.sh"), SetupRunner.commandLine(Setup.Script(Path.of("/r/setup.sh")), main, worktree, windows = false).getCommandLineList(null))
         assertEquals(listOf("cmd.exe", "/c", "a && b"), SetupRunner.commandLine(Setup.Commands(listOf("a", "b")), main, worktree, windows = true).getCommandLineList(null))
     }
+
+    @Test
+    fun inATerminalCommandsAreChainedSoAFailureStopsTheRestButNotTheShell() {
+        assertEquals("composer install && npm ci", SetupRunner.shellLine(Setup.Commands(listOf("composer install", "npm ci")), windows = false))
+        assertEquals("sh '/r/it'\\''s/setup.sh'", SetupRunner.shellLine(Setup.Script(Path.of("/r/it's/setup.sh")), windows = false))
+        assertEquals("/r", SetupRunner.environment(Path.of("/r"), Path.of("/r/.worktrees/a"))["ROOT_WORKTREE_PATH"])
+    }
 }
