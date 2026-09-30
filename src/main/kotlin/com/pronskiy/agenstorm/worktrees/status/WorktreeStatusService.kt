@@ -43,8 +43,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-/** Step T3.2. The tabs' status: `git status` per worktree path, and why a worktree loaded in the IDE is busy. */
-data class WorktreeStatuses(val git: Map<String, WorktreeStatus>, val busy: Map<String, String>) {
+/**
+ * Step T3.2. The tabs' status: `git status` per worktree path, why a worktree loaded in the IDE is busy, and which
+ * locked worktrees were locked by a process that has ended since ([LockOwner]).
+ */
+data class WorktreeStatuses(val git: Map<String, WorktreeStatus>, val busy: Map<String, String>, val endedLocks: Set<String> = emptySet()) {
 
     companion object {
         val EMPTY = WorktreeStatuses(emptyMap(), emptyMap())
@@ -59,9 +62,11 @@ data class WorktreeStatuses(val git: Map<String, WorktreeStatus>, val busy: Map<
  * is showing ([setShowing]), the feature is on and there are at least two worktrees; requests made meanwhile wait.
  *
  * A worktree nobody opened in this IDE has no files in the VFS, so an agent editing it produces no event until it
- * touches git. Claude Code locks the worktree its agent works in, so a tick every 5 s — only while the IDE is in
- * front — asks for the locked worktrees not loaded here as well, each as often as [PollBackoff] allows (5 s while it
- * keeps changing, down to once a minute for a lock left behind); the same tick re-reads the busy guards
+ * touches git. Claude Code locks the worktree its session works in, recording the session's pid, so a tick every 5 s
+ * — only while the IDE is in front — asks for the locked worktrees not loaded here as well: every tick while the
+ * locking process runs, never once it has ended (Claude Code leaves the lock behind), and as often as [PollBackoff]
+ * allows for a lock that names no process (5 s while it keeps changing, down to once a minute); the same tick
+ * re-reads the busy guards
  * ([ProjectBusyGuard], on the EDT like the switcher does) of the worktrees that are loaded. `git status` is git4idea's
  * `readOptional` command: it runs with `GIT_OPTIONAL_LOCKS=0` and never writes an agent's index.
  */
@@ -162,8 +167,8 @@ class WorktreeStatusService(private val project: Project, private val scope: Cor
 
     private suspend fun tick() {
         val loaded = loadedProjects().keys
-        val locked = snapshot.worktrees.filter { it.isLocked && it.path !in loaded }.map { it.path }
-        request(backoff.due(locked, System.currentTimeMillis()))
+        val locked = snapshot.worktrees.filter { it.isLocked && it.path !in loaded }.groupBy({ lockState(it.lockReason) }, { it.path })
+        request(locked[LockOwner.State.LIVE].orEmpty() + backoff.due(locked[LockOwner.State.UNKNOWN].orEmpty(), System.currentTimeMillis()))
         refreshBusy()
     }
 
@@ -173,8 +178,16 @@ class WorktreeStatusService(private val project: Project, private val scope: Cor
             val loaded = loadedProjects()
             worktrees.mapNotNull { worktree -> loaded[worktree.path]?.let { ProjectBusyGuard.busyReason(it) }?.let { worktree.path to it } }.toMap()
         }
-        mutableState.update { it.copy(busy = busy) }
+        val ended = worktrees.filter { it.isLocked && lockState(it.lockReason) == LockOwner.State.ENDED }.map { it.path }.toSet()
+        mutableState.update { it.copy(busy = busy, endedLocks = ended) }
     }
+
+    private fun lockState(reason: String?): LockOwner.State =
+        LockOwner.state(
+            reason,
+            started = { pid -> ProcessHandle.of(pid).flatMap { it.info().startInstant() }.orElse(null) },
+            alive = { pid -> ProcessHandle.of(pid).map { it.isAlive }.orElse(false) },
+        )
 
     private fun loadedProjects(): Map<String, Project> =
         ProjectManager.getInstance().openProjects

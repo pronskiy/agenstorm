@@ -51,7 +51,7 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
             val current = project.basePath?.let(FileUtil::toSystemIndependentName)
             combine(WorktreeRegistry.getInstance(project).state, WorktreeStatusService.getInstance(project).state) { snapshot, statuses ->
                 val next = WorktreeTabsModel.tabs(snapshot, current)
-                next to next.associate { it.path to TabBadge.of(it.worktree, statuses.git[it.path], statuses.busy[it.path]) }
+                next to next.associate { it.path to TabBadge.of(it.worktree, statuses.git[it.path], statuses.busy[it.path], it.path in statuses.endedLocks) }
             }.collect { (nextTabs, nextBadges) ->
                 withContext(Dispatchers.EDT) {
                     tabs = nextTabs

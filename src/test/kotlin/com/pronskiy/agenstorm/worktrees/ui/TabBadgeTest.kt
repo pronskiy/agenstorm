@@ -40,6 +40,15 @@ class TabBadgeTest : BasePlatformTestCase() {
         assertEquals(listOf("1 uncommitted change", "1 commit ahead of origin/main", "Locked"), badge.tooltip)
     }
 
+    fun testALockWhoseProcessEndedLosesTheGearButKeepsItsLine() {
+        val reason = "claude session t3probe (pid 68643 start Wed Sep 30 15:48:15 2026)"
+        val ended = TabBadge.of(wt(locked = true, reason = reason), WorktreeStatus.CLEAN, busyReason = null, lockEnded = true)
+
+        assertEquals("", ended.text)
+        assertEquals(listOf("Locked: $reason, a process that has ended"), ended.tooltip)
+        assertEquals("\u2699", TabBadge.of(wt(locked = true, reason = reason), WorktreeStatus.CLEAN, busyReason = "a process is still running", lockEnded = true).text)
+    }
+
     fun testCountsWithNothingToCountAgainstAreNotShown() {
         assertSame(TabBadge.NONE, TabBadge.of(wt(), WorktreeStatus(0, 4, 4, against = null), busyReason = null))
     }
