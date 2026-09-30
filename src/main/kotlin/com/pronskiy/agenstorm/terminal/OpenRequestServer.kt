@@ -236,13 +236,34 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
             }
         }
 
-    /** Requires read access. Content roots first; the base path catches a file the roots exclude. */
+    /**
+     * Requires read access. Content roots first; the base path catches a file the roots exclude. A file inside a
+     * linked worktree nested below the project (T1.7) belongs to that worktree's project, not this one.
+     */
     @VisibleForTesting
     fun projectHolds(candidate: Project, file: VirtualFile): Boolean {
         if (candidate.isDisposed) return false
+        if (insideLinkedWorktree(candidate, file)) return false
         if (ProjectRootManager.getInstance(candidate).fileIndex.isInContent(file)) return true
         val base = candidate.basePath ?: return false
         return file.path.startsWith(if (base.endsWith("/")) base else "$base/")
+    }
+
+    /**
+     * Step T1.7. Whether [file] sits in a folder below [candidate]'s own root that holds a `.git` *file* — a linked
+     * worktree, which is a project of its own. The walk stops at the project's base path and at the content root of
+     * the file, so the project's own root is never the one found; a nested `.git` *directory* is an ordinary nested
+     * repository and does not count.
+     */
+    private fun insideLinkedWorktree(candidate: Project, file: VirtualFile): Boolean {
+        val stops = setOfNotNull(candidate.basePath, ProjectRootManager.getInstance(candidate).fileIndex.getContentRootForFile(file, false)?.path)
+        var dir = if (file.isDirectory) file else file.parent
+        while (dir != null && dir.path !in stops) {
+            val git = dir.findChild(".git")
+            if (git != null && !git.isDirectory) return true
+            dir = dir.parent
+        }
+        return false
     }
 
     /**
@@ -316,7 +337,7 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
     private fun isInsideThisProject(path: Path, directory: VirtualFile): Boolean =
         ProjectUtil.isSameProject(path, project) ||
             ReadAction.computeBlocking<Boolean, RuntimeException> {
-                ProjectRootManager.getInstance(project).fileIndex.isInContent(directory)
+                !insideLinkedWorktree(project, directory) && ProjectRootManager.getInstance(project).fileIndex.isInContent(directory)
             }
 
     /**

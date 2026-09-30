@@ -75,6 +75,24 @@ class OpenProjectClassificationTest : BasePlatformTestCase() {
         assertFalse(server.projectHolds(project, file))
     }
 
+    fun testALinkedWorktreeNestedInTheProjectIsAProjectOfItsOwn() {
+        // Step T1.7: `.git` as a *file* makes the folder a linked worktree.
+        val worktree = Files.createDirectories(contentRoot.resolve(".worktrees/fix-login"))
+        Files.writeString(worktree.resolve(".git"), "gitdir: /r/.git/worktrees/fix-login\n")
+        Files.createDirectories(worktree.resolve("src"))
+        val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Files.writeString(worktree.resolve("src/Login.php"), "<?php\n"))!!
+
+        assertFalse(server.projectHolds(project, file))
+        assertEquals(worktree, assertInstanceOf(server.classifyProject(worktree), OpenRequestServer.ProjectAction.OpenNew::class.java).path)
+    }
+
+    fun testANestedPlainRepositoryStaysPartOfTheProject() {
+        val nested = Files.createDirectories(contentRoot.resolve("vendor/acme/lib/.git"))
+        val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Files.writeString(nested.parent.resolve("Lib.php"), "<?php\n"))!!
+
+        assertTrue(server.projectHolds(project, file))
+    }
+
     fun testAPathThatIsNotOnDiskAtAllStillBecomesAProjectToOpen() {
         // The router only ever hands over directories it saw on disk, so this is belt and braces.
         val action = server.classifyProject(outside.resolve("gone"))

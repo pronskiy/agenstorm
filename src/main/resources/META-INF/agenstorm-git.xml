@@ -16,6 +16,8 @@
     <!-- worktrees (Epic T): the worktrees of the project's repository, kept current (T1.2), and the strip above the Project tree (T1.4). -->
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="com.pronskiy.agenstorm.worktrees.WorktreeStartupActivity"/>
+        <!-- T1.7: .worktrees/ and .claude/worktrees/ stay out of the project that holds them, and out of its VCS roots. -->
+        <directoryIndexExcludePolicy implementation="com.pronskiy.agenstorm.worktrees.WorktreeExcludePolicy"/>
     </extensions>
     <actions>
         <!-- Hides the stock VCS group (branch, merge/rebase, create repository) while the branch lives in the status bar. -->
