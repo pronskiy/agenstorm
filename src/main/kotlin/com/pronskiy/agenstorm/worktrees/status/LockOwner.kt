@@ -50,5 +50,13 @@ data class LockOwner(val pid: Long, val start: Instant?) {
             val actual = started(owner.pid) ?: return State.LIVE
             return if (Duration.between(recorded, actual).abs() <= TOLERANCE) State.LIVE else State.ENDED
         }
+
+        /** [state] against the processes of this machine. */
+        fun current(reason: String?): State =
+            state(
+                reason,
+                started = { pid -> ProcessHandle.of(pid).flatMap { it.info().startInstant() }.orElse(null) },
+                alive = { pid -> ProcessHandle.of(pid).map { it.isAlive }.orElse(false) },
+            )
     }
 }

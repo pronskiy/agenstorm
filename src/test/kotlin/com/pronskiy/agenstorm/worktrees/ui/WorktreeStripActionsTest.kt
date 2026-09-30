@@ -1,5 +1,6 @@
 package com.pronskiy.agenstorm.worktrees.ui
 
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -7,20 +8,25 @@ import com.pronskiy.agenstorm.worktrees.Worktree
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
 import java.awt.datatransfer.DataFlavor
 
-/** Step T1.5: a worktree tab's menu. */
+/** Step T1.5: a worktree tab's menu; T4.1: Remove on every tab but the main checkout's. */
 class WorktreeStripActionsTest : BasePlatformTestCase() {
 
-    private fun tab(current: Boolean) =
-        WorktreeTab(Worktree("/r/.worktrees/fix-login", "fix/login", isMain = false, isLocked = false, lockReason = null, createdAt = 1), "fix-login", current)
+    private fun tab(current: Boolean, main: Boolean = false) =
+        WorktreeTab(Worktree(if (main) "/r" else "/r/.worktrees/fix-login", "fix/login", isMain = main, isLocked = false, lockReason = null, createdAt = 1), "fix-login", current)
 
-    private fun texts(current: Boolean) = WorktreeStripActions.contextMenuGroup(project, tab(current)).getChildren(null).map { it.templatePresentation.text }
+    private fun texts(current: Boolean, main: Boolean = false) =
+        WorktreeStripActions.contextMenuGroup(project, tab(current, main)).getChildren(null).map { if (it is Separator) "---" else it.templatePresentation.text }
 
-    fun testAnotherWorktreeCanBeOpenedCopiedAndOpenedInTheTerminal() {
-        assertEquals(listOf("Open in New Window", "Copy Path", "Open in Terminal"), texts(current = false))
+    fun testAnotherWorktreeCanBeOpenedCopiedOpenedInTheTerminalAndRemoved() {
+        assertEquals(listOf("Open in New Window", "Copy Path", "Open in Terminal", "---", "Remove Worktree\u2026"), texts(current = false))
     }
 
     fun testTheCurrentWorktreeHasNoOpenInNewWindow() {
-        assertEquals(listOf("Copy Path", "Open in Terminal"), texts(current = true))
+        assertEquals(listOf("Copy Path", "Open in Terminal", "---", "Remove Worktree\u2026"), texts(current = true))
+    }
+
+    fun testTheMainCheckoutCannotBeRemoved() {
+        assertEquals(listOf("Open in New Window", "Copy Path", "Open in Terminal"), texts(current = false, main = true))
     }
 
     fun testCopyPathPutsThePathOnTheClipboard() {

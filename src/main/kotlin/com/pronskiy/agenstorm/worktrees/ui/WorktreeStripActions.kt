@@ -9,6 +9,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
@@ -26,6 +27,7 @@ import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
+import com.pronskiy.agenstorm.worktrees.cleanup.RemoveWorktreeFlow
 import com.pronskiy.agenstorm.worktrees.setup.SetupConfig
 import com.pronskiy.agenstorm.worktrees.setup.SetupRunner
 import kotlinx.coroutines.CancellationException
@@ -41,7 +43,8 @@ import java.nio.file.Path
  * Step T1.5. The right-click menu of a worktree tab: Open in New Window, Copy Path, and Open in Terminal — the last one
  * the Terminal plugin's own `Terminal.OpenInTerminal` run on the worktree's folder in *this* project, so an agent can
  * be started there without leaving the window, and absent when the Terminal plugin is — and Run Setup Script (T2.5) for a
- * worktree made elsewhere, when the repository has a setup. T4 adds Merge Back, Archive and Remove.
+ * worktree made elsewhere, when the repository has a setup; and (T4.1) Remove Worktree on every tab but the main checkout's.
+ * T4 adds Merge Back and Archive.
  */
 object WorktreeStripActions {
 
@@ -59,6 +62,10 @@ object WorktreeStripActions {
         val main = WorktreeRegistry.getInstance(project).state.value.worktrees.firstOrNull { it.isMain }?.path
         if (main != null && !tab.worktree.isMain && SetupConfig.find(Path.of(main)) != null) {
             actions += action(AgenstormBundle.message("worktrees.menu.runSetup")) { SetupRunner.run(project, Path.of(main), Path.of(tab.path)) }
+        }
+        if (!tab.worktree.isMain) {
+            actions += Separator.getInstance()
+            actions += action(AgenstormBundle.message("worktrees.menu.remove")) { RemoveWorktreeFlow.start(project, tab.worktree) }
         }
         return DefaultActionGroup(actions)
     }

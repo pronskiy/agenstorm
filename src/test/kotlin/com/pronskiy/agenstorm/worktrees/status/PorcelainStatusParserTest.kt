@@ -66,6 +66,15 @@ class PorcelainStatusParserTest {
     }
 
     @Test
+    fun changedPathsNameEachEntryOnceWithTheirSpaces() {
+        val output = tracked.replace('|', '\u0000') +
+            "u UU N... 100644 100644 100644 100644 5626abf0f72e58d7a153368ba57db4c673c0e171 2bdf67abb163a4ffb2d7f3f0880c9fe5068ce782 f719efd430d52bcfc8566a43b2eb655688d38871 merge me.txt\u0000! vendor/\u0000"
+
+        assertEquals(listOf("a.txt", "b 3.txt", "c.txt", "d/", "n.txt", "merge me.txt"), PorcelainStatusParser.changedPaths(output))
+        assertEquals(emptyList<String>(), PorcelainStatusParser.changedPaths(""))
+    }
+
+    @Test
     fun unreadableCountsAreNoCounts() {
         assertNull(PorcelainStatusParser.parseCounts(""))
         assertNull(PorcelainStatusParser.parseCounts("fatal: ambiguous argument"))

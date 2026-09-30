@@ -52,6 +52,30 @@ object PorcelainStatusParser {
         return Porcelain(branch, upstream, ahead.takeIf { behind != null }, behind.takeIf { ahead != null }, dirty)
     }
 
+    /**
+     * Step T4.1. The paths `git status --porcelain=v2 -z` lists as changed, in its order: the new path of a rename, a
+     * folder of untracked files once, with its trailing slash. Paths may hold spaces, so each entry is split only as far
+     * as its fixed fields go.
+     */
+    fun changedPaths(output: String): List<String> {
+        val paths = mutableListOf<String>()
+        val fields = output.split('\u0000')
+        var index = 0
+        while (index < fields.size) {
+            val field = fields[index++].trimStart('\n', '\r')
+            when {
+                field.startsWith("1 ") -> field.split(' ', limit = 9).getOrNull(8)?.let(paths::add)
+                field.startsWith("2 ") -> {
+                    field.split(' ', limit = 10).getOrNull(9)?.let(paths::add)
+                    index++
+                }
+                field.startsWith("u ") -> field.split(' ', limit = 11).getOrNull(10)?.let(paths::add)
+                field.startsWith("? ") -> paths += field.removePrefix("? ")
+            }
+        }
+        return paths
+    }
+
     /** What to count against when [porcelain] has no live upstream: the recorded base, else the default branch; never the branch itself. */
     fun baseFor(porcelain: Porcelain, recordedBase: String?, defaultBranch: String?): String? {
         val branch = porcelain.branch ?: return null

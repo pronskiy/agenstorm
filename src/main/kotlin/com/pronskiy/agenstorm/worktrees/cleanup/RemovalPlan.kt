@@ -1,0 +1,65 @@
+package com.pronskiy.agenstorm.worktrees.cleanup
+
+/**
+ * Step T4.1, pure. Whether a worktree may be removed, what removing it would lose or override, and how git is told.
+ *
+ * Some things stop it outright, whatever the user says: the main checkout; a worktree whose project is loaded here and
+ * busy (a guard's reason — the same rule as the switch, decision 74); and one locked by a process that still runs
+ * (decision 86 — an agent at work). A worktree git cannot read the status of is not removed either. Everything else is
+ * [Plan.Ready], with the [Risk]s the user confirms before anything happens: uncommitted changes (lost — `--force`),
+ * commits the base lacks (kept on the branch, which `git branch -d` then refuses to delete; on a detached HEAD, commits
+ * on no branch at all, which are lost), and a lock that names no process (overridden). A lock whose process has ended
+ * is no risk — Claude Code leaves one behind after every session — but it is lifted first, since `git worktree remove`
+ * refuses a locked worktree.
+ */
+object RemovalPlan {
+
+    enum class LockState { NONE, LIVE, ENDED, UNKNOWN }
+
+    data class Facts(
+        val isMain: Boolean,
+        val branch: String?,
+        /** What `git status` lists; null when it could not be read. */
+        val changes: List<String>?,
+        /** Commits of HEAD that [base] lacks — or, on a detached HEAD, that are on no branch; null when git could not count them. */
+        val unmerged: Int?,
+        val base: String?,
+        val lock: LockState,
+        val lockReason: String?,
+        /** A guard's reason, for a worktree whose project is loaded in the IDE. */
+        val busyReason: String?,
+    )
+
+    sealed interface Risk {
+        data class Changes(val paths: List<String>) : Risk
+
+        /** [commits] null: git could not tell. [base] null: counted against every branch (a detached HEAD). */
+        data class Unmerged(val commits: Int?, val base: String?, val branch: String?) : Risk
+
+        data class Locked(val reason: String?) : Risk
+    }
+
+    sealed interface Plan {
+        data object MainCheckout : Plan
+        data class Busy(val reason: String) : Plan
+        data class AgentRunning(val lockReason: String?) : Plan
+        data object Unreadable : Plan
+
+        /** [risks] empty: nothing is lost. [force] removes a worktree with changes; [unlock] lifts its lock first. */
+        data class Ready(val risks: List<Risk>, val unlock: Boolean, val force: Boolean, val branch: String?) : Plan
+    }
+
+    fun plan(facts: Facts): Plan {
+        if (facts.isMain) return Plan.MainCheckout
+        facts.busyReason?.let { return Plan.Busy(it) }
+        if (facts.lock == LockState.LIVE) return Plan.AgentRunning(facts.lockReason)
+        val changes = facts.changes ?: return Plan.Unreadable
+        val unmerged = facts.unmerged
+        val risks = listOfNotNull(
+            Risk.Changes(changes).takeIf { changes.isNotEmpty() },
+            Risk.Unmerged(unmerged, facts.base, facts.branch).takeIf { unmerged == null || unmerged > 0 },
+            Risk.Locked(facts.lockReason).takeIf { facts.lock == LockState.UNKNOWN },
+        )
+        return Plan.Ready(risks, unlock = facts.lock != LockState.NONE, force = changes.isNotEmpty(), branch = facts.branch)
+    }
+}

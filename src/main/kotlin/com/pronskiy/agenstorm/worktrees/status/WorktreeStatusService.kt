@@ -191,12 +191,7 @@ class WorktreeStatusService(private val project: Project, private val scope: Cor
         mutableState.update { it.copy(busy = busy, endedLocks = ended) }
     }
 
-    private fun lockState(reason: String?): LockOwner.State =
-        LockOwner.state(
-            reason,
-            started = { pid -> ProcessHandle.of(pid).flatMap { it.info().startInstant() }.orElse(null) },
-            alive = { pid -> ProcessHandle.of(pid).map { it.isAlive }.orElse(false) },
-        )
+    private fun lockState(reason: String?): LockOwner.State = LockOwner.current(reason)
 
     private fun loadedProjects(): Map<String, Project> =
         ProjectManager.getInstance().openProjects
