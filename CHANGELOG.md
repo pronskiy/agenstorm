@@ -11,6 +11,8 @@
   - Each worktree tab shows `●` for uncommitted changes, `↑n ↓m` for commits ahead of and behind its upstream or base, and `⚙` while a command runs in it or it is locked (Claude Code locks the worktree its agent works in); the tooltip says it in words.
   - A worktree tab's menu merges the worktree back into its base (squashed and left staged for the commit, or rebased and fast-forwarded; a conflict is left in the worktree, never half-merged on the base), archives it (uncommitted work committed to its branch, folder removed, branch kept) or removes it after a confirmation that names what would be lost. "+" can also check out an existing branch, which brings an archived worktree back.
   - A linked worktree's project is named `<project>:<worktree>` (`app:fix-login`) in the project tabs and the window title, rather than by its folder alone.
+  - A setting chooses what a click on a worktree tab does: replace the current project in its window (the default), or open the worktree as a project of its own next to it.
+  - The folders holding worktrees (`.worktrees/`, `.claude/worktrees/`) are left out of the Project view, as `.idea` is; Project Files still lists them.
 
 ### Fixed
 

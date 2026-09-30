@@ -20,6 +20,8 @@
         <postStartupActivity implementation="com.pronskiy.agenstorm.worktrees.WorktreeStartupActivity"/>
         <!-- T1.7: .worktrees/ and .claude/worktrees/ stay out of the project that holds them, and out of its VCS roots. -->
         <directoryIndexExcludePolicy implementation="com.pronskiy.agenstorm.worktrees.WorktreeExcludePolicy"/>
+        <!-- ...and out of the Project pane too, as .idea is; Project Files still lists them. -->
+        <treeStructureProvider implementation="com.pronskiy.agenstorm.worktrees.ui.WorktreeFolderFilter"/>
     </extensions>
     <actions>
         <!-- Hides the stock VCS group (branch, merge/rebase, create repository) while the branch lives in the status bar. -->

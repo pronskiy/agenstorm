@@ -388,7 +388,9 @@ repository, the main checkout first and named after its branch, the rest oldest 
 
 - Click a tab to swap the window to that worktree: it opens where the window is, and the worktree you
   left closes. If a command or a run configuration is still running there (an agent in the terminal,
-  say), it stays open behind instead and closes on a later switch, once it is idle.
+  say), it stays open behind instead and closes on a later switch, once it is idle. Or, under
+  Settings | Tools | Agenstorm | Worktrees, have each worktree open as a project of its own next to the
+  current one, with its own project tab.
 - Worktrees made anywhere show up on their own within seconds: `git worktree add`, Claude Code's
   `claude -w`, the Git tool window, Cursor, Conductor.
 - "+" asks for a name and what to branch off (the current HEAD, or the default branch) and creates
@@ -418,7 +420,8 @@ repository, the main checkout first and named after its branch, the rest oldest 
   tabs and the window title; the main checkout keeps its own name.
 - `.worktrees/` and Claude Code's `.claude/worktrees/` are excluded from the project that holds them, so
   they are neither indexed twice nor picked up as extra Git roots, and `open .worktrees/x` in the
-  terminal opens that worktree.
+  terminal opens that worktree. Like `.idea`, they are left out of the Project view; Project Files
+  still lists them.
 
 ### A new worktree, ready to work in
 
