@@ -12,6 +12,11 @@
                                 order="first"/>
         <postStartupActivity implementation="com.pronskiy.agenstorm.tabs.git.BranchStartupActivity"/>
     </extensions>
+
+    <!-- worktrees (Epic T): the worktrees of the project's repository, kept current (T1.2). -->
+    <extensions defaultExtensionNs="com.intellij">
+        <postStartupActivity implementation="com.pronskiy.agenstorm.worktrees.WorktreeStartupActivity"/>
+    </extensions>
     <actions>
         <!-- Hides the stock VCS group (branch, merge/rebase, create repository) while the branch lives in the status bar. -->
         <group id="MainToolbarVCSGroup" class="com.pronskiy.agenstorm.tabs.git.VcsToolbarGroup" overrides="true"/>
