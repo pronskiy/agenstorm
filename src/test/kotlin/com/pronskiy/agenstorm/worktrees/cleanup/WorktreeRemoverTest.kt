@@ -121,6 +121,33 @@ class WorktreeRemoverTest {
     }
 
     @Test
+    fun archivingCommitsEverythingPastAFailingHookAndKeepsTheBranch() {
+        val wt = worktree("tables-q")
+        Files.writeString(Path.of(wt.path, "README.md"), "edited")
+        Files.writeString(Path.of(wt.path, "new.txt"), "new")
+        val hook = main.resolve(".git/hooks/pre-commit")
+        Files.writeString(hook, "#!/bin/sh\nexit 1\n")
+        hook.toFile().setExecutable(true)
+
+        val plan = RemovalPlan.archive(remover.facts(mainTree, wt, LockState.NONE, null)) as Plan.Ready
+
+        assertEquals(Outcome.Removed("tables-q", branchDeleted = false), remover.remove(main, wt, plan))
+        assertFalse(Files.exists(Path.of(wt.path)))
+        assertEquals("wip: archive tables-q", git(main, "log", "-1", "--format=%s", "tables-q"))
+        assertEquals("M\tREADME.md\nA\tnew.txt", git(main, "diff", "--name-status", "main", "tables-q"))
+    }
+
+    @Test
+    fun aCleanWorktreeIsArchivedWithoutACommit() {
+        val wt = worktree("idle")
+
+        val plan = RemovalPlan.archive(remover.facts(mainTree, wt, LockState.NONE, null)) as Plan.Ready
+
+        assertEquals(Outcome.Removed("idle", branchDeleted = false), remover.remove(main, wt, plan))
+        assertEquals(git(main, "rev-parse", "main"), git(main, "rev-parse", "idle"))
+    }
+
+    @Test
     fun aLockIsLiftedToRemoveAndPutBackWhenRemovalFails() {
         val wt = worktree("usb", locked = "on a USB stick")
         val plan = RemovalPlan.plan(remover.facts(mainTree, wt, LockState.UNKNOWN, null)) as Plan.Ready

@@ -11,6 +11,10 @@ package com.pronskiy.agenstorm.worktrees.cleanup
  * on no branch at all, which are lost), and a lock that names no process (overridden). A lock whose process has ended
  * is no risk — Claude Code leaves one behind after every session — but it is lifted first, since `git worktree remove`
  * refuses a locked worktree.
+ *
+ * Step T4.2: [archive] keeps the work instead — whatever `git status` lists is committed to the worktree's branch, the
+ * worktree is removed without `--force` and the branch stays, so *New Worktree* can bring it back; commits the base
+ * lacks are no risk then. A detached HEAD has no branch to keep the work on, so it is not archived.
  */
 object RemovalPlan {
 
@@ -44,15 +48,24 @@ object RemovalPlan {
         data class Busy(val reason: String) : Plan
         data class AgentRunning(val lockReason: String?) : Plan
         data object Unreadable : Plan
+        data object NoBranch : Plan
 
-        /** [risks] empty: nothing is lost. [force] removes a worktree with changes; [unlock] lifts its lock first. */
-        data class Ready(val risks: List<Risk>, val unlock: Boolean, val force: Boolean, val branch: String?) : Plan
+        /**
+         * [risks] empty: nothing is lost. [force] removes a worktree with changes; [unlock] lifts its lock first; [commit]
+         * commits the changes to [branch] before (archiving); [deleteBranch] asks `git branch -d` after.
+         */
+        data class Ready(
+            val risks: List<Risk>,
+            val unlock: Boolean,
+            val force: Boolean,
+            val branch: String?,
+            val commit: Boolean = false,
+            val deleteBranch: Boolean = true,
+        ) : Plan
     }
 
     fun plan(facts: Facts): Plan {
-        if (facts.isMain) return Plan.MainCheckout
-        facts.busyReason?.let { return Plan.Busy(it) }
-        if (facts.lock == LockState.LIVE) return Plan.AgentRunning(facts.lockReason)
+        stopped(facts)?.let { return it }
         val changes = facts.changes ?: return Plan.Unreadable
         val unmerged = facts.unmerged
         val risks = listOfNotNull(
@@ -61,5 +74,20 @@ object RemovalPlan {
             Risk.Locked(facts.lockReason).takeIf { facts.lock == LockState.UNKNOWN },
         )
         return Plan.Ready(risks, unlock = facts.lock != LockState.NONE, force = changes.isNotEmpty(), branch = facts.branch)
+    }
+
+    fun archive(facts: Facts): Plan {
+        stopped(facts)?.let { return it }
+        val changes = facts.changes ?: return Plan.Unreadable
+        val branch = facts.branch ?: return Plan.NoBranch
+        val risks = listOfNotNull(Risk.Locked(facts.lockReason).takeIf { facts.lock == LockState.UNKNOWN })
+        return Plan.Ready(risks, unlock = facts.lock != LockState.NONE, force = false, branch = branch, commit = changes.isNotEmpty(), deleteBranch = false)
+    }
+
+    private fun stopped(facts: Facts): Plan? = when {
+        facts.isMain -> Plan.MainCheckout
+        facts.busyReason != null -> Plan.Busy(facts.busyReason)
+        facts.lock == LockState.LIVE -> Plan.AgentRunning(facts.lockReason)
+        else -> null
     }
 }

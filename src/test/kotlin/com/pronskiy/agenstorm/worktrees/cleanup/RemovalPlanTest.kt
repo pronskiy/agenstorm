@@ -59,6 +59,20 @@ class RemovalPlanTest {
     }
 
     @Test
+    fun archivingCommitsTheChangesKeepsTheBranchAndIgnoresUnmergedCommits() {
+        assertEquals(
+            Plan.Ready(emptyList(), unlock = false, force = false, branch = "fix/login", commit = true, deleteBranch = false),
+            RemovalPlan.archive(facts(changes = listOf("README.md"), unmerged = 3)),
+        )
+        assertEquals(
+            Plan.Ready(listOf(Risk.Locked("on a USB stick")), unlock = true, force = false, branch = "fix/login", commit = false, deleteBranch = false),
+            RemovalPlan.archive(facts(lock = LockState.UNKNOWN, lockReason = "on a USB stick")),
+        )
+        assertEquals(Plan.Busy("a process is still running"), RemovalPlan.archive(facts(busy = "a process is still running")))
+        assertEquals(Plan.NoBranch, RemovalPlan.archive(facts(branch = null)))
+    }
+
+    @Test
     fun aDetachedHeadHasNoBranchToDelete() {
         val detached = RemovalPlan.Facts(false, null, emptyList(), unmerged = 2, base = null, lock = LockState.NONE, lockReason = null, busyReason = null)
 

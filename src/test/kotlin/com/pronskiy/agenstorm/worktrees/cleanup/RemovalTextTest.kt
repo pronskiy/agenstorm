@@ -39,6 +39,23 @@ class RemovalTextTest : BasePlatformTestCase() {
         assertTrue(RemovalText.question("x", "/r/x", Plan.Ready(listOf(Risk.Unmerged(null, null, "x")), false, false, "x")).endsWith("cannot tell whether its commits are merged"))
     }
 
+    fun testArchivingSaysWhereTheWorkGoes() {
+        val mode = RemovalText.Mode.ARCHIVE
+        val dirty = Plan.Ready(emptyList(), unlock = false, force = false, branch = "feat/tables", commit = true, deleteBranch = false)
+        val clean = dirty.copy(commit = false)
+
+        assertEquals(
+            "Archive the worktree tables-q? Its uncommitted changes are committed to the branch feat/tables as \u201cwip: archive tables-q\u201d, then its folder /r/.worktrees/tables-q is deleted; the branch stays, and New Worktree brings it back from there.",
+            RemovalText.question("tables-q", "/r/.worktrees/tables-q", dirty, mode),
+        )
+        assertEquals("Archive the worktree tables-q? Its folder /r/t is deleted; the branch feat/tables stays, and New Worktree brings it back from there.", RemovalText.question("tables-q", "/r/t", clean, mode))
+        assertEquals("Archive", RemovalText.confirmButton(clean, mode))
+        assertEquals("tables-q was not archived: its HEAD is detached, so there is no branch to keep the work on.", RemovalText.refused("tables-q", Plan.NoBranch, mode))
+        assertEquals("tables-q was not archived: a process is still running.", RemovalText.refused("tables-q", Plan.Busy("a process is still running"), mode))
+        assertEquals("Archived tables-q on the branch feat/tables.", RemovalText.outcome("tables-q", Outcome.Removed("feat/tables", false), mode))
+        assertEquals("Archive Worktree", RemovalText.title(mode))
+    }
+
     fun testRefusalsAndOutcomes() {
         assertEquals("fix-login was not removed: a command is running in its terminal.", RemovalText.refused("fix-login", Plan.Busy("a command is running in its terminal")))
         assertEquals("fix-login was not removed: it is locked by claude session x (pid 7), which is still running.", RemovalText.refused("fix-login", Plan.AgentRunning("claude session x (pid 7)")))

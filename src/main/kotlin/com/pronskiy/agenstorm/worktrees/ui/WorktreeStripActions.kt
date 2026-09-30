@@ -27,6 +27,7 @@ import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
+import com.pronskiy.agenstorm.worktrees.cleanup.RemovalText
 import com.pronskiy.agenstorm.worktrees.cleanup.RemoveWorktreeFlow
 import com.pronskiy.agenstorm.worktrees.setup.SetupConfig
 import com.pronskiy.agenstorm.worktrees.setup.SetupRunner
@@ -43,8 +44,8 @@ import java.nio.file.Path
  * Step T1.5. The right-click menu of a worktree tab: Open in New Window, Copy Path, and Open in Terminal — the last one
  * the Terminal plugin's own `Terminal.OpenInTerminal` run on the worktree's folder in *this* project, so an agent can
  * be started there without leaving the window, and absent when the Terminal plugin is — and Run Setup Script (T2.5) for a
- * worktree made elsewhere, when the repository has a setup; and (T4.1) Remove Worktree on every tab but the main checkout's.
- * T4 adds Merge Back and Archive.
+ * worktree made elsewhere, when the repository has a setup; and (T4.1–T4.2) Archive Worktree and Remove Worktree on every
+ * tab but the main checkout's. T4.3 adds Merge Back.
  */
 object WorktreeStripActions {
 
@@ -65,6 +66,7 @@ object WorktreeStripActions {
         }
         if (!tab.worktree.isMain) {
             actions += Separator.getInstance()
+            actions += action(AgenstormBundle.message("worktrees.menu.archive")) { RemoveWorktreeFlow.start(project, tab.worktree, RemovalText.Mode.ARCHIVE) }
             actions += action(AgenstormBundle.message("worktrees.menu.remove")) { RemoveWorktreeFlow.start(project, tab.worktree) }
         }
         return DefaultActionGroup(actions)
