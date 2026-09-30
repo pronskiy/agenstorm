@@ -25,7 +25,7 @@ import java.nio.file.Path
 class WorktreeCreator(private val project: Project, private val repository: GitRepository) {
 
     sealed interface Result {
-        data class Created(val path: String) : Result
+        data class Created(val path: String, val main: String) : Result
         data class Failed(val reason: String) : Result
     }
 
@@ -51,7 +51,7 @@ class WorktreeCreator(private val project: Project, private val repository: GitR
 
         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(target))
         WorktreeRegistry.getInstance(project).refresh()
-        return Result.Created(target)
+        return Result.Created(target, main)
     }
 
     /** The default branch's remote ref (`origin/main`), or null when the repository has no `origin/HEAD`. */
