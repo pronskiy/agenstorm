@@ -58,7 +58,11 @@ class WorktreeStripService(private val project: Project, private val scope: Coro
     }
 
     private fun newPanel(): WorktreeStripPanel =
-        WorktreeStripPanel(::switchTo, onAdd = {}).also {
+        WorktreeStripPanel(
+            onSelect = ::switchTo,
+            onAdd = {},
+            onContextMenu = { tab, component, point -> WorktreeStripActions.showContextMenu(project, tab, component, point) },
+        ).also {
             panels += it
             it.show(tabs)
         }
