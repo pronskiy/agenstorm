@@ -73,4 +73,16 @@ class SwitchPolicyTest {
             SwitchPolicy.decide(b, a, loaded = setOf(a, c), busy = emptySet(), leftBehind = emptySet()),
         )
     }
+
+    @Test
+    fun keepingTheCurrentOpenClosesNothingAndFocusesWhatIsOpen() {
+        assertEquals(
+            Plan(a, open = true, closeCurrent = false, closeLeftBehind = emptyList(), leftBehind = emptySet()),
+            SwitchPolicy.decide(a, main, loaded = setOf(main), busy = emptySet(), leftBehind = emptySet(), keepCurrent = true),
+        )
+        assertEquals(
+            Plan(main, open = false, closeCurrent = false, closeLeftBehind = emptyList(), leftBehind = setOf(b)),
+            SwitchPolicy.decide(main, a, loaded = setOf(main, a, b), busy = emptySet(), leftBehind = setOf(b, main), keepCurrent = true),
+        )
+    }
 }

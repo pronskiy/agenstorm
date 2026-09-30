@@ -17,6 +17,7 @@ import com.intellij.openapi.wm.WindowManager
 import com.intellij.openapi.wm.impl.ProjectFrameHelper
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
+import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.worktrees.carry.IdeaSeeder
 import kotlinx.coroutines.CoroutineScope
@@ -53,11 +54,11 @@ class SwitchRunner(private val env: Env) {
     var leftBehind: Set<String> = emptySet()
         private set
 
-    /** Switches the window showing [current] to [target], one of [worktrees]; false when nothing happened. */
-    suspend fun switch(current: String, target: String, worktrees: Set<String>): Boolean {
+    /** Switches the window showing [current] to [target], one of [worktrees]; false when nothing happened. [keepCurrent]: see [SwitchPolicy]. */
+    suspend fun switch(current: String, target: String, worktrees: Set<String>, keepCurrent: Boolean = false): Boolean {
         val loaded = env.loaded(worktrees + current)
         val busy = loaded.filter(env::isBusy).toSet()
-        val plan = SwitchPolicy.decide(target, current, loaded, busy, leftBehind) ?: return false
+        val plan = SwitchPolicy.decide(target, current, loaded, busy, leftBehind, keepCurrent) ?: return false
         if (plan.open) {
             if (!env.exists(target)) {
                 env.notify(AgenstormBundle.message("worktrees.switch.gone", target))
@@ -95,7 +96,7 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
             if (!mutex.tryLock()) return@launch
             try {
                 withContext(Dispatchers.IO) { seedIdea(target, listOfNotNull(main, current)) }
-                if (runner.switch(current, target, worktrees)) {
+                if (runner.switch(current, target, worktrees, AgenstormSettings.getInstance().state.worktreesKeepCurrentOpen)) {
                     ProjectManager.getInstance().openProjects
                         .firstOrNull { !it.isDisposed && it.basePath?.let(FileUtil::toSystemIndependentName) == target }
                         ?.let(onArrived)

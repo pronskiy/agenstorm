@@ -43,6 +43,18 @@ class WorktreesSettingsTest : BasePlatformTestCase() {
         assertEquals("wt", WorktreeExcludes.configuredFolder())
     }
 
+    fun testASwitchReplacesTheCurrentProjectUnlessSetToKeepIt() {
+        val state = AgenstormSettings.getInstance().state
+        val radios = UIUtil.uiTraverser(panel).filter(com.intellij.ui.components.JBRadioButton::class.java).toList().associateBy { it.name }
+        assertFalse(state.worktreesKeepCurrentOpen)
+        assertTrue(radios.getValue("worktrees.switch.replace").isSelected)
+
+        radios.getValue("worktrees.switch.keep").isSelected = true
+        configurable.apply()
+
+        assertTrue(state.worktreesKeepCurrentOpen)
+    }
+
     fun testTurningTheFeatureOffIsAnnounced() {
         var announced = 0
         com.intellij.openapi.application.ApplicationManager.getApplication().messageBus.connect(testRootDisposable)

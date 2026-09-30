@@ -221,6 +221,20 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .applyToComponent { name = "worktrees.cloneFolders" }
                     .comment(AgenstormBundle.message("settings.worktrees.cloneFolders.comment"))
             }
+            // Each radio bound on its own: `ButtonsGroup.bind` is an inline function compiled for JVM 25.
+            buttonsGroup(AgenstormBundle.message("settings.worktrees.switch")) {
+                row {
+                    radioButton(AgenstormBundle.message("settings.worktrees.switch.replace"))
+                        .bindSelected({ !AgenstormSettings.getInstance().state.worktreesKeepCurrentOpen }, { if (it) AgenstormSettings.getInstance().state.worktreesKeepCurrentOpen = false })
+                        .applyToComponent { name = "worktrees.switch.replace" }
+                }
+                row {
+                    radioButton(AgenstormBundle.message("settings.worktrees.switch.keep"))
+                        .bindSelected({ AgenstormSettings.getInstance().state.worktreesKeepCurrentOpen }, { if (it) AgenstormSettings.getInstance().state.worktreesKeepCurrentOpen = true })
+                        .applyToComponent { name = "worktrees.switch.keep" }
+                        .comment(AgenstormBundle.message("settings.worktrees.switch.keep.comment"))
+                }
+            }
             row {
                 checkBox(AgenstormBundle.message("settings.worktrees.runSetup"))
                     .bindSelected({ AgenstormSettings.getInstance().state.worktreesRunSetup }, { AgenstormSettings.getInstance().state.worktreesRunSetup = it })
