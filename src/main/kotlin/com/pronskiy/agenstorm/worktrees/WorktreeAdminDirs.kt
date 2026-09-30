@@ -17,6 +17,28 @@ object WorktreeAdminDirs {
 
     data class Admin(val id: String, val lockReason: String?, val createdAt: Long)
 
+    /**
+     * What the registry's poll compares (T4.8): each admin dir's name, whether it holds `locked`, and when its `HEAD`
+     * last changed — enough to notice a worktree coming or going, a lock, or a branch switched inside one, with one
+     * directory listing and a few `stat`s. Empty when there is no `worktrees/` folder.
+     */
+    fun signature(worktreesDir: Path): String {
+        if (!Files.isDirectory(worktreesDir)) return ""
+        val dirs = try {
+            Files.list(worktreesDir).use { stream -> stream.filter(Files::isDirectory).toList() }
+        } catch (_: IOException) {
+            return ""
+        }
+        return dirs.map { dir ->
+            val head = try {
+                Files.getLastModifiedTime(dir.resolve("HEAD")).toMillis()
+            } catch (_: IOException) {
+                0L
+            }
+            "${dir.name}:${Files.exists(dir.resolve("locked"))}:$head"
+        }.sorted().joinToString("|")
+    }
+
     /** The admin data keyed by the worktree's system-independent path; an unreadable or half-written admin dir is skipped. */
     fun read(worktreesDir: Path): Map<String, Admin> {
         if (!Files.isDirectory(worktreesDir)) return emptyMap()

@@ -61,4 +61,22 @@ class WorktreeAdminDirsTest {
         assertEquals(emptyMap<String, WorktreeAdminDirs.Admin>(), WorktreeAdminDirs.read(worktrees))
         assertEquals(emptyMap<String, WorktreeAdminDirs.Admin>(), WorktreeAdminDirs.read(root.resolve("nothing-here")))
     }
+
+    @Test
+    fun theSignatureChangesWithAWorktreeALockOrAHeadAndOnlyThen() {
+        admin("a", "/x/a/.git\n")
+        Files.writeString(worktrees.resolve("a/HEAD"), "ref: refs/heads/a\n")
+        val first = WorktreeAdminDirs.signature(worktrees)
+
+        assertEquals(first, WorktreeAdminDirs.signature(worktrees))
+        admin("b", "/x/b/.git\n")
+        val withB = WorktreeAdminDirs.signature(worktrees)
+        assertTrue(withB != first)
+        Files.writeString(worktrees.resolve("b/locked"), "claude session b (pid 1)")
+        val locked = WorktreeAdminDirs.signature(worktrees)
+        assertTrue(locked != withB)
+        Files.setLastModifiedTime(worktrees.resolve("a/HEAD"), java.nio.file.attribute.FileTime.fromMillis(Files.getLastModifiedTime(worktrees.resolve("a/HEAD")).toMillis() + 5_000))
+        assertTrue(WorktreeAdminDirs.signature(worktrees) != locked)
+        assertEquals("", WorktreeAdminDirs.signature(root.resolve("nowhere")))
+    }
 }

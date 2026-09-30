@@ -17,6 +17,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.wm.IdeFrame
+import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.worktrees.carry.WorktreeArrivals
 import com.pronskiy.agenstorm.worktrees.status.WorktreeStatusService
 import com.pronskiy.agenstorm.worktrees.ui.WorktreeStripService
@@ -38,6 +39,7 @@ import kotlinx.coroutines.withContext
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Step T1.2. The worktrees of this project's repository, kept current. git4idea's public `Git.listWorktrees` gives
@@ -45,7 +47,11 @@ import kotlin.time.Duration.Companion.milliseconds
  *
  * A worktree an agent adds from any terminal shows up without a click: `<common git dir>/worktrees/` is put under
  * the file watcher, and a VFS event there, a repository change, a change of VCS mappings or the IDE coming back to
- * the front all ask for a refresh, debounced. A project with no Git root or with several repositories has no single
+ * the front all ask for a refresh, debounced. The VFS alone is not enough: with the IDE in front and idle the
+ * platform applies an outside change to it late or not at all (a `git worktree add` from a shell went unseen for over a
+ * minute in the T4.8 run — and `claude -w` in the IDE's own terminal is exactly that case), so the admin dirs'
+ * [WorktreeAdminDirs.signature] is also read every 3 s while the feature is on — one directory listing, no git — and a
+ * change asks for a refresh. A project with no Git root or with several repositories has no single
  * answer to "which worktrees", so its state stays empty and the strip hides.
  */
 @Service(Service.Level.PROJECT)
@@ -79,6 +85,17 @@ class WorktreeRegistry(private val project: Project, private val scope: Coroutin
             requests.collectLatest {
                 delay(DEBOUNCE)
                 load()
+            }
+        }
+        scope.launch(Dispatchers.IO) {
+            var last: String? = null
+            while (true) {
+                delay(POLL)
+                val dir = watchedDir ?: continue
+                if (!AgenstormSettings.getInstance().state.worktreesEnabled) continue
+                val signature = WorktreeAdminDirs.signature(Path.of(dir))
+                if (last != null && signature != last) refresh()
+                last = signature
             }
         }
         refresh()
@@ -136,6 +153,7 @@ class WorktreeRegistry(private val project: Project, private val scope: Coroutin
     companion object {
         private val LOG = logger<WorktreeRegistry>()
         private val DEBOUNCE = 300.milliseconds
+        private val POLL = 3.seconds
         private val LIST_FILES = setOf("gitdir", "locked", "HEAD")
 
         /** An admin dir coming or going, or its `gitdir`, `locked` or `HEAD` changing; not an index write or a reflog line. */
