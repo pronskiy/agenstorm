@@ -409,7 +409,7 @@ Before the window switches to a worktree "+" made, Agenstorm gives it what a fre
   the same the first time the tabs open it.
 - **Files git ignores.** Whatever `.worktreeinclude` names, in `.gitignore` syntax, is copied, but only
   files git ignores: a tracked `.env.example` or an untracked note never travels. Without a
-  `.worktreeinclude`, that is `.env*`. The same file works for Claude Code and Conductor.
+  `.worktreeinclude`, that is `.env*` at the top of the repository. The same file works for Claude Code and Conductor.
 - **Dependencies.** `vendor/` and `node_modules/` are cloned whole, so the worktree resolves without a
   `composer install`. On macOS (APFS), btrfs and XFS the clone is copy-on-write: 200 MB of `vendor/`
   takes seconds and next to no disk.
