@@ -53,7 +53,8 @@ down to the status bar, and window titles name the project rather than whichever
 The worktrees of the repository, yours and the ones Claude Code, Cursor or Conductor make for their
 agents, become tabs above the Project tree. A click swaps the window to that worktree in place; one with
 a command still running in its terminal stays open behind, so no agent is cut off. Each tab says whether
-its worktree has uncommitted changes, commits ahead or behind, or an agent at work. "+" makes a new one
+its worktree has uncommitted changes, commits ahead or behind, or an agent at work, and its menu merges it
+back, archives it or removes it, never losing work without asking. "+" makes a new one
 that is ready to work in: project settings, `.env` and `vendor/` carried over, the repository's setup
 started in a terminal. Worktrees nested in the repository stay out of the project that holds them.
 
@@ -391,7 +392,8 @@ repository, the main checkout first and named after its branch, the rest oldest 
 - Worktrees made anywhere show up on their own within seconds: `git worktree add`, Claude Code's
   `claude -w`, the Git tool window, Cursor, Conductor.
 - "+" asks for a name and what to branch off (the current HEAD, or the default branch) and creates
-  `.worktrees/<name>` in the main checkout on a branch of the same name. The folder is ignored through
+  `.worktrees/<name>` in the main checkout on a branch of the same name — or takes an existing branch no
+  worktree has checked out, which is how an archived worktree comes back. The folder is ignored through
   `.git/info/exclude`, so no tracked file changes.
 - Each tab shows its worktree's state after the name: `●` uncommitted changes, `↑2 ↓1` commits ahead of
   and behind its upstream (or, without one, the branch it was made from, else the default branch), and
@@ -399,7 +401,18 @@ repository, the main checkout first and named after its branch, the rest oldest 
   Hover for the details. The status follows file and Git changes and the IDE coming to the front; while
   nothing changes, the only Git run is a check at most once a minute on a locked worktree.
 - Right-click a tab for Open in New Window, Copy Path and Open in Terminal, which starts a terminal in
-  that worktree without leaving the window.
+  that worktree without leaving the window, and for what ends a worktree:
+  - **Merge Back** brings its branch into the branch it was made from: squashed (the default), the result
+    is left staged in that branch's worktree and the window goes there with the Commit tool window open,
+    so you write the message; or rebased and fast-forwarded. Uncommitted work is committed first. A
+    conflict never leaves the base half-merged: the base stays as it was, and the conflict waits in the
+    worktree, where the window goes.
+  - **Archive** commits whatever is uncommitted to the worktree's branch as `wip: archive <name>`, removes
+    the folder and keeps the branch.
+  - **Remove** deletes the folder, and the branch if it is merged. It asks first, naming the files whose
+    changes would be lost and the commits left on the branch.
+  - None of them touches a worktree whose window has a command running, or one an agent has locked while
+    that agent still runs; the main checkout has none of them.
 - When the tabs do not fit, the rest go under a chevron; the current one always stays.
 - `.worktrees/` and Claude Code's `.claude/worktrees/` are excluded from the project that holds them, so
   they are neither indexed twice nor picked up as extra Git roots, and `open .worktrees/x` in the
