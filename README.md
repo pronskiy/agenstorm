@@ -52,8 +52,9 @@ down to the status bar, and window titles name the project rather than whichever
 
 The worktrees of the repository, yours and the ones Claude Code, Cursor or Conductor make for their
 agents, become tabs above the Project tree. A click swaps the window to that worktree in place; one with
-a command still running in its terminal stays open behind, so no agent is cut off. "+" makes a new one,
-and worktrees nested in the repository stay out of the project that holds them.
+a command still running in its terminal stays open behind, so no agent is cut off. "+" makes a new one
+that is ready to work in: project settings, `.env` and `vendor/` carried over, the repository's setup
+started in a terminal. Worktrees nested in the repository stay out of the project that holds them.
 
 ### A terminal that fills the window
 
@@ -398,11 +399,36 @@ repository, the main checkout first and named after its branch, the rest oldest 
   they are neither indexed twice nor picked up as extra Git roots, and `open .worktrees/x` in the
   terminal opens that worktree.
 
-> A worktree made with "+" opens without the main checkout's project settings, `.env` or `vendor/` for
-> now; carrying them over is the next step.
+### A new worktree, ready to work in
 
-Options, under **Worktrees**: the switch, and the folder new worktrees go in. The exclusion stays with
-the tabs switched off, and a changed folder takes effect when the project is reopened.
+Before the window switches to a worktree "+" made, Agenstorm gives it what a fresh checkout lacks:
+
+- **Project settings.** The main checkout's `.idea` is copied, so the PHP interpreter, Composer
+  settings and run configurations come along. Only what belongs to one checkout stays behind: its
+  project id, change lists, tasks, shelf and HTTP request history. A worktree made some other way gets
+  the same the first time the tabs open it.
+- **Files git ignores.** Whatever `.worktreeinclude` names, in `.gitignore` syntax, is copied, but only
+  files git ignores: a tracked `.env.example` or an untracked note never travels. Without a
+  `.worktreeinclude`, that is `.env*`. The same file works for Claude Code and Conductor.
+- **Dependencies.** `vendor/` and `node_modules/` are cloned whole, so the worktree resolves without a
+  `composer install`. On macOS (APFS), btrfs and XFS the clone is copy-on-write: 200 MB of `vendor/`
+  takes seconds and next to no disk.
+- **Setup.** If the repository has `.cursor/worktrees.json`, Cursor's format, or
+  `.agenstorm/worktrees.json` with the same keys, its commands run in a terminal tab of the new
+  worktree, with `ROOT_WORKTREE_PATH` pointing at the main checkout:
+
+  ```json
+  { "setup-worktree": ["cp \"$ROOT_WORKTREE_PATH/.env\" .env", "php artisan key:generate"] }
+  ```
+
+  For a worktree made elsewhere, right-click its tab and choose **Run Setup Script**.
+
+A new worktree is indexed once when it first opens; after that, switching back to it takes about a
+second.
+
+Options, under **Worktrees**: the switch, the folder new worktrees go in, the folders to clone, and
+whether to run the setup. The exclusion stays with the tabs switched off, and a changed folder takes
+effect when the project is reopened.
 
 ## Window title
 
