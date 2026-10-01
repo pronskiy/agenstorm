@@ -19,6 +19,7 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.ProjectHandOff
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.worktrees.carry.Preparations
 import com.pronskiy.agenstorm.worktrees.carry.WorktreePreparer
@@ -35,8 +36,9 @@ import javax.swing.JFrame
  * Step T1.6. Carries out [SwitchPolicy]'s plan. The target is opened first — with `forceOpenInNewFrame`, because
  * `withProjectToClose` defers to the user's *Open project in* choice and opens a second window under *New window*
  * (T1.4) — then given the old frame's bounds and focused, and only then is the old worktree closed, so there is a
- * window at every moment (Epic P's `loadThenClose`). A close re-asks the guards: one that is refused at the last moment
- * is remembered as left behind rather than forced. Every side effect goes through [Env], keyed by path.
+ * window at every moment (Epic P's `loadThenClose`). Just before the current worktree closes, what runs in it may move
+ * to the target (U2.1). A close re-asks the guards: one that is refused at the last moment is remembered as left behind
+ * rather than forced. Every side effect goes through [Env], keyed by path.
  */
 class SwitchRunner(private val env: Env) {
 
@@ -48,6 +50,8 @@ class SwitchRunner(private val env: Env) {
         suspend fun open(path: String): Boolean
         /** Gives [target]'s window the bounds of [like]'s and brings it to the front. */
         fun present(target: String, like: String)
+        /** U2.1: [from] is about to close for [to] — what runs in it may move along ([ProjectHandOff]). */
+        fun handOff(from: String, to: String)
         /** Closes the project at [path] unless a guard objects now; false when it stays open. */
         fun close(path: String): Boolean
         fun notify(message: String)
@@ -73,7 +77,10 @@ class SwitchRunner(private val env: Env) {
         }
         env.present(target, like = current)
         val remembered = plan.leftBehind.toMutableSet()
-        if (plan.closeCurrent && !env.close(current)) remembered += current
+        if (plan.closeCurrent) {
+            env.handOff(current, target)
+            if (!env.close(current)) remembered += current
+        }
         for (path in plan.closeLeftBehind) if (!env.close(path)) remembered += path
         leftBehind = remembered
         return true
@@ -155,6 +162,10 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
             val targetProject = project(target) ?: return
             project(like)?.let { mirrorBounds(it, targetProject) }
             ProjectUtil.focusProjectWindow(targetProject, true)
+        }
+
+        override fun handOff(from: String, to: String) {
+            ProjectHandOff.fire(project(from) ?: return, project(to) ?: return)
         }
 
         override fun close(path: String): Boolean {

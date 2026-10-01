@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Step T1.6: the switch opens first, closes last, and never forces anything busy closed. */
+/** Step T1.6: the switch opens first, closes last, and never forces anything busy closed; U2.1: it hands off just before it closes. */
 class SwitchRunnerTest {
 
     private val main = "/r"
@@ -35,6 +35,9 @@ class SwitchRunnerTest {
         override fun present(target: String, like: String) {
             calls += "present $target like $like"
         }
+        override fun handOff(from: String, to: String) {
+            calls += "hand-off $from -> $to"
+        }
         override fun close(path: String): Boolean {
             if (path in busy) return false
             calls += "close $path"
@@ -52,7 +55,7 @@ class SwitchRunnerTest {
 
         assertTrue(SwitchRunner(env).switch(main, a, worktrees))
 
-        assertEquals(listOf("open $a", "present $a like $main", "close $main"), env.calls)
+        assertEquals(listOf("open $a", "present $a like $main", "hand-off $main -> $a", "close $main"), env.calls)
         assertEquals(setOf(a), env.open)
     }
 
@@ -69,7 +72,7 @@ class SwitchRunnerTest {
         env.calls.clear()
         runner.switch(a, b, worktrees)
 
-        assertEquals(listOf("open $b", "present $b like $a", "close $a", "close $main"), env.calls)
+        assertEquals(listOf("open $b", "present $b like $a", "hand-off $a -> $b", "close $a", "close $main"), env.calls)
         assertEquals(setOf(b), env.open)
         assertEquals(emptySet<String>(), runner.leftBehind)
     }
@@ -113,6 +116,17 @@ class SwitchRunnerTest {
 
         assertTrue(SwitchRunner(env).switch(main, a, worktrees))
 
-        assertEquals(listOf("present $a like $main", "close $main"), env.calls)
+        assertEquals(listOf("present $a like $main", "hand-off $main -> $a", "close $main"), env.calls)
+    }
+
+    @Test
+    fun nothingIsHandedOffWhenTheCurrentWorktreeStaysOpen() = runBlocking {
+        val busy = FakeEnv(open = mutableSetOf(main), busy = mutableSetOf(main))
+        SwitchRunner(busy).switch(main, a, worktrees)
+        val kept = FakeEnv(open = mutableSetOf(main))
+        SwitchRunner(kept).switch(main, a, worktrees, keepCurrent = true)
+
+        assertEquals(listOf("open $a", "present $a like $main"), busy.calls)
+        assertEquals(listOf("open $a", "present $a like $main"), kept.calls)
     }
 }
