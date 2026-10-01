@@ -14,7 +14,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.jetbrains.plugins.terminal.startup.TerminalProcessType
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.seconds
 
@@ -25,8 +24,9 @@ import kotlin.time.Duration.Companion.seconds
  * (`destroy-unattached off`) and is re-tagged with the new project, so the moment between the old tab's client leaving
  * and the new one arriving costs nothing; once a client of the new tab is there, it ends with its tabs again. Idle
  * sessions are left alone: their tabs close with the project and `destroy-unattached` ends them. The new tab runs
- * `tmux attach-session` as a non-shell process — so the IDE shows the program's own title, Claude's included — keeps a
- * rename, and starts only once shown, at the size it is shown at. A session the new window never attaches before it
+ * `tmux attach-session` as an ordinary shell tab — a non-shell one makes the platform's project-close check ask to
+ * terminate it on the next switch (U2 guardrail run), while [TmuxTitleMirror] shows the program's title either way —
+ * keeps a rename, and starts only once shown, at the size it is shown at. A session the new window never attaches before it
  * closes is kept as a background terminal (`@agenstorm_background`, U3) rather than lost.
  */
 class TerminalHandOff : ProjectHandOff {
@@ -67,7 +67,6 @@ class TerminalHandOff : ProjectHandOff {
         val command = Tmux.getInstance().command(*TmuxHandOffPlan.attach(move.session).toTypedArray()) ?: return null
         val tab = TerminalToolWindowTabsManager.getInstance(to).createTabBuilder()
             .shellCommand(command)
-            .processType(TerminalProcessType.NON_SHELL)
             .tabName(move.name)
             .requestFocus(focus)
             .deferSessionStartUntilUiShown(true)
