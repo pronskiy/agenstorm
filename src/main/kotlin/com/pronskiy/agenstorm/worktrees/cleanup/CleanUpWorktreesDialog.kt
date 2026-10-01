@@ -43,7 +43,15 @@ class CleanUpWorktreesDialog(project: Project, private val split: StaleWorktrees
         fun reason(candidate: Candidate): String = when {
             candidate.open -> AgenstormBundle.message("worktrees.cleanup.reason.open")
             else -> when (val plan = candidate.plan) {
-                is Plan.Ready -> plan.risks.firstOrNull()?.let { AgenstormBundle.message("worktrees.cleanup.reason.risk", RemovalText.risk(it)) }.orEmpty()
+                is Plan.Ready -> {
+                    val risk = plan.risks.firstOrNull()
+                    when {
+                        risk == null -> ""
+                        // Its base is gone or unknown (the T5 guardrail run: a base branch removed with its worktree).
+                        risk is RemovalPlan.Risk.Unmerged && risk.commits == null -> AgenstormBundle.message("worktrees.cleanup.reason.unknown")
+                        else -> AgenstormBundle.message("worktrees.cleanup.reason.risk", RemovalText.risk(risk))
+                    }
+                }
                 is Plan.Busy -> plan.reason
                 is Plan.AgentRunning -> plan.lockReason?.let { AgenstormBundle.message("worktrees.cleanup.reason.agent", it) } ?: AgenstormBundle.message("worktrees.cleanup.reason.agent.plain")
                 Plan.Unreadable -> AgenstormBundle.message("worktrees.cleanup.reason.unreadable")
