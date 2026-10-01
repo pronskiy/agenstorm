@@ -5,7 +5,6 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.pronskiy.agenstorm.core.AgenstormAppScope
@@ -47,8 +46,10 @@ class TerminalHandOff : ProjectHandOff {
         LOG.debug { "hand-off ${from.name} -> ${to.name}: moving ${moves.map { it.session }} (repository $repository)" }
         if (moves.isEmpty()) return
         val opened = withContext(Dispatchers.EDT) {
-            val opened = moves.mapIndexedNotNull { index, move -> open(to, move, focus = index == 0)?.let { move.session to it } }
-            if (opened.isNotEmpty()) ToolWindowManager.getInstance(to).getToolWindow(TERMINAL)?.activate(null)
+            val opened = moves.mapIndexedNotNull { index, move ->
+                TmuxTabs.openAttached(to, move.session, move.name, move.userDefinedTitle, focus = index == 0)?.let { move.session to it }
+            }
+            if (opened.isNotEmpty()) TmuxTabs.showToolWindow(to, focus = true)
             opened
         }
         LOG.info("Agenstorm: handed ${moves.joinToString { it.session }} from ${from.name} to ${to.name}")
@@ -56,26 +57,9 @@ class TerminalHandOff : ProjectHandOff {
     }
 
     private fun tabsOf(project: Project): List<TmuxHandOffPlan.Tab> =
-        TerminalToolWindowTabsManager.getInstance(project).tabs.mapNotNull { tab ->
-            val options = tab.view.startupOptionsDeferred
-            @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-            // A tab not started yet — a moved tab nobody has looked at — still says what it will run.
-            val command = if (options.isCompleted && options.getCompletionExceptionOrNull() == null) options.getCompleted().shellCommand else tab.processOptions.shellCommand
-            val session = command?.let(TmuxShellCommand::sessionOf) ?: return@mapNotNull null
+        TmuxTabs.of(project).map { (tab, session) ->
             TmuxHandOffPlan.Tab(session, tab.view.title.userDefinedTitle, tab.content.getUserData(TmuxTitleMirror.ORIGINAL_NAME) ?: tab.content.displayName)
         }
-
-    private fun open(to: Project, move: TmuxHandOffPlan.Move, focus: Boolean): TerminalToolWindowTab? {
-        val command = Tmux.getInstance().command(*TmuxHandOffPlan.attach(move.session).toTypedArray()) ?: return null
-        val tab = TerminalToolWindowTabsManager.getInstance(to).createTabBuilder()
-            .shellCommand(command)
-            .tabName(move.name)
-            .requestFocus(focus)
-            .deferSessionStartUntilUiShown(true)
-            .createTab()
-        move.userDefinedTitle?.let { tab.view.title.change { userDefinedTitle = it } }
-        return tab
-    }
 
     /**
      * Turns `destroy-unattached` back on for each moved session once a client is attached — its new tab started — and
@@ -110,7 +94,6 @@ class TerminalHandOff : ProjectHandOff {
     private companion object {
         val LOG = logger<TerminalHandOff>()
         val POLL = 1.seconds
-        const val TERMINAL = "Terminal"
     }
 }
 
@@ -139,9 +122,15 @@ object TmuxHandOffPlan {
     fun keepAlive(session: String, project: String): List<String> =
         listOf("set-option", "-t", "=$session:", "destroy-unattached", "off", ";", "set-option", "-t", "=$session:", "@agenstorm_project", project)
 
-    /** Once the new tab is attached: the session ends with its tabs again, and fills the tab. */
-    fun settled(session: String): List<String> =
-        listOf("set-option", "-t", "=$session:", "destroy-unattached", "on", ";", "resize-window", "-A", "-t", "=$session:")
+    /**
+     * Once a tab is attached: the session ends with its tabs again — no longer a background terminal, if it was one
+     * (U3.1) — and fills the tab. In this order, since tmux stops a `;` chain at the first error.
+     */
+    fun settled(session: String): List<String> = listOf(
+        "set-option", "-t", "=$session:", "destroy-unattached", "on", ";",
+        "set-option", "-u", "-t", "=$session:", "@agenstorm_background", ";",
+        "resize-window", "-A", "-t", "=$session:",
+    )
 
     /** A session no new tab ever attached to: kept, and listed as a background terminal (U3). */
     fun keptInBackground(session: String): List<String> = listOf("set-option", "-t", "=$session:", "@agenstorm_background", "1")

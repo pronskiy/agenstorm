@@ -1,17 +1,21 @@
 package com.pronskiy.agenstorm.terminal.tmux
 
 import com.intellij.execution.ui.BaseContentCloseListener
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.terminal.frontend.toolwindow.TerminalTabsManagerListener
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
+import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.intellij.ui.content.Content
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Step U1.6 (decision 92). ✕ on a tmux tab whose session runs something asks first, as it does for a plain tab. The
@@ -46,11 +50,19 @@ class TmuxTabCloseListener(content: Content, project: Project, private val sessi
 /**
  * Puts a [TmuxTabCloseListener] and a [TmuxTitleMirror] on each terminal tab whose shell turns out to run in one of our
  * tmux sessions — known only once the session has started, since a *New Tab* tab is wrapped on its way to the shell
- * (U1.4). Registered as a project listener in `agenstorm-terminal.xml`.
+ * (U1.4). A tab attached to a background terminal turns it back into an ordinary session once its client is there
+ * (U3.1), whoever opened the tab: the platform restoring the last run's tabs, a project reopening, the list's *Open*.
+ * A second tab of the window asking for a session another tab already shows — the platform's restore arriving after
+ * U3.1 opened its own — is closed. Registered as a project listener in `agenstorm-terminal.xml`.
  */
 class TmuxTabsListener(private val project: Project) : TerminalTabsManagerListener {
 
     override fun tabAdded(tab: TerminalToolWindowTab) {
+        val asked = tab.processOptions.shellCommand?.let(TmuxShellCommand::sessionOf)
+        if (TmuxReattachPlan.isDuplicate(asked, TmuxTabs.of(project).filter { it.first !== tab }.map { it.second })) {
+            ApplicationManager.getApplication().invokeLater({ TerminalToolWindowTabsManager.getInstance(project).closeTab(tab) }, project.disposed)
+            return
+        }
         val view = tab.view
         view.coroutineScope.launch {
             val session = TmuxShellCommand.sessionOf(view.startupOptionsDeferred.await().shellCommand) ?: return@launch
@@ -59,6 +71,25 @@ class TmuxTabsListener(private val project: Project) : TerminalTabsManagerListen
                 TmuxTabCloseListener(tab.content, project, session)
                 TmuxTitleMirror(view, session, tab.content).start()
             }
+            settleIfKept(session)
         }
+    }
+
+    /** A background terminal this tab attached to ends with its tabs again, once the tab's client is there. */
+    private suspend fun settleIfKept(session: String) {
+        val tmux = Tmux.getInstance()
+        repeat(SETTLE_TRIES) {
+            val state = withContext(Dispatchers.IO) { TmuxSessions.read(tmux).firstOrNull { it.name == session } } ?: return
+            if (!state.background) return
+            if (state.clients > 0) {
+                withContext(Dispatchers.IO) { tmux.run(*TmuxHandOffPlan.settled(session).toTypedArray()) }
+                return
+            }
+            delay(1.seconds)
+        }
+    }
+
+    private companion object {
+        const val SETTLE_TRIES = 30
     }
 }

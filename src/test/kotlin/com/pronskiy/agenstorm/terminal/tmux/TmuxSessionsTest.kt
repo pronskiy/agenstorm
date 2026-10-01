@@ -9,13 +9,14 @@ import org.junit.Test
 /** Step U1.3, on output captured from tmux 3.7c (`list-panes -a -F` with [TmuxSessions.FORMAT]). */
 class TmuxSessionsTest {
 
-    private fun line(vararg fields: String) = fields.joinToString("\u001f")
+    /** A captured line; `@agenstorm_name`, the last field, is empty unless given. */
+    private fun line(vararg fields: String) = (fields.toList() + List(12 - fields.size) { "" }).joinToString("\u001f")
 
     private val host = "Romans-MacBook-Pro.local"
 
     private val captured = listOf(
         line("app-1", "0", "1790850148", "", "", "", "43651", "bash", "/private/tmp", host, host),
-        line("app-2", "0", "1790850148", "/Users/me/app/.git", "/Users/me/app", "1", "43653", "sleep", "/private/tmp", host, host),
+        line("app-2", "0", "1790850148", "/Users/me/app/.git", "/Users/me/app", "1", "43653", "sleep", "/private/tmp", host, host, "Local (2)"),
         line("app-3", "1", "1790850148", "", "", "", "43660", "2.1.286", "/Users/me/app", "✳ Claude Code", host),
     ).joinToString("\n", postfix = "\n")
 
@@ -31,7 +32,9 @@ class TmuxSessionsTest {
         assertEquals(0, kept.clients)
         assertEquals(1790850148L, kept.createdEpochSeconds)
         assertEquals(TmuxPane(43653, "sleep", "/private/tmp", null), kept.panes.single())
+        assertEquals("Local (2)", kept.tabName)
         assertNull(sessions[0].repository)
+        assertNull(sessions[0].tabName)
         assertFalse(sessions[0].background)
         assertEquals(1, sessions[2].clients)
     }

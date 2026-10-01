@@ -9,7 +9,8 @@ data class TmuxPane(val pid: Long, val command: String, val path: String, val ti
 /**
  * One session on Agenstorm's socket. [repository] (the common git dir, U1.1) and [project] (the base path) are what
  * the session was started for, stored as the session options `@agenstorm_repo` and `@agenstorm_project`; [background]
- * marks one kept running past its last tab (`@agenstorm_background`, decision 91).
+ * marks one kept running past its last tab (`@agenstorm_background`, decision 91), and [tabName] is what that tab was
+ * called (`@agenstorm_name`), for the tab that shows it again (U3.1).
  */
 data class TmuxSession(
     val name: String,
@@ -19,6 +20,7 @@ data class TmuxSession(
     val project: String?,
     val background: Boolean,
     val panes: List<TmuxPane>,
+    val tabName: String? = null,
 ) {
     val running: Boolean get() = panes.any { it.running }
 
@@ -43,6 +45,7 @@ object TmuxSessions {
         "#{session_name}", "#{session_attached}", "#{session_created}",
         "#{@agenstorm_repo}", "#{@agenstorm_project}", "#{@agenstorm_background}",
         "#{pane_pid}", "#{pane_current_command}", "#{pane_current_path}", "#{pane_title}", "#{host}",
+        "#{@agenstorm_name}",
     )
 
     /** The `-F` argument of `list-panes -a`. */
@@ -69,6 +72,7 @@ object TmuxSessions {
                 project = f[4].ifEmpty { null },
                 background = f[5] == "1",
                 panes = emptyList(),
+                tabName = f[11].ifEmpty { null },
             )
             sessions[f[0]] = session.copy(panes = session.panes + pane)
         }

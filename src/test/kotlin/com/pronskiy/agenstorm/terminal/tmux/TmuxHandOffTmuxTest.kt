@@ -64,6 +64,25 @@ class TmuxHandOffTmuxTest {
     }
 
     @Test
+    fun aBackgroundTerminalAttachedAgainEndsWithItsTabsOnceSettled() {
+        start()
+        val old = client(prefix + listOf("new-session", "-s", "app-1", "sleep", "60"))
+        assertNotNull(waitFor { session("app-1")?.takeIf { it.clients == 1 } })
+        assertEquals(0, tmux(TmuxHandOffPlan.keepAlive("app-1", "/work/app")))
+        assertEquals(0, tmux(TmuxHandOffPlan.keptInBackground("app-1")))
+        old.destroyForcibly().waitFor()
+        assertNotNull("kept", waitFor { session("app-1")?.takeIf { it.background && it.clients == 0 } })
+
+        val tab = client(prefix + TmuxHandOffPlan.attach("app-1"))
+        assertNotNull(waitFor { session("app-1")?.takeIf { it.clients == 1 } })
+        assertEquals(0, tmux(TmuxHandOffPlan.settled("app-1")))
+        assertEquals("no longer a background terminal", false, session("app-1")?.background)
+
+        tab.destroyForcibly().waitFor()
+        assertNotNull("it ends with its tab", waitFor { if (session("app-1") == null) true else null })
+    }
+
+    @Test
     fun anExactTargetNeverFallsThroughToALongerName() {
         start()
         client(prefix + listOf("new-session", "-s", "app-10", "sleep", "60"))
