@@ -19,8 +19,10 @@ import com.intellij.ui.dsl.builder.bindIntText
 import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
+import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
+import com.intellij.ui.layout.selected
 import com.pronskiy.agenstorm.commit.CommitSettingsPanel
 import com.pronskiy.agenstorm.frame.FrameTitleRefresher
 import com.pronskiy.agenstorm.notifications.AutoDismissPolicy
@@ -36,6 +38,7 @@ import com.pronskiy.agenstorm.terminal.TerminalMaximizeLayout
 import com.pronskiy.agenstorm.terminal.enhance.EnhancerRulesTable
 import com.pronskiy.agenstorm.terminal.enhance.RuleRepository
 import com.pronskiy.agenstorm.terminal.tmux.Tmux
+import com.pronskiy.agenstorm.worktrees.create.WorktreeLimit
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
 
@@ -257,6 +260,18 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .applyToComponent { name = "worktrees.runSetup" }
                     .comment(AgenstormBundle.message("settings.worktrees.runSetup.comment"))
             }
+            // T5.2: off by default, 15 when on (decision 94).
+            row {
+                val limited = checkBox(AgenstormBundle.message("settings.worktrees.limit"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.worktreesLimitEnabled }, { AgenstormSettings.getInstance().state.worktreesLimitEnabled = it })
+                    .applyToComponent { name = "worktrees.limit.enabled" }
+                intTextField(WorktreeLimit.RANGE, 1)
+                    .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.worktreesLimit }, { AgenstormSettings.getInstance().state.worktreesLimit = it }))
+                    .enabledIf(limited.component.selected)
+                    .columns(4)
+                    .applyToComponent { name = "worktrees.limit" }
+                label(AgenstormBundle.message("settings.worktrees.limit.suffix"))
+            }.rowComment(AgenstormBundle.message("settings.worktrees.limit.comment"))
             // U1.5 (Epic U): off by default, decision 89; tmux does not exist on Windows.
             row {
                 val tmux = Tmux.getInstance().binary()

@@ -1,12 +1,15 @@
 package com.pronskiy.agenstorm.worktrees.create
 
+import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
+import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.AgenstormBundle
+import com.pronskiy.agenstorm.core.AgenstormConfigurable
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
@@ -30,17 +33,24 @@ import java.nio.file.Path
  * the window to it (T1.6). In between, [WorktreePreparer] carries over what the new worktree needs (T2.2–T2.4); once
  * the window shows it, the repository's setup runs there (T2.5). T4.2: the worktree can also take an existing branch.
  * Runs in the application scope, because the switch at the end closes the project that started it. T5.1: the window's
- * uncommitted changes can come along ([ChangeCarry]), copied into the new worktree before it is prepared.
+ * uncommitted changes can come along ([ChangeCarry]), copied into the new worktree before it is prepared. T5.2: at the
+ * repository's worktree limit ([WorktreeLimit]) it refuses before asking anything.
  */
 object NewWorktreeFlow {
 
     fun start(project: Project) {
         val repository = GitRepositoryManager.getInstance(project).repositories.singleOrNull() ?: return
         val creator = WorktreeCreator(project, repository)
-        val taken = WorktreeRegistry.getInstance(project).state.value.worktrees.map { it.path.substringAfterLast('/') }.toSet()
+        val worktrees = WorktreeRegistry.getInstance(project).state.value.worktrees
+        val taken = worktrees.map { it.path.substringAfterLast('/') }.toSet()
         val source = Path.of(repository.root.path)
         val carry = ChangeCarry(git(project))
         val settings = AgenstormSettings.getInstance().state
+        val linked = worktrees.count { !it.isMain }
+        if (WorktreeLimit.reached(linked, settings.worktreesLimitEnabled, settings.worktreesLimit)) {
+            limitReached(project, linked, settings.worktreesLimit)
+            return
+        }
         service<AgenstormAppScope>().scope.launch {
             val (defaultBranch, freeBranches) = withContext(Dispatchers.IO) { creator.defaultBranch() to creator.freeBranches() }
             val changes = withContext(Dispatchers.IO) { carry.changes(source).size }
@@ -99,6 +109,15 @@ object NewWorktreeFlow {
                 }
             }
         }
+    }
+
+    private fun limitReached(project: Project, linked: Int, limit: Int) {
+        AgenstormNotifications.group()
+            .createNotification(AgenstormBundle.message("worktrees.notice.title"), AgenstormBundle.message("worktrees.new.limit", linked, limit), NotificationType.WARNING)
+            .addAction(NotificationAction.createSimpleExpiring(AgenstormBundle.message("worktrees.new.limit.settings")) {
+                ShowSettingsUtil.getInstance().showSettingsDialog(project, AgenstormConfigurable::class.java)
+            })
+            .notify(project)
     }
 
     /** Through git4idea's public `GitLineHandler`, out of the Git console: copying changes is no git operation of the user's. */

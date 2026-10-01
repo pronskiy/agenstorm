@@ -6,6 +6,7 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormConfigurable
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.AgenstormSettingsListener
+import com.pronskiy.agenstorm.worktrees.create.WorktreeLimit
 import javax.swing.JComponent
 
 /** Step T1.8: the Worktrees group, and the folder setting as the feature reads it. */
@@ -69,6 +70,17 @@ class WorktreesSettingsTest : BasePlatformTestCase() {
 
         assertFalse(state.worktreesPrepareOnOpen)
         assertTrue(state.worktreesPrepareOnAppear)
+    }
+
+    fun testTheWorktreeLimitIsOffByDefaultAndFifteenWhenOn() {
+        val state = AgenstormSettings.State()
+        assertFalse(state.worktreesLimitEnabled)
+        assertEquals(15, state.worktreesLimit)
+        assertFalse(WorktreeLimit.reached(linked = 40, enabled = false, limit = 15))
+        assertFalse(WorktreeLimit.reached(linked = 14, enabled = true, limit = 15))
+        assertTrue(WorktreeLimit.reached(linked = 15, enabled = true, limit = 15))
+        val field = UIUtil.uiTraverser(panel).filter(javax.swing.JTextField::class.java).first { it.name == "worktrees.limit" }
+        assertFalse("disabled while the limit is off", field.isEnabled)
     }
 
     fun testTmuxBackedTerminalsAreOffByDefault() {
