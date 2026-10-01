@@ -6,7 +6,7 @@ import com.pronskiy.agenstorm.worktrees.WorktreeSnapshot
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
 import com.pronskiy.agenstorm.worktrees.WorktreeTabsModel
 import com.pronskiy.agenstorm.worktrees.status.WorktreeStatus
-import java.awt.Font
+import com.intellij.ui.components.JBLabel
 import java.awt.event.MouseEvent
 
 /** Step T1.5: the strip lays tabs out, keeps the current one, lists the rest under "»" and reports clicks; T3.3: badges. */
@@ -45,7 +45,8 @@ class WorktreeStripPanelTest : BasePlatformTestCase() {
         assertTrue(shown.contains("feature-number-6"))
         assertEquals(tabs.map { it.label } - shown.toSet(), strip.overflowTabs().map { it.label })
         assertTrue(strip.tabLabels().single { it.text == "feature-number-6" }.font.isBold)
-        assertEquals(Font.PLAIN, strip.tabLabels().first().font.style and Font.BOLD)
+        // The others keep the label font the look and feel gives — bold itself under Metal, the headless Linux default (CI).
+        assertEquals(JBLabel().font.style, strip.tabLabels().first().font.style)
     }
 
     fun testAClickOnAnotherTabSelectsItAndOnTheCurrentOneDoesNothing() {
