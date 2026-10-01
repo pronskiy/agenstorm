@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Steps U3.2 and U3.3: what a close or a quit puts at stake, how a session is kept, which are listed and where *Open* goes. */
+/** Steps U3.2–U3.4: what a close or a quit puts at stake, how a session is kept, which are listed, where *Open* goes, what is cleaned up. */
 class TmuxBackgroundPlanTest {
 
     private fun session(
@@ -75,5 +75,30 @@ class TmuxBackgroundPlanTest {
         assertEquals(TmuxBackgroundPlan.OpenIn.ITS_PROJECT, TmuxBackgroundPlan.openIn(other, "/work/app/.git", folderExists = true))
         assertEquals("its folder is gone", TmuxBackgroundPlan.OpenIn.THIS_WINDOW, TmuxBackgroundPlan.openIn(other, "/work/app/.git", folderExists = false))
         assertEquals(listOf("set-option", "-t", "=a:", "@agenstorm_project", "/work/app"), TmuxBackgroundPlan.adopt("a", "/work/app"))
+    }
+
+    @Test
+    fun aBackgroundTerminalWhoseProgramEndedIsStopped() {
+        val sessions = listOf(
+            session("done", command = "zsh", background = true, clients = 0),
+            session("busy", background = true, clients = 0),
+            session("shown", command = "zsh", background = true, clients = 1),
+            session("idle", command = "zsh", clients = 1),
+        )
+
+        assertEquals(listOf("done"), TmuxBackgroundPlan.ended(sessions).map { it.name })
+    }
+
+    @Test
+    fun atStartWhatAnEarlierRunLeftUnattachedIsStoppedAndNothingElse() {
+        val started = 1_000_000L
+        val sessions = listOf(
+            session("crash", clients = 0, created = 999), // an agent mid hand-off when the IDE died
+            session("kept", clients = 0, created = 999, background = true),
+            session("other-ide", clients = 1, created = 999),
+            session("this-run", clients = 0, created = 1_000),
+        )
+
+        assertEquals(listOf("crash"), TmuxBackgroundPlan.leftovers(sessions, started).map { it.name })
     }
 }

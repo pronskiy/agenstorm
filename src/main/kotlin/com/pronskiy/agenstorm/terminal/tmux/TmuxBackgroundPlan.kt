@@ -39,6 +39,17 @@ object TmuxBackgroundPlan {
     fun listed(sessions: List<TmuxSession>): List<TmuxSession> =
         sessions.filter { it.background && it.clients == 0 }.sortedBy { it.createdEpochSeconds }
 
+    /** Step U3.4: background terminals whose program has ended — the pane back at its shell — to stop when seen. */
+    fun ended(sessions: List<TmuxSession>): List<TmuxSession> = sessions.filter { it.background && it.clients == 0 && !it.running }
+
+    /**
+     * Step U3.4: what an earlier run left behind — a crash, or a quit in the middle of a hand-off — to stop once at
+     * start: neither a background terminal nor attached, and made before this IDE started ([startedMs]), so this run's
+     * own sessions, and another running IDE's attached ones, are never touched.
+     */
+    fun leftovers(sessions: List<TmuxSession>, startedMs: Long): List<TmuxSession> =
+        sessions.filter { !it.background && it.clients == 0 && it.createdEpochSeconds * 1000 < startedMs }
+
     enum class OpenIn { THIS_WINDOW, ITS_PROJECT }
 
     /**

@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -34,13 +35,15 @@ import kotlin.time.Duration.Companion.seconds
  * (U3.2) — as the IDE knows them: read from tmux every [POLL] while the setting is on, and at once after anything
  * Agenstorm itself changes, so the title-bar button and the status-bar widget ([BackgroundTerminalsAction],
  * [BackgroundTerminalsWidgetFactory]) show *N background terminals* only while there are any. *Open* and *Stop* act
- * on one ([open], [stop]).
+ * on one ([open], [stop]). Each read also cleans up (U3.4): a background terminal whose program has ended is stopped,
+ * and the run's first read stops what an earlier run left behind. Nobody's busy process is ever ended on a timer.
  */
 @Service(Service.Level.APP)
 class BackgroundTerminals(private val scope: CoroutineScope) {
 
     private val listed = MutableStateFlow<List<TmuxSession>>(emptyList())
     private val started = AtomicBoolean()
+    private val swept = AtomicBoolean()
     private val reading = Mutex()
 
     /** The background terminals as last read, oldest first. */
@@ -113,7 +116,13 @@ class BackgroundTerminals(private val scope: CoroutineScope) {
         val on = AgenstormSettings.getInstance().state.terminalTmuxEnabled && !SystemInfo.isWindows
         val now = if (!on) emptyList() else withContext(Dispatchers.IO) {
             val tmux = Tmux.getInstance()
-            if (tmux.binary() == null) emptyList() else TmuxBackgroundPlan.listed(TmuxSessions.read(tmux))
+            if (tmux.binary() == null) return@withContext emptyList()
+            val sessions = TmuxSessions.read(tmux)
+            val gone = TmuxBackgroundPlan.ended(sessions) +
+                if (swept.compareAndSet(false, true)) TmuxBackgroundPlan.leftovers(sessions, ManagementFactory.getRuntimeMXBean().startTime) else emptyList()
+            gone.forEach { tmux.run(*TmuxBackgroundPlan.stop(it.name).toTypedArray()) }
+            if (gone.isNotEmpty()) LOG.info("Agenstorm: cleaned up tmux sessions ${gone.joinToString { it.name }}")
+            TmuxBackgroundPlan.listed(sessions - gone.toSet())
         }
         if (now == listed.value) return@withLock
         val countChanged = now.size != listed.value.size
