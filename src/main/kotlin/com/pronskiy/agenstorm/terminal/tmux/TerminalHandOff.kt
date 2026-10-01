@@ -58,7 +58,8 @@ class TerminalHandOff : ProjectHandOff {
         TerminalToolWindowTabsManager.getInstance(project).tabs.mapNotNull { tab ->
             val options = tab.view.startupOptionsDeferred
             @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-            val command = if (options.isCompleted && options.getCompletionExceptionOrNull() == null) options.getCompleted().shellCommand else null
+            // A tab not started yet — a moved tab nobody has looked at — still says what it will run.
+            val command = if (options.isCompleted && options.getCompletionExceptionOrNull() == null) options.getCompleted().shellCommand else tab.processOptions.shellCommand
             val session = command?.let(TmuxShellCommand::sessionOf) ?: return@mapNotNull null
             TmuxHandOffPlan.Tab(session, tab.view.title.userDefinedTitle, tab.content.getUserData(TmuxTitleMirror.ORIGINAL_NAME) ?: tab.content.displayName)
         }

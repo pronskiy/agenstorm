@@ -49,11 +49,12 @@ class TmuxShellCommandTest {
     }
 
     @Test
-    fun sessionsAreNamedAfterTheProjectWithTheFirstFreeNumber() {
-        assertEquals("app-1", TmuxShellCommand.sessionName("app", emptySet()))
-        assertEquals("app-3", TmuxShellCommand.sessionName("app", setOf("app-1", "app-2", "shop-3")))
-        assertEquals("my-app-v2-1", TmuxShellCommand.sessionName("my app.v2", emptySet()))
-        assertEquals("terminal-1", TmuxShellCommand.sessionName("...", emptySet()))
+    fun sessionsAreNamedAfterTheProjectWithASuffixNotTaken() {
+        val suffixes = ArrayDeque(listOf("k3j9", "x7q2"))
+        assertEquals("app-x7q2", TmuxShellCommand.sessionName("app", setOf("app-k3j9")) { suffixes.removeFirst() })
+        assertEquals("my-app-v2-aaaa", TmuxShellCommand.sessionName("my app.v2", emptySet()) { "aaaa" })
+        assertEquals("terminal-aaaa", TmuxShellCommand.sessionName("...", emptySet()) { "aaaa" })
+        assertTrue(Regex("app-[a-z2-9]{4}").matches(TmuxShellCommand.sessionName("app", emptySet())))
     }
 
     @Test

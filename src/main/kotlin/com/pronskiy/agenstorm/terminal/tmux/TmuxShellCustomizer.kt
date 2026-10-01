@@ -87,11 +87,20 @@ object TmuxShellCommand {
     /** Only a shell is wrapped — not a program another plugin starts in a tab, and never tmux itself. */
     fun isShell(command: List<String>): Boolean = command.firstOrNull()?.let(TmuxSessions::isShell) == true
 
-    /** `<project>-<n>`, the smallest `n` not [taken], in the characters tmux keeps in a session name. */
-    fun sessionName(project: String, taken: Set<String>): String {
+    /**
+     * `<project>-<four random letters and digits>`, not [taken], in the characters tmux keeps in a session name. Not a
+     * counter: the platform restores a hand-off's attach tab when its project reopens (U2.2), and a counter starting
+     * over in the next IDE run would hand that tab some other session of the same name (U2 guardrail run).
+     */
+    fun sessionName(project: String, taken: Set<String>, suffix: () -> String = ::randomSuffix): String {
         val base = project.replace(Regex("[^A-Za-z0-9_-]+"), "-").trim('-').take(32).ifEmpty { "terminal" }
-        return generateSequence(1) { it + 1 }.map { "$base-$it" }.first { it !in taken }
+        return generateSequence { "$base-${suffix()}" }.first { it !in taken }
     }
+
+    private fun randomSuffix(): String = (1..4).map { ALPHABET[random.nextInt(ALPHABET.length)] }.joinToString("")
+
+    private const val ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"
+    private val random = java.security.SecureRandom()
 
     /**
      * `tmux … new-session -s <session> -c <dir> -e K=V … -- <shell…> ; set-option @agenstorm_repo … ; set-option
