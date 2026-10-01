@@ -1,7 +1,6 @@
 package com.pronskiy.agenstorm.terminal.tmux
 
 import com.intellij.execution.ui.BaseContentCloseListener
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -28,7 +27,8 @@ class TmuxTabCloseListener(content: Content, project: Project, private val sessi
     BaseContentCloseListener(content, project, content) {
 
     override fun closeQuery(content: Content, projectClosing: Boolean): Boolean {
-        if (projectClosing || myProject.isDisposed || ApplicationManager.getApplication().isExitInProgress) return true
+        // Quitting closes the projects first, so a quit arrives here as projectClosing too.
+        if (projectClosing || myProject.isDisposed) return true
         if (content.getUserData(Content.TEMPORARY_REMOVED_KEY) == true) return true
         val state = ProgressManager.getInstance().runProcessWithProgressSynchronously(
             ThrowableComputable<TmuxSession?, RuntimeException> { TmuxSessions.read().firstOrNull { it.name == session } },
