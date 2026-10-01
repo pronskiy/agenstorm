@@ -62,7 +62,8 @@ object RemovalText {
 
     private fun message(mode: Mode, key: String, vararg params: Any): String = AgenstormBundle.message("worktrees.${mode.key}.$key", *params)
 
-    private fun risk(risk: Risk): String = when (risk) {
+    /** One risk as the confirmation lists it: `loses 2 uncommitted changes: …`, `keeps 1 commit that main lacks …`. */
+    fun risk(risk: Risk): String = when (risk) {
         is Risk.Changes -> AgenstormBundle.message("worktrees.remove.risk.changes", risk.paths.size, files(risk.paths))
         is Risk.Unmerged -> when {
             risk.commits == null -> AgenstormBundle.message("worktrees.remove.risk.unknown")

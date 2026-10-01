@@ -38,6 +38,7 @@ import com.pronskiy.agenstorm.terminal.TerminalMaximizeLayout
 import com.pronskiy.agenstorm.terminal.enhance.EnhancerRulesTable
 import com.pronskiy.agenstorm.terminal.enhance.RuleRepository
 import com.pronskiy.agenstorm.terminal.tmux.Tmux
+import com.pronskiy.agenstorm.worktrees.cleanup.StaleWorktrees
 import com.pronskiy.agenstorm.worktrees.create.WorktreeLimit
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
@@ -272,6 +273,18 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .applyToComponent { name = "worktrees.limit" }
                 label(AgenstormBundle.message("settings.worktrees.limit.suffix"))
             }.rowComment(AgenstormBundle.message("settings.worktrees.limit.comment"))
+            // T5.3: off by default, 30 days when on (decision 94).
+            row {
+                val auto = checkBox(AgenstormBundle.message("settings.worktrees.autoCleanup"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.worktreesAutoCleanup }, { AgenstormSettings.getInstance().state.worktreesAutoCleanup = it })
+                    .applyToComponent { name = "worktrees.autoCleanup" }
+                intTextField(StaleWorktrees.DAYS, 1)
+                    .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.worktreesAutoCleanupDays }, { AgenstormSettings.getInstance().state.worktreesAutoCleanupDays = it }))
+                    .enabledIf(auto.component.selected)
+                    .columns(4)
+                    .applyToComponent { name = "worktrees.autoCleanupDays" }
+                label(AgenstormBundle.message("settings.worktrees.autoCleanup.suffix"))
+            }.rowComment(AgenstormBundle.message("settings.worktrees.autoCleanup.comment"))
             // U1.5 (Epic U): off by default, decision 89; tmux does not exist on Windows.
             row {
                 val tmux = Tmux.getInstance().binary()

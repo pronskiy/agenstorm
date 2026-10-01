@@ -28,6 +28,7 @@ import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
 import com.pronskiy.agenstorm.worktrees.WorktreeTab
 import com.pronskiy.agenstorm.worktrees.cleanup.RemovalText
+import com.pronskiy.agenstorm.worktrees.cleanup.CleanUpWorktreesFlow
 import com.pronskiy.agenstorm.worktrees.cleanup.RemoveWorktreeFlow
 import com.pronskiy.agenstorm.worktrees.merge.MergeBackFlow
 import com.pronskiy.agenstorm.worktrees.setup.SetupConfig
@@ -71,6 +72,8 @@ object WorktreeStripActions {
             actions += action(AgenstormBundle.message("worktrees.menu.archive")) { RemoveWorktreeFlow.start(project, tab.worktree, RemovalText.Mode.ARCHIVE) }
             actions += action(AgenstormBundle.message("worktrees.menu.remove")) { RemoveWorktreeFlow.start(project, tab.worktree) }
         }
+        actions += Separator.getInstance()
+        actions += action(AgenstormBundle.message("worktrees.menu.cleanUp")) { CleanUpWorktreesFlow.start(project) }
         return DefaultActionGroup(actions)
     }
 

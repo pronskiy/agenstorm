@@ -51,6 +51,7 @@ object RemoveWorktreeFlow {
         "branch" to GitCommand.BRANCH,
         "add" to GitCommand.ADD,
         "commit" to GitCommand.COMMIT,
+        "log" to GitCommand.LOG,
     )
     private val WRITES = setOf("worktree", "branch", "add", "commit")
 
@@ -113,7 +114,9 @@ object RemoveWorktreeFlow {
         ProjectManager.getInstance().openProjects.firstOrNull { !it.isDisposed && it.basePath?.let(FileUtil::toSystemIndependentName) == path }
 
     /** Through git4idea's public `GitLineHandler`; the reads stay out of the Git console, the removal shows there. */
-    private fun remover(project: Project) = WorktreeRemover { dir, args ->
+    internal fun remover(project: Project) = WorktreeRemover(git(project))
+
+    internal fun git(project: Project): (Path, List<String>) -> WorktreeRemover.GitResult = { dir, args ->
         val handler = GitLineHandler(project, dir, COMMANDS.getValue(args.first()))
         handler.setSilent(args.first() !in WRITES)
         handler.addParameters(args.drop(1))

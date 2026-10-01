@@ -19,6 +19,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.wm.IdeFrame
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.worktrees.carry.WorktreeArrivals
+import com.pronskiy.agenstorm.worktrees.cleanup.WorktreeAutoCleanup
 import com.pronskiy.agenstorm.worktrees.status.WorktreeStatusService
 import com.pronskiy.agenstorm.worktrees.ui.WorktreeStripService
 import git4idea.commands.Git
@@ -167,7 +168,7 @@ class WorktreeRegistry(private val project: Project, private val scope: Coroutin
     }
 }
 
-/** Step T1.2: starts the registry when a project opens, (T1.4) the strip and (T3.2) the tabs' status. Registered in `agenstorm-git.xml`. */
+/** Step T1.2: starts the registry when a project opens, (T1.4) the strip, (T3.2) the tabs' status and (T5.3) the automatic cleanup. Registered in `agenstorm-git.xml`. */
 class WorktreeStartupActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
@@ -175,5 +176,6 @@ class WorktreeStartupActivity : ProjectActivity {
         WorktreeStatusService.getInstance(project).start()
         WorktreeArrivals.getInstance(project).start()
         WorktreeStripService.getInstance(project).start()
+        WorktreeAutoCleanup.getInstance(project).start()
     }
 }

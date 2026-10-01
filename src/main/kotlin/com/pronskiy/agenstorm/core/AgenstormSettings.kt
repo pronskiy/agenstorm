@@ -137,6 +137,9 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         /** Epic T, T5.2: "+" refuses once the repository has [worktreesLimit] linked worktrees (decision 94: off, 15). */
         var worktreesLimitEnabled: Boolean = false,
         var worktreesLimit: Int = 15,
+        /** Epic T, T5.3: once a day, remove worktrees with nothing to lose that nobody used for [worktreesAutoCleanupDays] days (decision 94: off, 30). */
+        var worktreesAutoCleanup: Boolean = false,
+        var worktreesAutoCleanupDays: Int = 30,
         /** Epic U: terminal tabs of a Git project run inside tmux sessions, so a worktree switch can hand them over (decision 89: off by default). */
         var terminalTmuxEnabled: Boolean = false,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */

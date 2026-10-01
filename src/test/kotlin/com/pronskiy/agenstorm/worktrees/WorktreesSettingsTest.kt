@@ -83,6 +83,14 @@ class WorktreesSettingsTest : BasePlatformTestCase() {
         assertFalse("disabled while the limit is off", field.isEnabled)
     }
 
+    fun testTheAutomaticCleanupIsOffByDefaultAndThirtyDaysWhenOn() {
+        val state = AgenstormSettings.State()
+        assertFalse(state.worktreesAutoCleanup)
+        assertEquals(30, state.worktreesAutoCleanupDays)
+        val field = UIUtil.uiTraverser(panel).filter(javax.swing.JTextField::class.java).first { it.name == "worktrees.autoCleanupDays" }
+        assertFalse("disabled while the cleanup is off", field.isEnabled)
+    }
+
     fun testTmuxBackedTerminalsAreOffByDefault() {
         val state = AgenstormSettings.getInstance().state
         val box = UIUtil.uiTraverser(panel).filter(com.intellij.ui.components.JBCheckBox::class.java).first { it.name == "worktrees.tmux" }

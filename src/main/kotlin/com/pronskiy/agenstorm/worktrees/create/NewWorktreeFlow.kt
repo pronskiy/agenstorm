@@ -17,6 +17,7 @@ import com.pronskiy.agenstorm.worktrees.WorktreeSwitcher
 import com.pronskiy.agenstorm.worktrees.carry.ChangeCarry
 import com.pronskiy.agenstorm.worktrees.carry.Preparations
 import com.pronskiy.agenstorm.worktrees.carry.WorktreePreparer
+import com.pronskiy.agenstorm.worktrees.cleanup.CleanUpWorktreesFlow
 import com.pronskiy.agenstorm.worktrees.cleanup.WorktreeRemover
 import com.pronskiy.agenstorm.worktrees.setup.SetupRunner
 import git4idea.commands.Git
@@ -114,6 +115,7 @@ object NewWorktreeFlow {
     private fun limitReached(project: Project, linked: Int, limit: Int) {
         AgenstormNotifications.group()
             .createNotification(AgenstormBundle.message("worktrees.notice.title"), AgenstormBundle.message("worktrees.new.limit", linked, limit), NotificationType.WARNING)
+            .addAction(NotificationAction.createSimpleExpiring(AgenstormBundle.message("worktrees.menu.cleanUp")) { CleanUpWorktreesFlow.start(project) })
             .addAction(NotificationAction.createSimpleExpiring(AgenstormBundle.message("worktrees.new.limit.settings")) {
                 ShowSettingsUtil.getInstance().showSettingsDialog(project, AgenstormConfigurable::class.java)
             })
