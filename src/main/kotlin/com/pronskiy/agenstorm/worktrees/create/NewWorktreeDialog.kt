@@ -3,7 +3,9 @@ package com.pronskiy.agenstorm.worktrees.create
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
+import com.intellij.ui.components.JBRadioButton
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.dsl.builder.Cell
 import com.intellij.ui.dsl.builder.COLUMNS_MEDIUM
 import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
@@ -21,6 +23,8 @@ import javax.swing.JComponent
  * or the default branch when the repository has one. The folder and branch the name turns into are shown as the name
  * is typed; a name that is empty or taken is refused before anything runs. T4.2: or an existing branch no worktree has
  * checked out — how an archived worktree comes back — whose last segment fills in the name while none is typed.
+ * T5.1: with [changes] uncommitted in the window's checkout, *Bring uncommitted changes* copies them along; only from
+ * the current HEAD, the one base they are sure to apply to.
  */
 class NewWorktreeDialog(
     project: Project,
@@ -28,6 +32,8 @@ class NewWorktreeDialog(
     private val defaultBranch: String?,
     private val freeBranches: List<String>,
     private val taken: Set<String>,
+    private val changes: Int,
+    var bringChanges: Boolean,
 ) : DialogWrapper(project) {
 
     enum class Base { HEAD, DEFAULT_BRANCH, EXISTING_BRANCH }
@@ -60,9 +66,18 @@ class NewWorktreeDialog(
         }
         // Each radio bound on its own: `ButtonsGroup.bind` is an inline function compiled for JVM 25.
         buttonsGroup(AgenstormBundle.message("worktrees.new.base")) {
+            lateinit var head: Cell<JBRadioButton>
             row {
-                radioButton(AgenstormBundle.message("worktrees.new.base.head", currentBranch ?: "HEAD"))
+                head = radioButton(AgenstormBundle.message("worktrees.new.base.head", currentBranch ?: "HEAD"))
                     .bindSelected({ base == Base.HEAD }, { if (it) base = Base.HEAD })
+            }
+            if (changes > 0) indent {
+                row {
+                    checkBox(AgenstormBundle.message("worktrees.new.bring", changes))
+                        .bindSelected(::bringChanges)
+                        .enabledIf(head.component.selected)
+                        .comment(AgenstormBundle.message("worktrees.new.bring.comment"))
+                }
             }
             if (defaultBranch != null) row {
                 radioButton(AgenstormBundle.message("worktrees.new.base.default", defaultBranch))

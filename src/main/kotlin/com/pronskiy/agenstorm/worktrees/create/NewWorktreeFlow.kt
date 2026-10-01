@@ -11,9 +11,14 @@ import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
 import com.pronskiy.agenstorm.worktrees.WorktreeSwitcher
+import com.pronskiy.agenstorm.worktrees.carry.ChangeCarry
 import com.pronskiy.agenstorm.worktrees.carry.Preparations
 import com.pronskiy.agenstorm.worktrees.carry.WorktreePreparer
+import com.pronskiy.agenstorm.worktrees.cleanup.WorktreeRemover
 import com.pronskiy.agenstorm.worktrees.setup.SetupRunner
+import git4idea.commands.Git
+import git4idea.commands.GitCommand
+import git4idea.commands.GitLineHandler
 import git4idea.repo.GitRepositoryManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,7 +29,8 @@ import java.nio.file.Path
  * Step T2.1 (minimal). The strip's "+": ask for a name and a base, create the worktree in the background, then switch
  * the window to it (T1.6). In between, [WorktreePreparer] carries over what the new worktree needs (T2.2–T2.4); once
  * the window shows it, the repository's setup runs there (T2.5). T4.2: the worktree can also take an existing branch.
- * Runs in the application scope, because the switch at the end closes the project that started it.
+ * Runs in the application scope, because the switch at the end closes the project that started it. T5.1: the window's
+ * uncommitted changes can come along ([ChangeCarry]), copied into the new worktree before it is prepared.
  */
 object NewWorktreeFlow {
 
@@ -32,12 +38,19 @@ object NewWorktreeFlow {
         val repository = GitRepositoryManager.getInstance(project).repositories.singleOrNull() ?: return
         val creator = WorktreeCreator(project, repository)
         val taken = WorktreeRegistry.getInstance(project).state.value.worktrees.map { it.path.substringAfterLast('/') }.toSet()
+        val source = Path.of(repository.root.path)
+        val carry = ChangeCarry(git(project))
+        val settings = AgenstormSettings.getInstance().state
         service<AgenstormAppScope>().scope.launch {
             val (defaultBranch, freeBranches) = withContext(Dispatchers.IO) { creator.defaultBranch() to creator.freeBranches() }
+            val changes = withContext(Dispatchers.IO) { carry.changes(source).size }
             val dialog = withContext(Dispatchers.EDT) {
-                NewWorktreeDialog(project, repository.currentBranchName, defaultBranch, freeBranches, taken).takeIf { it.showAndGet() }
+                NewWorktreeDialog(project, repository.currentBranchName, defaultBranch, freeBranches, taken, changes, settings.worktreesBringChanges)
+                    .takeIf { it.showAndGet() }
             } ?: return@launch
             val slug = dialog.slug ?: return@launch
+            if (changes > 0) settings.worktreesBringChanges = dialog.bringChanges
+            val bring = changes > 0 && dialog.bringChanges && dialog.base == NewWorktreeDialog.Base.HEAD
             // T4.8: the new worktree is this flow's to prepare; the watcher that prepares arrivals waits for it.
             val target = creator.targetFor(slug)
             Preparations.forget(target)
@@ -51,6 +64,16 @@ object NewWorktreeFlow {
                             dialog.base == NewWorktreeDialog.Base.DEFAULT_BRANCH && defaultBranch != null -> creator.create(slug, "origin/HEAD", defaultBranch)
                             else -> creator.create(slug, "HEAD", repository.currentBranchName ?: repository.currentRevision ?: "HEAD")
                         }
+                    }
+                }
+                (created as? WorktreeCreator.Result.Created)?.takeIf { bring }?.let { made ->
+                    val carried = withBackgroundProgress(project, AgenstormBundle.message("worktrees.new.bringing", slug)) {
+                        withContext(Dispatchers.IO) { carry.carry(source, Path.of(made.path)) }
+                    }
+                    if (carried is ChangeCarry.Outcome.Failed) {
+                        AgenstormNotifications.group()
+                            .createNotification(AgenstormBundle.message("worktrees.notice.title"), AgenstormBundle.message("worktrees.new.bring.failed", slug, carried.message), NotificationType.WARNING)
+                            .notify(project)
                     }
                 }
                 (created as? WorktreeCreator.Result.Created)?.let { made ->
@@ -77,4 +100,15 @@ object NewWorktreeFlow {
             }
         }
     }
+
+    /** Through git4idea's public `GitLineHandler`, out of the Git console: copying changes is no git operation of the user's. */
+    private fun git(project: Project): (Path, List<String>) -> WorktreeRemover.GitResult = { dir, args ->
+        val handler = GitLineHandler(project, dir, COMMANDS.getValue(args.first()))
+        handler.setSilent(true)
+        handler.addParameters(args.drop(1))
+        val result = Git.getInstance().runCommand(handler)
+        WorktreeRemover.GitResult(result.success(), result.output, result.errorOutputAsJoinedString)
+    }
+
+    private val COMMANDS = mapOf("status" to GitCommand.STATUS, "stash" to GitCommand.STASH, "ls-files" to GitCommand.LS_FILES)
 }

@@ -132,6 +132,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var worktreesPrepareOnOpen: Boolean = true,
         /** Epic T: …or as soon as it appears, so an agent working there has them without the worktree being opened. */
         var worktreesPrepareOnAppear: Boolean = false,
+        /** Epic T, T5.1: "+" copies the window's uncommitted changes into the new worktree — the dialog's checkbox, remembered (decision 94: off at first). */
+        var worktreesBringChanges: Boolean = false,
         /** Epic U: terminal tabs of a Git project run inside tmux sessions, so a worktree switch can hand them over (decision 89: off by default). */
         var terminalTmuxEnabled: Boolean = false,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
