@@ -78,6 +78,14 @@ class TmuxSessionsTest {
     }
 
     @Test
+    fun theSeparatorEscapedAsTmux34PrintsItIsReadToo() {
+        val escaped = captured.replace("\u001f", "\\037")
+
+        assertEquals(TmuxSessions.parse(captured), TmuxSessions.parse(escaped))
+        assertEquals("✳ Claude Code", TmuxSessions.parse(escaped)[2].label)
+    }
+
+    @Test
     fun noServerOrStrayLinesGiveNothing() {
         assertTrue(TmuxSessions.parse("").isEmpty())
         assertTrue(TmuxSessions.parse("no server running on /tmp/tmux-501/agenstorm\n").isEmpty())

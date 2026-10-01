@@ -44,12 +44,18 @@ data class TmuxSession(
 
 /**
  * Step U1.3. Reads the sessions on Agenstorm's socket from one `list-panes -a -F` call ([FORMAT]): a line per pane,
- * fields split by the ASCII unit separator, which no name, path or title carries. The host name rides along so that
+ * fields split by the ASCII unit separator, which no name, path or title carries. tmux up to 3.4 at least (Ubuntu
+ * 24.04's) escapes control characters in a command's output (`server_client_print` with `VIS_OCTAL`), so the separator
+ * arrives as the four characters `\037` there; 3.7 prints it raw. Both are read (found by CI's first Linux run).
+ * The host name rides along so that
  * tmux's default pane title — the host — is not mistaken for one a program set. Pure: [Tmux] runs the command.
  */
 object TmuxSessions {
 
     private const val SEP = "\u001f"
+
+    /** [SEP] as tmux 3.4 prints it, `vis(3)`-escaped. */
+    private const val ESCAPED_SEP = "\\037"
 
     private val FIELDS = listOf(
         "#{session_name}", "#{session_attached}", "#{session_created}",
@@ -69,7 +75,7 @@ object TmuxSessions {
     /** Sessions in the order tmux lists them, each with its panes; lines that do not carry every field are skipped. */
     fun parse(output: String): List<TmuxSession> {
         val sessions = LinkedHashMap<String, TmuxSession>()
-        for (line in output.lineSequence()) {
+        for (line in output.replace(ESCAPED_SEP, SEP).lineSequence()) {
             val f = line.split(SEP)
             if (f.size != FIELDS.size || f[0].isEmpty()) continue
             val title = f[9].takeIf { it.isNotBlank() && it != f[10] }
