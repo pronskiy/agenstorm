@@ -2,6 +2,7 @@ package com.pronskiy.agenstorm.worktrees
 
 import com.intellij.openapi.project.Project
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.GitCommonDir
 import com.pronskiy.agenstorm.core.ProjectNameProvider
 import java.io.IOException
 import java.nio.file.Files
@@ -34,26 +35,13 @@ class WorktreeProjectNames : ProjectNameProvider {
 }
 
 /**
- * Where a linked worktree's main checkout is, read from the disk: the worktree's `.git` is a file naming its admin dir
- * (`gitdir: <common git dir>/worktrees/<id>`), whose `commondir` names the common git dir, whose parent is the main
- * checkout. A submodule's `.git` file names a git dir without `commondir`, and a main checkout's `.git` is a folder:
- * neither is a linked worktree. A bare repository has no main checkout.
+ * Where a linked worktree's main checkout is: the parent of its common git dir ([GitCommonDir]). A submodule and a
+ * main checkout are not linked worktrees, and a bare repository has no main checkout.
  */
 object LinkedWorktree {
 
-    fun mainCheckout(base: Path): Path? = try {
-        val dotGit = base.resolve(".git")
-        if (!Files.isRegularFile(dotGit)) {
-            null
-        } else {
-            val line = Files.readAllLines(dotGit).firstOrNull { it.startsWith("gitdir:") }?.removePrefix("gitdir:")?.trim()
-            val gitDir = line?.let { base.resolve(it).normalize() }
-            val commonDir = gitDir?.resolve("commondir")?.takeIf(Files::isRegularFile)?.let { gitDir.resolve(Files.readString(it).trim()).normalize() }
-            commonDir?.takeIf { it.fileName?.toString() == ".git" }?.parent
-        }
-    } catch (_: IOException) {
-        null
-    }
+    fun mainCheckout(base: Path): Path? =
+        GitCommonDir.ofRoot(base)?.takeIf { it.isLinkedWorktree }?.commonDir?.takeIf { it.fileName?.toString() == ".git" }?.parent
 
     /** What the main checkout's project is called: `.idea/.name` when the project was renamed, else its folder's name. */
     fun projectName(main: Path): String = try {

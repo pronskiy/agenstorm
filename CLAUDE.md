@@ -37,7 +37,7 @@ Platform facts quoted in the spec were verified against IntelliJ Platform build 
   agenstorm/
   ├── build.gradle.kts, settings.gradle.kts, gradle.properties, gradle/
   ├── src/main/kotlin/com/pronskiy/agenstorm/
-  │   ├── core/        AgenstormSettings, AgenstormConfigurable, AgenstormBundle, AgenstormAppScope, AgenstormSettingsListener, AgenstormNotifications, ActionSlot, AllowListText, AgenstormPlugin, busy/ (ProjectBusyGuard EP + RunningProcessesGuard, TerminalCommandGuard — shared by offloading and the worktree switch)
+  │   ├── core/        AgenstormSettings, AgenstormConfigurable, AgenstormBundle, AgenstormAppScope, AgenstormSettingsListener, AgenstormNotifications, ActionSlot, AllowListText, AgenstormPlugin, GitCommonDir (U1.1: which repository a folder is in), busy/ (ProjectBusyGuard EP + RunningProcessesGuard, TerminalCommandGuard — shared by offloading and the worktree switch)
   │   ├── links/       parser, resolver, Symbol-API + old-API references, markdown/, comments/, php/, CopyLocationLinkAction
   │   ├── scratch/     NewScratchFileAction, ScratchLanguageAllowList, ScratchActionInstaller
   │   ├── frame/       ProjectOnlyFrameTitleBuilder
