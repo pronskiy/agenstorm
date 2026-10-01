@@ -14,9 +14,15 @@
   - A setting chooses what a click on a worktree tab does: replace the current project in its window (the default), or open the worktree as a project of its own next to it.
   - The folders holding worktrees (`.worktrees/`, `.claude/worktrees/`) are left out of the Project view, as `.idea` is; Project Files still lists them.
   - A worktree made in a terminal or by `claude -w` gets the ignored files and cloned dependencies too, on its first open (on by default) or, by a setting, as soon as it appears; a dependency folder it has already is left alone.
+- Terminals that follow a worktree switch, off by default under Settings | Tools | Agenstorm | Worktrees and needing tmux: terminal tabs of a Git project run inside tmux sessions of Agenstorm's own (its own socket and config; yours are left alone), so a switch hands every terminal running something to the new window — the same process, output going on — and the worktree you left closes instead of staying open behind it. Renamed tabs keep their names, and a program's own title (Claude Code's) shows in the tab.
+  - Closing a project with such a terminal running asks with the usual dialog, where Disconnect keeps it running in the background; quitting asks once for every window (Keep Running / Stop All). An idle project offloaded or a worktree switch keeps them without asking.
+  - Kept terminals are listed as "N background terminals" in the Terminal tool window's title bar and in the status bar, with Open and Stop, and come back as tabs when their worktree opens again, also after a restart; one whose program has ended is cleaned up.
+  - Removing or archiving a worktree names what runs in its terminals and stops it once confirmed ("Stop and Remove"); merging back waits until nothing runs there.
+  - `open` and `$EDITOR` keep working in a terminal that moved to another window or outlived a restart.
 
 ### Fixed
 
+- Offloading and the worktree switch now see a command running in a tab of the new terminal engine, which they used to miss: such a project stays open, rather than the close stopping to ask whether to terminate it.
 - Project tabs: right-clicking a tab opens only the tab's menu, no longer the main toolbar's "Customize Toolbar" menu on top of it; a right click on a tab's × opens the tab's menu too.
 
 ## [1.10.0] - 2026-09-28

@@ -57,6 +57,8 @@ its worktree has uncommitted changes, commits ahead or behind, or an agent at wo
 back, archives it or removes it, never losing work without asking. "+" makes a new one
 that is ready to work in: project settings, `.env` and `vendor/` carried over, the repository's setup
 started in a terminal. Worktrees nested in the repository stay out of the project that holds them.
+With tmux and one setting, terminals running an agent or a dev server follow the switch to the next
+worktree, and can be kept running when a window closes or the IDE quits.
 
 ### A terminal that fills the window
 
@@ -109,6 +111,7 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 | [Project tabs in the toolbar](#project-tabs) | on | Project tabs |
 | [Idle projects offloaded](#offloaded-projects) | on | Project tabs |
 | [Worktrees as tabs](#worktrees) | on | Worktrees |
+| [Terminals that follow the switch (tmux)](#terminals-that-follow-the-switch) | **off** | Worktrees |
 | [Window title without file names](#window-title) | on | Window title |
 | [Terminal fills the window](#filling-the-window-with-the-terminal) | on | Terminal size |
 | [Terminal output that folds](#terminal-output-that-folds-1) | on | Terminal output |
@@ -414,7 +417,9 @@ repository, the main checkout first and named after its branch, the rest oldest 
   - **Remove** deletes the folder, and the branch if it is merged. It asks first, naming the files whose
     changes would be lost and the commits left on the branch.
   - None of them touches a worktree whose window has a command running, or one an agent has locked while
-    that agent still runs; the main checkout has none of them.
+    that agent still runs; the main checkout has none of them. A program running in the worktree's tmux
+    terminals (below) is named in the confirmation, which then reads **Stop and Remove**; Merge Back waits
+    until nothing runs there.
 - When the tabs do not fit, the rest go under a chevron; the current one always stays.
 - A worktree's window is named after the repository and the worktree, `app:fix-login`, in the project
   tabs and the window title; the main checkout keeps its own name.
@@ -456,8 +461,35 @@ ever being opened.
 A new worktree is indexed once when it first opens; after that, switching back to it takes about a
 second.
 
+### Terminals that follow the switch
+
+Off by default: **Keep terminals running across worktree switches (tmux)** under Worktrees. It needs
+tmux (`brew install tmux`); without it, terminal tabs stay plain shells and a balloon says so once a run.
+Not on Windows.
+
+With it on, each terminal tab of a Git project runs its shell inside a tmux session on Agenstorm's own
+socket (`tmux -L agenstorm`) with Agenstorm's own config, so your tmux server and `~/.tmux.conf` are left
+alone. The tab looks and works as before — colours, clickable locations, `open`, `$EDITOR` — except that
+scrollback is tmux's: the mouse wheel enters its copy mode, and a selection there goes to the clipboard.
+
+- **A switch takes what runs along.** When the window swaps to another worktree of the same repository,
+  every terminal running something — an agent, `npm run dev`, a test run — becomes a tab of the new
+  window: the same process, its output going on, at the tab's full width. The worktree you left closes
+  instead of staying open behind, and its idle terminals end with it. A renamed tab keeps its name, and a
+  program's own title (Claude Code's animated one) shows in the tab as it does in a plain one.
+- **Closing a window or quitting asks.** Closing a project with a terminal still running shows the usual
+  *Process Is Running* dialog: **Disconnect** keeps it running in the background, **Terminate** ends it.
+  Quitting asks once for every window: **Keep Running** or **Stop All**. A window Agenstorm closes by
+  itself — an idle project offloaded, a worktree switch — keeps them without asking.
+- **Background terminals.** Kept terminals are listed as *N background terminals* in the Terminal tool
+  window's title bar and in the status bar, each with **Open** (a tab in this window when it belongs to the
+  same repository, otherwise in its own worktree's window) and **Stop**. When a worktree opens again, its
+  background terminals come back as tabs, also after a restart. One whose program has ended is cleaned up;
+  nothing that runs is ever stopped on a timer.
+- `open` and `$EDITOR` keep working in a terminal that moved, or that outlived a restart.
+
 Options, under **Worktrees**: the switch, the folder new worktrees go in, the folders to clone, when
-to prepare a worktree made elsewhere, and whether to run the setup. The exclusion stays with the tabs switched off, and a changed folder takes
+to prepare a worktree made elsewhere, whether to run the setup, and the tmux-backed terminals. The exclusion stays with the tabs switched off, and a changed folder takes
 effect when the project is reopened.
 
 ## Window title
