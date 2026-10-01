@@ -52,6 +52,8 @@
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
+        <!-- V1.2 (Epic V): Markdown and text files soft-wrap at the right margin. -->
+        <editorFactoryListener implementation="com.pronskiy.agenstorm.softwrap.MarginWrapEditorListener"/>
         <!-- AgenstormSettings is a light @Service (no XML registration needed). -->
         <applicationConfigurable parentId="tools"
                                  id="com.pronskiy.agenstorm"
@@ -126,6 +128,8 @@
     </applicationListeners>
 
     <projectListeners>
+        <!-- V1.3 (Epic V): a Code Style change may move the right margin that soft wrap stops at. -->
+        <listener class="com.pronskiy.agenstorm.softwrap.MarginWrapCodeStyleListener" topic="com.intellij.psi.codeStyle.CodeStyleSettingsListener"/>
         <!-- notifications: Notifications.TOPIC is BroadcastDirection.NONE and a project-scoped notification is
              published on that project's bus, so the application listener above never sees it. -->
         <listener class="com.pronskiy.agenstorm.notifications.NotificationAutoDismissListener" topic="com.intellij.notification.Notifications"/>

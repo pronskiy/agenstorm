@@ -297,6 +297,12 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     )
             }.visible(!SystemInfo.isWindows)
         }
+        // V1.4 (Epic V): on by default, decision 95.
+        featureGroup("settings.group.softWrap", "settings.softWrap.atRightMargin", AgenstormSettings.State::softWrapAtRightMargin, onApply = AgenstormSettingsListener::fire) {
+            row {
+                comment(AgenstormBundle.message("settings.softWrap.atRightMargin.comment"))
+            }
+        }
         featureGroup("settings.group.statusBar", "settings.statusBar.hideStatusText", AgenstormSettings.State::statusBarHideStatusText, onApply = AgenstormSettingsListener::fire) {
             row {
                 comment(AgenstormBundle.message("settings.statusBar.hideStatusText.comment"))
