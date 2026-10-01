@@ -43,6 +43,7 @@ class TmuxShellCommandTest {
 
         assertEquals("app-2", TmuxShellCommand.sessionOf(tmux + listOf("new-session", "-s", "app-2", "-c", "/a", "-e", "X=-t", "--", "/bin/zsh", "-s", ";", "set-option", "@agenstorm_repo", "/a/.git")))
         assertEquals("app-1", TmuxShellCommand.sessionOf(tmux + listOf("attach-session", "-t", "app-1")))
+        assertEquals("app-1", TmuxShellCommand.sessionOf(tmux + listOf("attach-session", "-t", "=app-1")))
         assertEquals(null, TmuxShellCommand.sessionOf(listOf("/opt/homebrew/bin/tmux", "-L", "work", "attach-session", "-t", "app-1")))
         assertEquals(null, TmuxShellCommand.sessionOf(listOf("/bin/zsh", "-l", "-i")))
     }

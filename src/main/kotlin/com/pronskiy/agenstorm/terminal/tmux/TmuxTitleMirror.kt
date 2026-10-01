@@ -1,10 +1,11 @@
 package com.pronskiy.agenstorm.terminal.tmux
 
-import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.application.EDT
 import com.intellij.terminal.TerminalTitle
 import com.intellij.terminal.TerminalTitleListener
 import com.intellij.terminal.frontend.view.TerminalView
+import com.intellij.ui.content.Content
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -21,16 +22,17 @@ import kotlin.time.Duration.Companion.seconds
  * every second whether the pane is back at its shell, and then the tab gets its own name back. A rename still wins
  * (`userDefinedTitle` comes first), and with application titles switched off in the terminal settings nothing is mirrored.
  */
-class TmuxTitleMirror(private val view: TerminalView, private val session: String, private val parent: Disposable) {
+class TmuxTitleMirror(private val view: TerminalView, private val session: String, private val content: Content) {
 
     private val title: TerminalTitle = view.title
     private val original: String? = title.defaultTitle
     private var watch: Job? = null
 
     fun start() {
+        content.putUserData(ORIGINAL_NAME, original ?: content.displayName)
         title.addTitleListener(object : TerminalTitleListener {
             override fun onTitleChanged(terminalTitle: TerminalTitle) = mirror()
-        }, parent)
+        }, content)
         mirror()
     }
 
@@ -58,6 +60,9 @@ class TmuxTitleMirror(private val view: TerminalView, private val session: Strin
 
     companion object {
         private val POLL = 1.seconds
+
+        /** The tab's own name, before any program's title stood in for it — what a hand-off names the new tab (U2.2). */
+        val ORIGINAL_NAME: Key<String> = Key.create("agenstorm.tmux.originalName")
 
         /** The program's own title while it has one and titles are shown, else the tab's own name. */
         fun defaultTitle(applicationTitle: String?, showApplicationTitles: Boolean, original: String?): String? =

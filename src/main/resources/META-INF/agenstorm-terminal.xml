@@ -22,6 +22,8 @@
         <offloadGuard implementation="com.pronskiy.agenstorm.core.busy.TerminalCommandGuard"/>
         <!-- T2.5: a new worktree's setup runs in a reworked terminal tab. -->
         <worktreeSetupTerminal implementation="com.pronskiy.agenstorm.worktrees.setup.ReworkedSetupTerminal"/>
+        <!-- U2.2: a worktree switch hands the tmux sessions running something to the new window. -->
+        <projectHandOff implementation="com.pronskiy.agenstorm.terminal.tmux.TerminalHandOff"/>
     </extensions>
 
     <projectListeners>
