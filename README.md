@@ -399,7 +399,9 @@ repository, the main checkout first and named after its branch, the rest oldest 
 - "+" asks for a name and what to branch off (the current HEAD, or the default branch) and creates
   `.worktrees/<name>` in the main checkout on a branch of the same name — or takes an existing branch no
   worktree has checked out, which is how an archived worktree comes back. The folder is ignored through
-  `.git/info/exclude`, so no tracked file changes.
+  `.git/info/exclude`, so no tracked file changes. Branching off the current HEAD, it can **bring your
+  uncommitted changes** along — staged, unstaged and untracked files — copied, so the checkout you
+  started from keeps them too.
 - Each tab shows its worktree's state after the name: `●` uncommitted changes, `↑2 ↓1` commits ahead of
   and behind its upstream (or, without one, the branch it was made from, else the default branch), and
   `⚙` while a command runs in it or it is locked, as Claude Code locks the worktree its agent works in.
@@ -416,6 +418,9 @@ repository, the main checkout first and named after its branch, the rest oldest 
     the folder and keeps the branch.
   - **Remove** deletes the folder, and the branch if it is merged. It asks first, naming the files whose
     changes would be lost and the commits left on the branch.
+  - **Clean Up Worktrees** lists the worktrees whose removal loses nothing — no uncommitted changes, no
+    commits their base lacks, nothing running, not open in a window — least recently used first and
+    ticked, and the rest with what keeps each; Remove takes the ticked ones.
   - None of them touches a worktree whose window has a command running, or one an agent has locked while
     that agent still runs; the main checkout has none of them. A program running in the worktree's tmux
     terminals (below) is named in the confirmation, which then reads **Stop and Remove**; Merge Back waits
@@ -489,7 +494,10 @@ scrollback is tmux's: the mouse wheel enters its copy mode, and a selection ther
 - `open` and `$EDITOR` keep working in a terminal that moved, or that outlived a restart.
 
 Options, under **Worktrees**: the switch, the folder new worktrees go in, the folders to clone, when
-to prepare a worktree made elsewhere, whether to run the setup, and the tmux-backed terminals. The exclusion stays with the tabs switched off, and a changed folder takes
+to prepare a worktree made elsewhere, whether to run the setup, a **limit** on worktrees per repository
+(off; at the limit "+" refuses and offers the cleanup), an **automatic cleanup** of worktrees with
+nothing to lose that nobody used for 30 days (off; checked once a day, and it never takes one with work
+in it), and the tmux-backed terminals. The exclusion stays with the tabs switched off, and a changed folder takes
 effect when the project is reopened.
 
 ## Window title
