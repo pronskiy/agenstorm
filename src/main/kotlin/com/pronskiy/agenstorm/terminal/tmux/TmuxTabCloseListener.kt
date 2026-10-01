@@ -44,9 +44,9 @@ class TmuxTabCloseListener(content: Content, project: Project, private val sessi
 }
 
 /**
- * Puts a [TmuxTabCloseListener] on each terminal tab whose shell turns out to run in one of our tmux sessions — known
- * only once the session has started, since a *New Tab* tab is wrapped on its way to the shell (U1.4). Registered as a
- * project listener in `agenstorm-terminal.xml`.
+ * Puts a [TmuxTabCloseListener] and a [TmuxTitleMirror] on each terminal tab whose shell turns out to run in one of our
+ * tmux sessions — known only once the session has started, since a *New Tab* tab is wrapped on its way to the shell
+ * (U1.4). Registered as a project listener in `agenstorm-terminal.xml`.
  */
 class TmuxTabsListener(private val project: Project) : TerminalTabsManagerListener {
 
@@ -55,7 +55,9 @@ class TmuxTabsListener(private val project: Project) : TerminalTabsManagerListen
         view.coroutineScope.launch {
             val session = TmuxShellCommand.sessionOf(view.startupOptionsDeferred.await().shellCommand) ?: return@launch
             withContext(Dispatchers.EDT) {
-                if (!project.isDisposed) TmuxTabCloseListener(tab.content, project, session)
+                if (project.isDisposed) return@withContext
+                TmuxTabCloseListener(tab.content, project, session)
+                TmuxTitleMirror(view, session, tab.content).start()
             }
         }
     }
