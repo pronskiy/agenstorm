@@ -6,7 +6,7 @@ import com.pronskiy.agenstorm.worktrees.cleanup.RemovalPlan.Risk
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Step T4.1: what stops a removal, what the user confirms, and how git is told. */
+/** Steps T4.1 and U4.1: what stops a removal, what the user confirms, and how git is told. */
 class RemovalPlanTest {
 
     private fun facts(
@@ -17,7 +17,8 @@ class RemovalPlanTest {
         lock: LockState = LockState.NONE,
         lockReason: String? = null,
         busy: String? = null,
-    ) = RemovalPlan.Facts(isMain, branch, changes, unmerged, base = "main", lock = lock, lockReason = lockReason, busyReason = busy)
+        running: List<String> = emptyList(),
+    ) = RemovalPlan.Facts(isMain, branch, changes, unmerged, base = "main", lock = lock, lockReason = lockReason, busyReason = busy, running = running)
 
     @Test
     fun aCleanMergedWorktreeIsRemovedWithItsBranch() {
@@ -77,5 +78,17 @@ class RemovalPlanTest {
         val detached = RemovalPlan.Facts(false, null, emptyList(), unmerged = 2, base = null, lock = LockState.NONE, lockReason = null, busyReason = null)
 
         assertEquals(Plan.Ready(listOf(Risk.Unmerged(2, null, null)), unlock = false, force = false, branch = null), RemovalPlan.plan(detached))
+    }
+
+    @Test
+    fun aProgramRunningInItsTerminalsIsConfirmedFirstAndStopped() {
+        val plan = RemovalPlan.plan(facts(changes = listOf("a.txt"), running = listOf("✳ Claude Code"))) as Plan.Ready
+        val archive = RemovalPlan.archive(facts(running = listOf("npm"))) as Plan.Ready
+
+        assertEquals(listOf(Risk.Running(listOf("✳ Claude Code")), Risk.Changes(listOf("a.txt"))), plan.risks)
+        assertEquals(true, plan.stop)
+        assertEquals(true, archive.stop)
+        assertEquals(false, (RemovalPlan.plan(facts()) as Plan.Ready).stop)
+        assertEquals("a live lock still refuses outright", Plan.AgentRunning(null), RemovalPlan.plan(facts(lock = LockState.LIVE, running = listOf("claude"))))
     }
 }

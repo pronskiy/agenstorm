@@ -27,7 +27,7 @@ class WorktreeRemover(private val git: (Path, List<String>) -> GitResult) {
         data class Failed(val message: String) : Outcome
     }
 
-    fun facts(main: Worktree, worktree: Worktree, lock: RemovalPlan.LockState, busyReason: String?): RemovalPlan.Facts {
+    fun facts(main: Worktree, worktree: Worktree, lock: RemovalPlan.LockState, busyReason: String?, running: List<String> = emptyList()): RemovalPlan.Facts {
         val dir = Path.of(worktree.path)
         val status = git(dir, listOf("status", "--porcelain=v2", "-z"))
         val changes = if (status.ok) PorcelainStatusParser.changedPaths(status.output.joinToString("\n")) else null
@@ -39,7 +39,7 @@ class WorktreeRemover(private val git: (Path, List<String>) -> GitResult) {
             else -> null
         }
         val unmerged = count?.let { args -> git(dir, args).takeIf { it.ok }?.output?.firstOrNull()?.trim()?.toIntOrNull() }
-        return RemovalPlan.Facts(worktree.isMain, branch, changes, unmerged, base, lock, worktree.lockReason, busyReason)
+        return RemovalPlan.Facts(worktree.isMain, branch, changes, unmerged, base, lock, worktree.lockReason, busyReason, running)
     }
 
     fun remove(main: Path, worktree: Worktree, plan: RemovalPlan.Plan.Ready): Outcome {

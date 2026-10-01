@@ -65,6 +65,17 @@ object TmuxBackgroundPlan {
     /** Opened in another worktree's window, a session belongs to that worktree from then on (U3.1, U3.2 read the tag). */
     fun adopt(session: String, project: String): List<String> = listOf("set-option", "-t", "=$session:", "@agenstorm_project", project)
 
+    /**
+     * Step U4.1: the sessions of a worktree — tagged with it, or with a pane working inside it — [folder] given in each
+     * spelling it may have (the IDE's path, the real one). Inside means the folder itself or below it, never a sibling
+     * whose name merely starts the same (`fix-login2` is not inside `fix-login`).
+     */
+    fun inFolder(sessions: List<TmuxSession>, folder: Set<String>): List<TmuxSession> {
+        val roots = folder.map { it.trimEnd('/') }.filter { it.isNotEmpty() }
+        fun inside(path: String?) = path != null && roots.any { path == it || path.startsWith("$it/") }
+        return sessions.filter { session -> inside(session.project) || session.panes.any { inside(it.path) } }
+    }
+
     /** The folder a session belongs to, as the quit prompt and the list name it: `fix-login` for `/work/app/.worktrees/fix-login`. */
     fun worktreeName(session: TmuxSession): String? = session.project?.trimEnd('/')?.substringAfterLast('/')?.ifEmpty { null }
 }

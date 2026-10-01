@@ -102,4 +102,17 @@ class TmuxBackgroundPlanTest {
 
         assertEquals(listOf("crash"), TmuxBackgroundPlan.leftovers(sessions, started).map { it.name })
     }
+
+    @Test
+    fun aWorktreesSessionsAreTaggedWithItOrWorkInsideIt() {
+        val fix = "/work/app/.worktrees/fix-login"
+        val sessions = listOf(
+            session("tagged", project = fix),
+            TmuxSession("cd-in", 1, 0, "/work/app/.git", "/work/app", false, listOf(TmuxPane(1, "npm", "$fix/src", null))),
+            TmuxSession("sibling", 1, 0, "/work/app/.git", "/work/app/.worktrees/fix-login2", false, listOf(TmuxPane(1, "npm", "/work/app/.worktrees/fix-login2", null))),
+            session("main"),
+        )
+
+        assertEquals(listOf("tagged", "cd-in"), TmuxBackgroundPlan.inFolder(sessions, setOf("$fix/", "/private$fix")).map { it.name })
+    }
 }

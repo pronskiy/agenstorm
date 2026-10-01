@@ -65,4 +65,12 @@ class RemovalTextTest : BasePlatformTestCase() {
         assertEquals("Removed wip. Its branch wip is kept: it is not merged.", RemovalText.outcome("wip", Outcome.Removed("wip", false)))
         assertEquals("Could not remove x: fatal: nope", RemovalText.outcome("x", Outcome.Failed("fatal: nope")))
     }
+
+    fun testWhatRunsInItsTerminalsIsNamedAndTheButtonSaysItStops() {
+        val plan = Plan.Ready(listOf(Risk.Running(listOf("✳ Claude Code", "npm"))), unlock = false, force = false, branch = "fix/login")
+
+        assertTrue(RemovalText.question("fix-login", "/r/fix-login", plan).endsWith("stops what its terminals run: ✳ Claude Code, npm"))
+        assertEquals("Stop and Remove", RemovalText.confirmButton(plan))
+        assertEquals("Stop and Archive", RemovalText.confirmButton(plan, RemovalText.Mode.ARCHIVE))
+    }
 }

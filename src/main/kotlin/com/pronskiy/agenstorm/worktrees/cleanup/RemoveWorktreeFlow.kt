@@ -16,6 +16,7 @@ import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.QuietClose
+import com.pronskiy.agenstorm.core.busy.FolderProcesses
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.worktrees.Worktree
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
@@ -36,6 +37,8 @@ import java.nio.file.Path
  * *Remove Anyway* when anything would — then close the worktree's project and remove (or archive) it. Removing the worktree the window shows switches the window
  * to the main checkout first (T1.6), and the rest runs from there. A project that will not close — it became busy
  * meanwhile — stops the removal. Runs in the application scope, since the switch closes the project that started it.
+ * Step U4.1: what runs in the worktree's terminals is named in the confirmation (*Stop and Remove*), and once confirmed
+ * every terminal session of the worktree ends — before the switch, which would otherwise hand a running one on.
  */
 object RemoveWorktreeFlow {
 
@@ -59,7 +62,7 @@ object RemoveWorktreeFlow {
             val busy = withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) { open(worktree.path)?.let { ProjectBusyGuard.busyReason(it) } }
             val lock = if (worktree.isLocked) RemovalPlan.LockState.valueOf(LockOwner.current(worktree.lockReason).name) else RemovalPlan.LockState.NONE
             val facts = withBackgroundProgress(project, RemovalText.checking(mode, name)) {
-                withContext(Dispatchers.IO) { remover(project).facts(main, worktree, lock, busy) }
+                withContext(Dispatchers.IO) { remover(project).facts(main, worktree, lock, busy, FolderProcesses.running(Path.of(worktree.path))) }
             }
             val plan = if (mode == RemovalText.Mode.ARCHIVE) RemovalPlan.archive(facts) else RemovalPlan.plan(facts)
             if (plan !is RemovalPlan.Plan.Ready) {
@@ -74,6 +77,7 @@ object RemoveWorktreeFlow {
                     .ask(project)
             }
             if (!confirmed) return@launch
+            withContext(Dispatchers.IO) { FolderProcesses.end(Path.of(worktree.path)) }
             val current = project.basePath?.let(FileUtil::toSystemIndependentName) == worktree.path
             if (!current) {
                 closeThenRemove(project, main, worktree, plan, name, mode)

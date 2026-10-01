@@ -35,7 +35,11 @@ object RemovalText {
         return ask + "\n\n" + message(mode, "risks") + plan.risks.joinToString("") { "\n• " + risk(it) }
     }
 
-    fun confirmButton(plan: Plan.Ready, mode: Mode = Mode.REMOVE): String = message(mode, if (plan.risks.isEmpty()) "yes" else "yes.anyway")
+    fun confirmButton(plan: Plan.Ready, mode: Mode = Mode.REMOVE): String = message(mode, when {
+        plan.stop -> "yes.stop"
+        plan.risks.isEmpty() -> "yes"
+        else -> "yes.anyway"
+    })
 
     fun refused(name: String, plan: Plan, mode: Mode = Mode.REMOVE): String? = when (plan) {
         Plan.MainCheckout -> message(mode, "blocked.main")
@@ -65,6 +69,7 @@ object RemovalText {
             risk.branch == null -> AgenstormBundle.message("worktrees.remove.risk.detached", risk.commits)
             else -> AgenstormBundle.message("worktrees.remove.risk.unmerged", risk.commits, risk.base.orEmpty(), risk.branch)
         }
+        is Risk.Running -> AgenstormBundle.message("worktrees.remove.risk.running", risk.programs.size, risk.programs.joinToString(", "))
         is Risk.Locked -> risk.reason?.let { AgenstormBundle.message("worktrees.remove.risk.locked", it) } ?: AgenstormBundle.message("worktrees.remove.risk.locked.plain")
     }
 

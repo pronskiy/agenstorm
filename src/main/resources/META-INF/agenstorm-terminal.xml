@@ -30,6 +30,8 @@
         <worktreeSetupTerminal implementation="com.pronskiy.agenstorm.worktrees.setup.ReworkedSetupTerminal"/>
         <!-- U2.2: a worktree switch hands the tmux sessions running something to the new window. -->
         <projectHandOff implementation="com.pronskiy.agenstorm.terminal.tmux.TerminalHandOff"/>
+        <!-- U4.1: removing, archiving or merging back a worktree sees, and can end, the tmux sessions inside it. -->
+        <folderProcesses implementation="com.pronskiy.agenstorm.terminal.tmux.TmuxFolderProcesses"/>
     </extensions>
 
     <applicationListeners>

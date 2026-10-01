@@ -19,6 +19,7 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
+import com.pronskiy.agenstorm.core.busy.FolderProcesses
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.worktrees.Worktree
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
@@ -44,7 +45,8 @@ import kotlin.time.Duration.Companion.seconds
  * ([MergeBackDialog]) and run it ([MergeRunner]). Where the window goes next follows what needs doing: after a squash,
  * to the base's worktree with the Commit tool window open, since the staged result waits for its message; after a
  * conflict, to the worktree that holds it; after a rebase, nowhere. Success offers *Remove Worktree*. Runs in the
- * application scope, since a switch closes the project that started it.
+ * application scope, since a switch closes the project that started it. Step U4.1: a program running in the worktree's
+ * terminals refuses it as a busy project does — merging work an agent is still writing would take half of it.
  */
 object MergeBackFlow {
 
@@ -71,6 +73,8 @@ object MergeBackFlow {
         val scope = service<AgenstormAppScope>().scope
         scope.launch {
             val busy = withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) { open(worktree.path)?.let { ProjectBusyGuard.busyReason(it) } }
+                ?: withContext(Dispatchers.IO) { FolderProcesses.running(Path.of(worktree.path)) }.takeIf { it.isNotEmpty() }
+                    ?.let { AgenstormBundle.message("worktrees.merge.running", it.joinToString(", "), it.size) }
             val lock = if (worktree.isLocked) RemovalPlan.LockState.valueOf(LockOwner.current(worktree.lockReason).name) else RemovalPlan.LockState.NONE
             val runner = runner(project)
             val facts = withBackgroundProgress(project, AgenstormBundle.message("worktrees.merge.checking", name)) {
