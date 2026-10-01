@@ -33,16 +33,17 @@ class TerminalHandOff : ProjectHandOff {
 
     override suspend fun handOff(from: Project, to: Project) {
         val tabs = withContext(Dispatchers.EDT) { tabsOf(from) }
+        LOG.info("Agenstorm: hand-off ${from.name} -> ${to.name}: tmux tabs ${tabs.map { it.session }}")
         if (tabs.isEmpty()) return
         val tmux = Tmux.getInstance()
         val repository = to.basePath?.let { GitCommonDir.of(Path.of(it))?.toString() }
         val toBase = to.basePath ?: return
         val moves = withContext(Dispatchers.IO) {
             TmuxHandOffPlan.plan(tabs, TmuxSessions.read(tmux), repository).onEach { move ->
-                val target = "=${move.session}"
-                tmux.run("set-option", "-t", target, "destroy-unattached", "off", ";", "set-option", "-t", target, "@agenstorm_project", toBase)
+                if (tmux.run(*TmuxHandOffPlan.keepAlive(move.session, toBase).toTypedArray()) == null) LOG.warn("Agenstorm: could not keep ${move.session} alive through the hand-off")
             }
         }
+        LOG.info("Agenstorm: hand-off ${from.name} -> ${to.name}: moving ${moves.map { it.session }} (repository $repository)")
         if (moves.isEmpty()) return
         val opened = withContext(Dispatchers.EDT) {
             val opened = moves.mapIndexedNotNull { index, move -> open(to, move, focus = index == 0)?.let { move.session to it } }
@@ -63,7 +64,7 @@ class TerminalHandOff : ProjectHandOff {
         }
 
     private fun open(to: Project, move: TmuxHandOffPlan.Move, focus: Boolean): TerminalToolWindowTab? {
-        val command = Tmux.getInstance().command("attach-session", "-t", "=${move.session}") ?: return null
+        val command = Tmux.getInstance().command(*TmuxHandOffPlan.attach(move.session).toTypedArray()) ?: return null
         val tab = TerminalToolWindowTabsManager.getInstance(to).createTabBuilder()
             .shellCommand(command)
             .processType(TerminalProcessType.NON_SHELL)
@@ -90,15 +91,14 @@ class TerminalHandOff : ProjectHandOff {
             val shown = if (alive) withContext(Dispatchers.EDT) { TerminalToolWindowTabsManager.getInstance(to).tabs.toSet() } else emptySet()
             for (name in waiting.toList()) {
                 val session = now[name]
-                val target = "=$name"
                 when {
                     session == null -> waiting -= name
                     session.clients > 0 -> {
-                        withContext(Dispatchers.IO) { tmux.run("set-option", "-t", target, "destroy-unattached", "on", ";", "resize-window", "-A", "-t", target) }
+                        withContext(Dispatchers.IO) { tmux.run(*TmuxHandOffPlan.settled(name).toTypedArray()) }
                         waiting -= name
                     }
                     !alive || tabs[name] !in shown -> {
-                        withContext(Dispatchers.IO) { tmux.run("set-option", "-t", target, "@agenstorm_background", "1") }
+                        withContext(Dispatchers.IO) { tmux.run(*TmuxHandOffPlan.keptInBackground(name).toTypedArray()) }
                         waiting -= name
                     }
                 }
@@ -126,6 +126,25 @@ object TmuxHandOffPlan {
      * is known. The new tab keeps a rename; otherwise it takes the old tab's own name — not the program's title, which
      * the IDE shows anyway while it runs — or, with neither, what runs.
      */
+    /**
+     * Targets name a session exactly — `app-1` must never fall through to `app-10` — and tmux spells that differently
+     * per command: `=app-1` where it wants a session (`attach-session`), `=app-1:` where it wants a pane or window
+     * (`set-option`, `resize-window`), which rejects the bare `=app-1` (found in the U2 guardrail run: the keep-alive
+     * failed silently and the moving sessions died with the old project).
+     */
+    fun attach(session: String): List<String> = listOf("attach-session", "-t", "=$session")
+
+    /** Before the old project closes: the session outlives its clients for now, and belongs to the new project. */
+    fun keepAlive(session: String, project: String): List<String> =
+        listOf("set-option", "-t", "=$session:", "destroy-unattached", "off", ";", "set-option", "-t", "=$session:", "@agenstorm_project", project)
+
+    /** Once the new tab is attached: the session ends with its tabs again, and fills the tab. */
+    fun settled(session: String): List<String> =
+        listOf("set-option", "-t", "=$session:", "destroy-unattached", "on", ";", "resize-window", "-A", "-t", "=$session:")
+
+    /** A session no new tab ever attached to: kept, and listed as a background terminal (U3). */
+    fun keptInBackground(session: String): List<String> = listOf("set-option", "-t", "=$session:", "@agenstorm_background", "1")
+
     fun plan(tabs: List<Tab>, sessions: List<TmuxSession>, repository: String?): List<Move> {
         val byName = sessions.associateBy { it.name }
         return tabs.distinctBy { it.session }.mapNotNull { tab ->

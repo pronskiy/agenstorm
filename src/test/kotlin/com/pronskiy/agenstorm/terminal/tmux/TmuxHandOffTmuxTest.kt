@@ -1,0 +1,107 @@
+package com.pronskiy.agenstorm.terminal.tmux
+
+import com.intellij.openapi.util.io.NioFiles
+import com.pty4j.PtyProcess
+import com.pty4j.PtyProcessBuilder
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeNotNull
+import org.junit.Test
+import java.nio.file.Files
+import java.nio.file.Path
+
+/**
+ * Step U2.2, against real tmux: the commands the hand-off runs keep a session alive between the old tab's client and
+ * the new one's, then let it end with its tabs again. The U2 guardrail run found the keep-alive failing silently
+ * (`set-option -t =app-1` is no target tmux accepts), so these are the exact command lines [TerminalHandOff] uses.
+ */
+class TmuxHandOffTmuxTest {
+
+    private var temp: Path? = null
+    private var tmux: Path? = null
+    private val clients = mutableListOf<PtyProcess>()
+    private val socket = "agenstorm-handoff-test-${ProcessHandle.current().pid()}"
+    private lateinit var prefix: List<String>
+
+    @After
+    fun tearDown() {
+        clients.forEach { it.destroyForcibly() }
+        tmux?.let { ProcessBuilder(it.toString(), "-L", socket, "kill-server").start().waitFor() }
+        temp?.let(NioFiles::deleteRecursively)
+    }
+
+    @Test
+    fun aMovingSessionOutlivesTheOldTabAndEndsWithTheNewOne() {
+        start()
+        val old = client(prefix + listOf("new-session", "-s", "app-1", "sleep", "60"))
+        assertNotNull(waitFor { session("app-1")?.takeIf { it.clients == 1 } })
+
+        assertEquals(0, tmux(TmuxHandOffPlan.keepAlive("app-1", "/work/app/.worktrees/fix-login")))
+        old.destroyForcibly().waitFor()
+        val alone = waitFor { session("app-1")?.takeIf { it.clients == 0 } }
+        assertEquals("the session outlived the old tab", "/work/app/.worktrees/fix-login", alone?.project)
+
+        val new = client(prefix + TmuxHandOffPlan.attach("app-1"))
+        assertNotNull("the new tab attached", waitFor { session("app-1")?.takeIf { it.clients == 1 } })
+        assertEquals(0, tmux(TmuxHandOffPlan.settled("app-1")))
+
+        new.destroyForcibly().waitFor()
+        assertNotNull("settled, it ends with its last tab", waitFor { if (session("app-1") == null) true else null })
+    }
+
+    @Test
+    fun aSessionNoTabAttachedToIsKeptAsABackgroundTerminal() {
+        start()
+        val old = client(prefix + listOf("new-session", "-s", "app-1", "sleep", "60"))
+        assertNotNull(waitFor { session("app-1")?.takeIf { it.clients == 1 } })
+        assertEquals(0, tmux(TmuxHandOffPlan.keepAlive("app-1", "/work/app")))
+        old.destroyForcibly().waitFor()
+
+        assertEquals(0, tmux(TmuxHandOffPlan.keptInBackground("app-1")))
+        assertTrue(waitFor { session("app-1")?.takeIf { it.background } } != null)
+    }
+
+    @Test
+    fun anExactTargetNeverFallsThroughToALongerName() {
+        start()
+        client(prefix + listOf("new-session", "-s", "app-10", "sleep", "60"))
+        assertNotNull(waitFor { session("app-10")?.takeIf { it.clients == 1 } })
+
+        assertTrue("app-1 does not exist, and must not mean app-10", tmux(TmuxHandOffPlan.keepAlive("app-1", "/x")) != 0)
+        assertEquals(null, session("app-10")?.project)
+    }
+
+    private fun start() {
+        val binary = Tmux.find(System.getenv("PATH")) { Files.isRegularFile(it) && Files.isExecutable(it) }
+        assumeNotNull(binary)
+        tmux = binary
+        temp = Files.createTempDirectory("tmux-handoff")
+        val config = Files.writeString(temp!!.resolve("tmux.conf"), Tmux.configText(null))
+        prefix = listOf(binary.toString(), "-u", "-L", socket, "-f", config.toString())
+    }
+
+    private fun client(command: List<String>): PtyProcess =
+        PtyProcessBuilder(command.toTypedArray()).setEnvironment(System.getenv() + ("TERM" to "xterm-256color")).start().also { clients += it }
+
+    private fun tmux(args: List<String>): Int = ProcessBuilder(prefix + args).redirectErrorStream(true).start().let {
+        it.inputStream.readBytes()
+        it.waitFor()
+    }
+
+    private fun session(name: String): TmuxSession? {
+        val process = ProcessBuilder(prefix + listOf("list-panes", "-a", "-F", TmuxSessions.FORMAT)).redirectErrorStream(true).start()
+        val out = process.inputStream.bufferedReader().readText().also { process.waitFor() }
+        return TmuxSessions.parse(out).firstOrNull { it.name == name }
+    }
+
+    private fun <T : Any> waitFor(seconds: Int = 10, probe: () -> T?): T? {
+        val deadline = System.currentTimeMillis() + seconds * 1000L
+        while (System.currentTimeMillis() < deadline) {
+            probe()?.let { return it }
+            Thread.sleep(100)
+        }
+        return null
+    }
+}

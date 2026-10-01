@@ -165,7 +165,10 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
         }
 
         override suspend fun handOff(from: String, to: String) {
-            ProjectHandOff.fire(project(from) ?: return, project(to) ?: return)
+            val fromProject = project(from)
+            val toProject = project(to)
+            LOG.debug { "hand-off $from -> $to: projects ${fromProject?.name} -> ${toProject?.name}" }
+            ProjectHandOff.fire(fromProject ?: return, toProject ?: return)
         }
 
         override fun close(path: String): Boolean {
