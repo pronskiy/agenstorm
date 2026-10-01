@@ -13,16 +13,16 @@ class TmuxReattachPlanTest {
             panes = listOf(TmuxPane(1, "sleep", project, null)))
 
     @Test
-    fun onlyThisProjectsUnshownBackgroundTerminalsGetATab() {
+    fun onlyThisProjectsUnattachedBackgroundTerminalsComeBack() {
         val sessions = listOf(
             session("app-a"),
             session("app-b", project = "/work/app/.worktrees/fix-login"), // another worktree: stays listed (U3.3)
             session("app-c", background = false, clients = 1), // an ordinary session
             session("app-d", clients = 1), // a restored tab attached already
-            session("app-e"), // a restored tab asks for it, not started yet
+            session("app-e"), // a restored tab may ask for it, not started yet: selected rather than opened again
         )
 
-        assertEquals(listOf("app-a"), TmuxReattachPlan.toOpen(sessions, "/work/app", shown = setOf("app-e")).map { it.name })
+        assertEquals(listOf("app-a", "app-e"), TmuxReattachPlan.kept(sessions, "/work/app").map { it.name })
     }
 
     @Test

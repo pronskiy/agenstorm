@@ -64,6 +64,7 @@ class TmuxBackgroundPlanTest {
         )
 
         assertEquals(listOf("old", "new"), TmuxBackgroundPlan.listed(sessions).map { it.name })
+        assertEquals("a restored tab asks for it", listOf("new"), TmuxBackgroundPlan.listed(sessions, asked = setOf("old")).map { it.name })
     }
 
     @Test

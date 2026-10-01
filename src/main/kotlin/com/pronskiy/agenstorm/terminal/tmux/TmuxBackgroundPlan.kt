@@ -35,9 +35,12 @@ object TmuxBackgroundPlan {
         }
     }
 
-    /** Step U3.3: the background terminals to list — kept, and shown by no tab — oldest first. */
-    fun listed(sessions: List<TmuxSession>): List<TmuxSession> =
-        sessions.filter { it.background && it.clients == 0 }.sortedBy { it.createdEpochSeconds }
+    /**
+     * Step U3.3: the background terminals to list — kept, with no client, and asked for by no tab of an open window
+     * ([asked]; a restored tab starts only once shown, U3 guardrail run) — oldest first.
+     */
+    fun listed(sessions: List<TmuxSession>, asked: Set<String> = emptySet()): List<TmuxSession> =
+        sessions.filter { it.background && it.clients == 0 && it.name !in asked }.sortedBy { it.createdEpochSeconds }
 
     /** Step U3.4: background terminals whose program has ended — the pane back at its shell — to stop when seen. */
     fun ended(sessions: List<TmuxSession>): List<TmuxSession> = sessions.filter { it.background && it.clients == 0 && !it.running }

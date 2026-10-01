@@ -114,6 +114,9 @@ class BackgroundTerminals(private val scope: CoroutineScope) {
 
     private suspend fun read() = reading.withLock {
         val on = AgenstormSettings.getInstance().state.terminalTmuxEnabled && !SystemInfo.isWindows
+        val asked = if (!on) emptySet() else withContext(Dispatchers.EDT) {
+            ProjectManager.getInstance().openProjects.filter { !it.isDisposed && !it.isDefault }.flatMap { project -> TmuxTabs.of(project).map { it.second } }.toSet()
+        }
         val now = if (!on) emptyList() else withContext(Dispatchers.IO) {
             val tmux = Tmux.getInstance()
             if (tmux.binary() == null) return@withContext emptyList()
@@ -122,7 +125,7 @@ class BackgroundTerminals(private val scope: CoroutineScope) {
                 if (swept.compareAndSet(false, true)) TmuxBackgroundPlan.leftovers(sessions, ManagementFactory.getRuntimeMXBean().startTime) else emptyList()
             gone.forEach { tmux.run(*TmuxBackgroundPlan.stop(it.name).toTypedArray()) }
             if (gone.isNotEmpty()) LOG.info("Agenstorm: cleaned up tmux sessions ${gone.joinToString { it.name }}")
-            TmuxBackgroundPlan.listed(sessions - gone.toSet())
+            TmuxBackgroundPlan.listed(sessions - gone.toSet(), asked)
         }
         if (now == listed.value) return@withLock
         val countChanged = now.size != listed.value.size
