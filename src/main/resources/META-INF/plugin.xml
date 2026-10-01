@@ -36,6 +36,10 @@
         <extensionPoint qualifiedName="com.pronskiy.agenstorm.projectNameProvider"
                         interface="com.pronskiy.agenstorm.core.ProjectNameProvider"
                         dynamic="true"/>
+        <!-- core: a worktree switch hands what runs in the closing project to the new one (U2.1); the terminal hand-off is registered in agenstorm-terminal.xml. -->
+        <extensionPoint qualifiedName="com.pronskiy.agenstorm.projectHandOff"
+                        interface="com.pronskiy.agenstorm.core.ProjectHandOff"
+                        dynamic="true"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">

@@ -35,7 +35,7 @@ class SwitchRunnerTest {
         override fun present(target: String, like: String) {
             calls += "present $target like $like"
         }
-        override fun handOff(from: String, to: String) {
+        override suspend fun handOff(from: String, to: String) {
             calls += "hand-off $from -> $to"
         }
         override fun close(path: String): Boolean {

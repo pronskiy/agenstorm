@@ -51,7 +51,7 @@ class SwitchRunner(private val env: Env) {
         /** Gives [target]'s window the bounds of [like]'s and brings it to the front. */
         fun present(target: String, like: String)
         /** U2.1: [from] is about to close for [to] — what runs in it may move along ([ProjectHandOff]). */
-        fun handOff(from: String, to: String)
+        suspend fun handOff(from: String, to: String)
         /** Closes the project at [path] unless a guard objects now; false when it stays open. */
         fun close(path: String): Boolean
         fun notify(message: String)
@@ -164,7 +164,7 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
             ProjectUtil.focusProjectWindow(targetProject, true)
         }
 
-        override fun handOff(from: String, to: String) {
+        override suspend fun handOff(from: String, to: String) {
             ProjectHandOff.fire(project(from) ?: return, project(to) ?: return)
         }
 
