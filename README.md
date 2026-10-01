@@ -14,7 +14,8 @@ Obsidian-style editing: `**bold**`, headings, links, `- [ ]` task boxes and bull
 result until the caret reaches them. Fenced code blocks and block quotes sit on a card. Tables
 render in place — a proportional font, wrapped cells, a bold header — and a click edits one cell
 without leaving the rendered view. It is folding only: the file on disk never changes, and copying always copies raw Markdown.
-An optional switch also hides the editor/preview layout buttons.
+An optional switch also hides the editor/preview layout buttons. Soft-wrapped Markdown and text stop at
+the right margin's line, however wide the window.
 
 ### Clickable file locations
 
@@ -104,6 +105,7 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 | Feature | Default | Settings group |
 |---|---|---|
 | [Markdown live markup](#markdown-live-markup-1) | on | Markdown live markup |
+| [Soft wrap at the right margin](#soft-wrap-at-the-right-margin) | on | Soft wraps |
 | [Clickable file locations](#clickable-file-locations-1) | on | Location links |
 | [`open` in the terminal](#opening-files-from-the-terminal) | on | Terminal |
 | [IDE as `$EDITOR`](#the-ide-as-your-terminals-editor-1) | on | Terminal editor |
@@ -191,6 +193,21 @@ Limitations:
 - Heading sizes stay at the editor's single line height.
 - Images and reference-style links stay raw.
 - The code-block card has no rounded corners, language chip or copy button.
+
+---
+
+## Soft wrap at the right margin
+
+With soft wrap on, the IDE wraps a line at the window's edge, so on a wide window with a small font a
+paragraph of Markdown runs far past the right margin's vertical line. Agenstorm stops it at that line —
+or at the window's edge when the window is narrower, as before — the way VS Code's "bounded" word wrap
+does. It is the margin the editor draws (Code Style → *Hard wrap at*, per language), and the wraps
+follow when you zoom, resize the window or change the margin.
+
+It applies to the files the IDE soft-wraps — Settings | Editor | General | Soft Wraps → *Soft-wrap these
+files*, by default `*.md; *.txt; *.rst; *.adoc` — and leaves code, diff views, consoles and the terminal
+alone. On by default under **Soft wraps**. A file short enough to fit the window keeps its old width
+after a margin change until it is resized, zoomed or reopened.
 
 ---
 
