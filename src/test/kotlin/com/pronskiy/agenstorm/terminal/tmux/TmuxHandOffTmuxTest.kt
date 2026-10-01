@@ -13,9 +13,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Step U2.2, against real tmux: the commands the hand-off runs keep a session alive between the old tab's client and
- * the new one's, then let it end with its tabs again. The U2 guardrail run found the keep-alive failing silently
- * (`set-option -t =app-1` is no target tmux accepts), so these are the exact command lines [TerminalHandOff] uses.
+ * Steps U2.2 and U3, against real tmux: the commands the hand-off runs keep a session alive between the old tab's client
+ * and the new one's, then let it end with its tabs again; a kept one outlives its last tab as a background terminal,
+ * and a stopped one ends. The U2 guardrail run found the keep-alive failing silently (`set-option -t =app-1` is no
+ * target tmux accepts), so these are the exact command lines [TerminalHandOff] and [TmuxCloseGuard] use.
  */
 class TmuxHandOffTmuxTest {
 
@@ -83,6 +84,22 @@ class TmuxHandOffTmuxTest {
     }
 
     @Test
+    fun aKeptSessionOutlivesItsLastTabAsABackgroundTerminalUnderItsTabsName() {
+        start()
+        val tab = client(prefix + listOf("new-session", "-s", "app-1", "sleep", "60"))
+        assertNotNull(waitFor { session("app-1")?.takeIf { it.clients == 1 } })
+
+        assertEquals(0, tmux(TmuxBackgroundPlan.keep("app-1", "Local (2)")))
+        tab.destroyForcibly().waitFor()
+        val kept = waitFor { session("app-1")?.takeIf { it.clients == 0 } }
+        assertEquals(true, kept?.background)
+        assertEquals("Local (2)", kept?.tabName)
+
+        assertEquals(0, tmux(TmuxBackgroundPlan.stop("app-1")))
+        assertEquals("stopped", null, session("app-1"))
+    }
+
+    @Test
     fun anExactTargetNeverFallsThroughToALongerName() {
         start()
         client(prefix + listOf("new-session", "-s", "app-10", "sleep", "60"))
@@ -90,6 +107,9 @@ class TmuxHandOffTmuxTest {
 
         assertTrue("app-1 does not exist, and must not mean app-10", tmux(TmuxHandOffPlan.keepAlive("app-1", "/x")) != 0)
         assertEquals(null, session("app-10")?.project)
+        assertTrue(tmux(TmuxBackgroundPlan.keep("app-1", null)) != 0)
+        assertTrue(tmux(TmuxBackgroundPlan.stop("app-1")) != 0)
+        assertEquals(false, session("app-10")?.background)
     }
 
     private fun start() {

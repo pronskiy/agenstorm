@@ -17,6 +17,8 @@
         <postStartupActivity implementation="com.pronskiy.agenstorm.terminal.enhance.TerminalEnhancerStartupActivity"/>
         <!-- U3.1: a project's background terminals are tabs of its window again when it opens. -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.terminal.tmux.TmuxReattach"/>
+        <!-- U3.2: closing a project with a tmux tab running something asks to keep it or stop it. -->
+        <projectCloseHandler implementation="com.pronskiy.agenstorm.terminal.tmux.TmuxProjectCloseHandler"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
@@ -27,6 +29,11 @@
         <!-- U2.2: a worktree switch hands the tmux sessions running something to the new window. -->
         <projectHandOff implementation="com.pronskiy.agenstorm.terminal.tmux.TerminalHandOff"/>
     </extensions>
+
+    <applicationListeners>
+        <!-- U3.2: acting on a close's or a quit's answer once the close is certain. -->
+        <listener class="com.pronskiy.agenstorm.terminal.tmux.TmuxProjectClosing" topic="com.intellij.openapi.project.ProjectCloseListener"/>
+    </applicationListeners>
 
     <projectListeners>
         <!-- U1.6 (decision 92): ✕ on a tmux tab running something asks, with the platform's dialog. -->

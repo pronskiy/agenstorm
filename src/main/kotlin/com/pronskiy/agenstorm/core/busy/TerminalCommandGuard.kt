@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.intellij.terminal.ui.TerminalWidget
@@ -79,11 +80,18 @@ class TerminalCommandGuard(
         fun tabBusy(command: List<String>, nonShell: Boolean, executing: Boolean): Boolean =
             command.firstOrNull()?.substringAfterLast('/') != "tmux" && (nonShell || executing)
 
-        /** The reworked terminal's tabs; none while the project has no Terminal tool window, where the manager throws. */
-        private fun reworkedTabs(project: Project): Collection<TerminalToolWindowTab> = try {
-            TerminalToolWindowTabsManager.getInstance(project).tabs
-        } catch (_: IllegalStateException) {
-            emptyList()
+        /**
+         * The reworked terminal's tabs; none while the project has no Terminal tool window, where the manager throws, nor
+         * while that tool window's content is not made yet — asking the manager would make it, and the platform would
+         * restore the last run's tabs, starting their shells, in every project a sweep looks at (found in U3.2).
+         */
+        private fun reworkedTabs(project: Project): Collection<TerminalToolWindowTab> {
+            if (ToolWindowManager.getInstance(project).getToolWindow("Terminal")?.contentManagerIfCreated == null) return emptyList()
+            return try {
+                TerminalToolWindowTabsManager.getInstance(project).tabs
+            } catch (_: IllegalStateException) {
+                emptyList()
+            }
         }
 
         @OptIn(ExperimentalCoroutinesApi::class)

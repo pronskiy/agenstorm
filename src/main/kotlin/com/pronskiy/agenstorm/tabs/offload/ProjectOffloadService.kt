@@ -12,6 +12,7 @@ import com.intellij.openapi.wm.IdeFocusManager
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.QuietClose
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.tabs.ProjectTab
 import com.pronskiy.agenstorm.tabs.ProjectTabsModel
@@ -51,7 +52,8 @@ class ProjectOffloadService(private val scope: CoroutineScope) {
         },
         activeKey = { IdeFocusManager.getGlobalInstance().lastFocusedFrame?.project?.takeUnless { it.isDisposed }?.let(ProjectTabsModel::keyOf) },
         busyReason = ProjectBusyGuard::busyReason,
-        close = { ProjectManager.getInstance().closeAndDispose(it) },
+        // An idle window nobody looks at: a terminal still running is kept as a background terminal, not asked about (U3.2).
+        close = { project -> QuietClose.run(project) { ProjectManager.getInstance().closeAndDispose(project) } },
         clock = System::currentTimeMillis,
         onOffloaded = OffloadNotice::showOnce,
     )

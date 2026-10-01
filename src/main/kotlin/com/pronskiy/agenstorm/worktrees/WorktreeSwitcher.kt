@@ -20,6 +20,7 @@ import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.ProjectHandOff
+import com.pronskiy.agenstorm.core.QuietClose
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.worktrees.carry.Preparations
 import com.pronskiy.agenstorm.worktrees.carry.WorktreePreparer
@@ -178,7 +179,8 @@ class WorktreeSwitcher(private val scope: CoroutineScope) {
                 LOG.info("Leaving ${project.name} open behind the switch: $reason")
                 return false
             }
-            return ProjectManager.getInstance().closeAndDispose(project)
+            // Nobody is looking at the window that closes: a terminal the hand-off did not move is kept, not asked about (U3.2).
+            return QuietClose.run(project) { ProjectManager.getInstance().closeAndDispose(project) }
         }
 
         override fun notify(message: String) {

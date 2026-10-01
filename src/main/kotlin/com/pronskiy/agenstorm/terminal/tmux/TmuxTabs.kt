@@ -26,11 +26,20 @@ object TmuxTabs {
         return command?.let(TmuxShellCommand::sessionOf)
     }
 
-    /** The tabs of [project] that show one of our sessions; none while it has no Terminal tool window, where the manager throws. */
-    fun of(project: Project): List<Pair<TerminalToolWindowTab, String>> = try {
-        TerminalToolWindowTabsManager.getInstance(project).tabs.mapNotNull { tab -> sessionOf(tab)?.let { tab to it } }
-    } catch (_: IllegalStateException) {
-        emptyList()
+    /**
+     * The tabs of [project] that show one of our sessions; none while it has no Terminal tool window, where the manager
+     * throws. Asking the manager makes the tool window's content, which sets off the platform's restore of the last run's
+     * tabs — shells starting — so a tool window whose content does not exist yet has no tabs, unless [create] says to
+     * make it (U3.1 wants exactly that).
+     */
+    fun of(project: Project, create: Boolean = false): List<Pair<TerminalToolWindowTab, String>> {
+        val window = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW) ?: return emptyList()
+        if (!create && window.contentManagerIfCreated == null) return emptyList()
+        return try {
+            TerminalToolWindowTabsManager.getInstance(project).tabs.mapNotNull { tab -> sessionOf(tab)?.let { tab to it } }
+        } catch (_: IllegalStateException) {
+            emptyList()
+        }
     }
 
     /**

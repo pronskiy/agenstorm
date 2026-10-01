@@ -26,6 +26,8 @@ import kotlin.time.Duration.Companion.seconds
 class TmuxReattach : ProjectActivity {
 
     override suspend fun execute(project: Project) {
+        // Installed here too, for a run where the plugin was loaded after the IDE started.
+        TmuxCloseGuard.getInstance().install()
         if (!AgenstormSettings.getInstance().state.terminalTmuxEnabled || SystemInfo.isWindows) return
         val base = project.basePath ?: return
         val tmux = Tmux.getInstance()
@@ -35,7 +37,7 @@ class TmuxReattach : ProjectActivity {
             while (withContext(Dispatchers.EDT) { ToolWindowManager.getInstance(project).getToolWindow(TmuxTabs.TOOL_WINDOW) } == null) delay(POLL)
         } ?: return
         // Asking for the tabs makes the tool window's content, which sets the platform's restore off.
-        withContext(Dispatchers.EDT) { if (!project.isDisposed) TmuxTabs.of(project) }
+        withContext(Dispatchers.EDT) { if (!project.isDisposed) TmuxTabs.of(project, create = true) }
         delay(RESTORE)
         val sessions = withContext(Dispatchers.IO) { TmuxSessions.read(tmux) }
         withContext(Dispatchers.EDT) {

@@ -15,6 +15,7 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormNotifications
+import com.pronskiy.agenstorm.core.QuietClose
 import com.pronskiy.agenstorm.core.busy.ProjectBusyGuard
 import com.pronskiy.agenstorm.worktrees.Worktree
 import com.pronskiy.agenstorm.worktrees.WorktreeRegistry
@@ -89,7 +90,7 @@ object RemoveWorktreeFlow {
     private suspend fun closeThenRemove(project: Project, main: Worktree, worktree: Worktree, plan: RemovalPlan.Plan.Ready, name: String, mode: RemovalText.Mode) {
         val closed = withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
             val open = open(worktree.path) ?: return@withContext true
-            ProjectBusyGuard.busyReason(open) == null && ProjectManager.getInstance().closeAndDispose(open)
+            ProjectBusyGuard.busyReason(open) == null && QuietClose.run(open) { ProjectManager.getInstance().closeAndDispose(open) }
         }
         if (!closed) {
             notify(project, RemovalText.notClosed(mode, name), NotificationType.WARNING)

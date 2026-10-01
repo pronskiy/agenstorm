@@ -6,7 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Step U1.6: the platform's close dialog, rebuilt — its remembered choice and its buttons mean what they mean there. */
+/** Steps U1.6 and U3.2: the platform's close dialog, rebuilt — its remembered choice and its buttons mean what they mean there — and the quit prompt. */
 class TmuxCloseDialogTest {
 
     @Test
@@ -25,5 +25,13 @@ class TmuxCloseDialogTest {
         assertEquals(Answer.KEEP, TmuxCloseDialog.fromButton(1, canKeep = true))
         assertEquals(Answer.CANCEL, TmuxCloseDialog.fromButton(2, canKeep = true))
         assertEquals(Answer.CANCEL, TmuxCloseDialog.fromButton(-1, canKeep = true)) // closed with Esc
+    }
+
+    @Test
+    fun theQuitPromptIsKeepRunningThenStopAllThenCancel() {
+        assertEquals(Answer.KEEP, TmuxCloseDialog.fromQuitButton(0))
+        assertEquals(Answer.TERMINATE, TmuxCloseDialog.fromQuitButton(1))
+        assertEquals(Answer.CANCEL, TmuxCloseDialog.fromQuitButton(2))
+        assertEquals(Answer.CANCEL, TmuxCloseDialog.fromQuitButton(-1))
     }
 }

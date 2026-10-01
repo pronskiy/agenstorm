@@ -3,6 +3,7 @@ package com.pronskiy.agenstorm.terminal.tmux
 import com.intellij.execution.ui.BaseContentCloseListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ThrowableComputable
@@ -10,6 +11,7 @@ import com.intellij.terminal.frontend.toolwindow.TerminalTabsManagerListener
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.intellij.ui.content.Content
+import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -39,7 +41,10 @@ class TmuxTabCloseListener(content: Content, project: Project, private val sessi
             AgenstormBundle.message("terminal.tmux.checking"), true, myProject,
         ) ?: return true
         if (!state.running || state.clients > 1) return true
-        return TmuxCloseDialog.ask(myProject, listOf(content.displayName), canKeep = false) == TmuxCloseDialog.Answer.TERMINATE
+        if (TmuxCloseDialog.ask(myProject, listOf(content.displayName), canKeep = false) != TmuxCloseDialog.Answer.TERMINATE) return false
+        // Ended outright rather than left to `destroy-unattached`, which a background terminal not settled yet has off (U3.2).
+        service<AgenstormAppScope>().scope.launch(Dispatchers.IO) { Tmux.getInstance().run(*TmuxBackgroundPlan.stop(session).toTypedArray()) }
+        return true
     }
 
     override fun canClose(project: Project): Boolean = true
