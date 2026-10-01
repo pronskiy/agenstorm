@@ -6,7 +6,8 @@
 # moment this process exits and would take the text back unchanged if we returned any earlier.
 # POSIX sh only: the same file is named by $EDITOR for zsh, bash and fish.
 #
-# The port and token variables are the `open` shim's — one endpoint per project serves both.
+# The port and token variables are the `open` shim's — one endpoint per project serves both — and so is the
+# list of endpoints it falls back on.
 
 fallback() {
 	# The IDE cannot take it. Hand over to whatever this terminal would have used without us, which the
@@ -32,8 +33,42 @@ command -v curl >/dev/null 2>&1 || fallback "$@"
 # field of the body and never a curl argument — see open.sh for why that matters on Linux.
 # Nothing bounds the wait itself: the answer comes when the tab closes, and that is the user's own pace.
 # The connect timeout still bounds the one part that could hang with nobody watching.
-printf '%s\0' "$AGENSTORM_OPEN_TOKEN" "$PWD" "$@" |
-	curl -fsS --connect-timeout 2 -X POST --data-binary @- \
-		"http://127.0.0.1:$AGENSTORM_OPEN_PORT/edit" >/dev/null 2>&1 && exit 0
+send() {
+	port=$1 token=$2
+	shift 2
+	printf '%s\0' "$token" "$PWD" "$@" |
+		curl -sS --connect-timeout 2 -o /dev/null -w '%{http_code}' -X POST --data-binary @- \
+			"http://127.0.0.1:$port/edit" 2>/dev/null
+}
 
-fallback "$@"  # 409 (the IDE declined), 403, or the IDE is gone
+# 204: the tab was closed and the caller may read the file back. 409 (declined), 503 (the project closed
+# while the file was open) and a connection dropped mid-edit go to the fallback editor rather than to
+# another window. Only an endpoint never reached, or one that does not know the token, passes it on.
+try() {
+	code=$(send "$@")
+	status=$?
+	case "$code" in
+	204) exit 0 ;;
+	403) return ;;
+	esac
+	case "$status" in 7|28) return ;; esac
+	shift 2
+	fallback "$@"
+}
+
+try "$AGENSTORM_OPEN_PORT" "$AGENSTORM_OPEN_TOKEN" "$@"
+
+# Step U2.4: the endpoint this terminal started with is gone — see open.sh. The project whose folder holds
+# $PWD is tried first.
+endpoints="${0%/*}/../endpoints"
+tab=$(printf '\t')
+for pass in own other; do
+	for file in "$endpoints"/*; do
+		[ -f "$file" ] || continue
+		IFS="$tab" read -r port token base <"$file" || continue
+		case "$PWD/" in "$base"/*) whose=own ;; *) whose=other ;; esac
+		[ "$whose" = "$pass" ] && try "$port" "$token" "$@"
+	done
+done
+
+fallback "$@"  # the IDE is gone

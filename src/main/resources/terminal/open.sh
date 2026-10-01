@@ -25,8 +25,44 @@ command -v curl >/dev/null 2>&1 || fallback "$@"
 # NUL-separated so a path may hold spaces, quotes or newlines without any encoding.
 # The token is the first field of the body, which only ever travels through this pipe. It must not be a
 # curl argument: on Linux /proc/<pid>/cmdline is world-readable, so any local user could read it there.
-printf '%s\0' "$AGENSTORM_OPEN_TOKEN" "$PWD" "$@" |
-	curl -fsS -m 2 -X POST --data-binary @- \
-		"http://127.0.0.1:$AGENSTORM_OPEN_PORT/open" >/dev/null 2>&1 && exit 0
+# Prints the HTTP status; curl's own exit status says whether the IDE could be reached at all.
+send() {
+	port=$1 token=$2
+	shift 2
+	printf '%s\0' "$token" "$PWD" "$@" |
+		curl -sS -m 2 -o /dev/null -w '%{http_code}' -X POST --data-binary @- \
+			"http://127.0.0.1:$port/open" 2>/dev/null
+}
 
-fallback "$@"  # 409 (the IDE declined), 403, a timeout, or the IDE is gone
+# 204: done. Anything else the IDE answered — 409 (declined) above all — goes to the real `open`. Only an
+# endpoint that is gone (no connection, a timeout) or that does not know the token (another IDE run's port)
+# sends the request on to the next one.
+try() {
+	code=$(send "$@")
+	status=$?
+	case "$code" in
+	204) exit 0 ;;
+	403) return ;;
+	esac
+	case "$status" in 7|28) return ;; esac
+	shift 2
+	fallback "$@"
+}
+
+try "$AGENSTORM_OPEN_PORT" "$AGENSTORM_OPEN_TOKEN" "$@"
+
+# Step U2.4: the endpoint this terminal started with is gone — it outlived its project, moved to another
+# window in a tmux session, or outlived the IDE itself. The IDE lists every open project's endpoint next to
+# this script as `port<TAB>token<TAB>project folder`; the project whose folder holds $PWD is tried first.
+endpoints="${0%/*}/../endpoints"
+tab=$(printf '\t')
+for pass in own other; do
+	for file in "$endpoints"/*; do
+		[ -f "$file" ] || continue
+		IFS="$tab" read -r port token base <"$file" || continue
+		case "$PWD/" in "$base"/*) whose=own ;; *) whose=other ;; esac
+		[ "$whose" = "$pass" ] && try "$port" "$token" "$@"
+	done
+done
+
+fallback "$@"  # the IDE is gone

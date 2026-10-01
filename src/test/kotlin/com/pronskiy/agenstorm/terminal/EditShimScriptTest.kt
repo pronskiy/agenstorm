@@ -40,6 +40,8 @@ class EditShimScriptTest : BasePlatformTestCase() {
     override fun tearDown() {
         try {
             endpoint?.stop(0)
+            extraServers.forEach { it.stop(0) }
+            NioFiles.deleteRecursively(TerminalEndpoints.dir)
             NioFiles.deleteRecursively(holder.binDir)
             NioFiles.deleteRecursively(cwd)
         } finally {
@@ -51,9 +53,10 @@ class EditShimScriptTest : BasePlatformTestCase() {
         val script = Files.readString(shim)
 
         assertTrue(script.startsWith("#!/bin/sh\n"))
-        assertTrue(script.contains("\$${OpenRequestServer.TOKEN_ENV}\" \"\$PWD\" \"\$@\""))
+        assertTrue(script.contains("\"\$token\" \"\$PWD\" \"\$@\""))
         assertTrue("the token must not be a curl argument", !script.contains("-H "))
-        assertTrue(script.contains("\$${OpenRequestServer.PORT_ENV}${OpenRequestServer.EDIT_CONTEXT_PATH}"))
+        assertTrue(script.contains("\$port${OpenRequestServer.EDIT_CONTEXT_PATH}"))
+        assertTrue(script.contains("try \"\$${OpenRequestServer.PORT_ENV}\" \"\$${OpenRequestServer.TOKEN_ENV}\""))
         assertTrue(script.contains(OpenShimScriptHolder.EDITOR_FALLBACK_ENV))
         assertFalse("POSIX sh has no [[ ]]", script.contains("[["))
         assertFalse("the wait is the user's own pace, so nothing may time it out", script.contains("--max-time"))
@@ -125,6 +128,52 @@ class EditShimScriptTest : BasePlatformTestCase() {
         assertEquals("no file, nothing for the IDE to open", "\n", Files.readString(marker))
     }
 
+    fun testAnEndpointThatIsGoneHandsTheEditToTheOneListedForThisFolder() {
+        if (SystemInfo.isWindows) return
+        val bodies = LinkedBlockingQueue<ByteArray>()
+        val port = serve { exchange ->
+            bodies.put(exchange.requestBody.readBytes())
+            exchange.sendResponseHeaders(204, -1)
+        }
+        TerminalEndpoints.publish(cwd.toString(), port, "listed-token")
+
+        val exitCode = runShim("plan.md", port = deadPort(), token = "gone-token")
+
+        assertEquals(0, exitCode)
+        val body = bodies.poll(10, TimeUnit.SECONDS) ?: throw AssertionError("the listed endpoint was never reached")
+        assertEquals("listed-token", OpenRequestServer.parseBody(body)!!.token)
+    }
+
+    fun testTheProjectThatHoldsTheTerminalIsTriedFirst() {
+        if (SystemInfo.isWindows) return
+        val reached = LinkedBlockingQueue<String>()
+        val elsewhere = serve(remember = false) { exchange -> reached.put("elsewhere"); exchange.sendResponseHeaders(204, -1) }
+        val here = serve { exchange -> reached.put("here"); exchange.sendResponseHeaders(204, -1) }
+        TerminalEndpoints.publish("/somewhere/else", elsewhere, "t1")
+        TerminalEndpoints.publish(cwd.parent.toString(), here, "t2")
+
+        assertEquals(0, runShim("plan.md", port = deadPort(), token = "gone-token"))
+        assertEquals("here", reached.poll(10, TimeUnit.SECONDS))
+    }
+
+    fun testADeclinedEditGoesToTheFallbackEditorNotToAnotherWindow() {
+        if (SystemInfo.isWindows) return
+        val declining = serve(remember = false) { exchange -> exchange.sendResponseHeaders(409, -1) }
+        val reached = LinkedBlockingQueue<String>()
+        val listed = serve { exchange -> reached.put("listed"); exchange.sendResponseHeaders(204, -1) }
+        TerminalEndpoints.publish(cwd.toString(), listed, "listed-token")
+        val marker = cwd.resolve("edited-by-the-fallback")
+
+        val exitCode = runShim("plan.md", port = declining, token = "s3cret", fallback = fallbackWriting(marker))
+
+        assertEquals(0, exitCode)
+        assertTrue(Files.isRegularFile(marker))
+        assertNull(reached.poll(500, TimeUnit.MILLISECONDS))
+    }
+
+    /** A port nothing listens on: the endpoint of a project that has closed. */
+    private fun deadPort(): Int = java.net.ServerSocket(0, 0, InetAddress.getLoopbackAddress()).use { it.localPort }
+
     /** A fallback editor that records the arguments it was handed. Two words, so the word split is tested too. */
     private fun fallbackWriting(marker: Path): String {
         val script = cwd.resolve("fake-editor.sh")
@@ -133,7 +182,9 @@ class EditShimScriptTest : BasePlatformTestCase() {
         return "/bin/sh $script"
     }
 
-    private fun serve(handler: (HttpExchange) -> Unit): Int {
+    private val extraServers = mutableListOf<HttpServer>()
+
+    private fun serve(remember: Boolean = true, handler: (HttpExchange) -> Unit): Int {
         val server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
         server.createContext(OpenRequestServer.EDIT_CONTEXT_PATH) { exchange ->
             try {
@@ -143,7 +194,8 @@ class EditShimScriptTest : BasePlatformTestCase() {
             }
         }
         server.start()
-        endpoint = server
+        if (remember) endpoint?.let(extraServers::add)
+        if (remember) endpoint = server else extraServers += server
         return server.address.port
     }
 

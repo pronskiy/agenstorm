@@ -115,6 +115,7 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
         }
         bound.start()
         server = bound
+        project.basePath?.let { TerminalEndpoints.publish(it, bound.address.port, token) }
         LOG.debug("Agenstorm: terminal open endpoint listening on 127.0.0.1:${bound.address.port}")
         return bound.address.port
     }
@@ -122,6 +123,7 @@ class OpenRequestServer(private val project: Project, private val scope: Corouti
     /** Closes the endpoint if it is running. Idempotent. */
     @Synchronized
     fun stop() {
+        if (server != null) project.basePath?.let(TerminalEndpoints::withdraw)
         server?.stop(0)
         server = null
     }
