@@ -69,6 +69,21 @@ object TmuxShellCommand {
     /** Not passed on with `-e`: tmux sets these itself, or they describe the client's shell, not the session's. */
     private val NOT_PASSED = setOf("TERM", "TMUX", "TMUX_PANE", "SHLVL", "PWD", "OLDPWD", "_", "COLUMNS", "LINES")
 
+    /**
+     * The session a tab's command shows: the `-s` of our `new-session`, or the `-t` of our `attach-session` (U2.2).
+     * Null for anything not on Agenstorm's socket.
+     */
+    fun sessionOf(command: List<String>): String? {
+        if (command.firstOrNull()?.substringAfterLast('/') != "tmux") return null
+        val socket = command.indexOf("-L").takeIf { it >= 0 }?.let { command.getOrNull(it + 1) }
+        if (socket != Tmux.SOCKET) return null
+        val verb = command.indexOfFirst { it == "new-session" || it == "attach-session" }.takeIf { it >= 0 } ?: return null
+        val flag = if (command[verb] == "new-session") "-s" else "-t"
+        val end = command.indexOf("--").takeIf { it > verb } ?: command.size
+        val at = command.subList(verb, end).indexOf(flag).takeIf { it >= 0 } ?: return null
+        return command.getOrNull(verb + at + 1)
+    }
+
     /** Only a shell is wrapped — not a program another plugin starts in a tab, and never tmux itself. */
     fun isShell(command: List<String>): Boolean = command.firstOrNull()?.let(TmuxSessions::isShell) == true
 

@@ -24,6 +24,12 @@
         <worktreeSetupTerminal implementation="com.pronskiy.agenstorm.worktrees.setup.ReworkedSetupTerminal"/>
     </extensions>
 
+    <projectListeners>
+        <!-- U1.6 (decision 92): ✕ on a tmux tab running something asks, with the platform's dialog. -->
+        <listener class="com.pronskiy.agenstorm.terminal.tmux.TmuxTabsListener"
+                  topic="com.intellij.terminal.frontend.toolwindow.TerminalTabsManagerListener"/>
+    </projectListeners>
+
     <actions>
         <!-- J1.3: the maximize toggle joins the terminal's title bar, next to "New Tab". The group belongs to
              the Terminal plugin, so the button is registered here while the action itself stays in plugin.xml
