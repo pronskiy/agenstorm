@@ -105,6 +105,7 @@ class TmuxCloseGuard : Disposable {
             if (tmux.run(*command.toTypedArray()) == null) LOG.warn("Agenstorm: could not ${answer.name.lowercase()} tmux session ${session.session}")
         }
         LOG.info("Agenstorm: ${answer.name.lowercase()} ${sessions.joinToString { it.session }} as $where closes")
+        BackgroundTerminals.getInstance().refresh()
     }
 
     private fun shownOf(tab: TerminalToolWindowTab, session: String): Shown {

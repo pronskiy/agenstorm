@@ -28,6 +28,7 @@ class TmuxReattach : ProjectActivity {
     override suspend fun execute(project: Project) {
         // Installed here too, for a run where the plugin was loaded after the IDE started.
         TmuxCloseGuard.getInstance().install()
+        BackgroundTerminals.getInstance().start()
         if (!AgenstormSettings.getInstance().state.terminalTmuxEnabled || SystemInfo.isWindows) return
         val base = project.basePath ?: return
         val tmux = Tmux.getInstance()

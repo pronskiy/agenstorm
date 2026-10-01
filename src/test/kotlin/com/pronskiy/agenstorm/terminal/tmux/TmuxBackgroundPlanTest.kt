@@ -5,12 +5,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Step U3.2: what a project close or a quit puts at stake, and how a session is kept. */
+/** Steps U3.2 and U3.3: what a close or a quit puts at stake, how a session is kept, which are listed and where *Open* goes. */
 class TmuxBackgroundPlanTest {
 
-    private fun session(name: String, command: String = "sleep", clients: Int = 1, project: String? = "/work/app") =
-        TmuxSession(name, clients, createdEpochSeconds = 0, repository = "/work/app/.git", project = project, background = false,
-            panes = listOf(TmuxPane(1, command, "/work/app", null)))
+    private fun session(
+        name: String, command: String = "sleep", clients: Int = 1, project: String? = "/work/app",
+        background: Boolean = false, created: Long = 0, repository: String? = "/work/app/.git",
+    ) = TmuxSession(name, clients, createdEpochSeconds = created, repository = repository, project = project, background = background,
+        panes = listOf(TmuxPane(1, command, "/work/app", null)))
 
     private fun shown(vararg sessions: String) = sessions.map { Shown(it, "Local", "Local") }
 
@@ -50,5 +52,28 @@ class TmuxBackgroundPlanTest {
     fun aSessionIsNamedAfterItsWorktreesFolder() {
         assertEquals("fix-login", TmuxBackgroundPlan.worktreeName(session("a", project = "/work/app/.worktrees/fix-login/")))
         assertNull(TmuxBackgroundPlan.worktreeName(session("a", project = null)))
+    }
+
+    @Test
+    fun theListHoldsKeptSessionsNoTabShowsOldestFirst() {
+        val sessions = listOf(
+            session("new", background = true, clients = 0, created = 20),
+            session("shown", background = true, clients = 1, created = 5), // attached again, settling
+            session("ordinary", clients = 0, created = 1), // mid hand-off
+            session("old", background = true, clients = 0, created = 10),
+        )
+
+        assertEquals(listOf("old", "new"), TmuxBackgroundPlan.listed(sessions).map { it.name })
+    }
+
+    @Test
+    fun openGoesToThisWindowWithinTheRepositoryElseToItsOwnProject() {
+        val sibling = session("a", project = "/work/app/.worktrees/fix-login")
+        val other = session("b", project = "/work/other", repository = "/work/other/.git")
+
+        assertEquals(TmuxBackgroundPlan.OpenIn.THIS_WINDOW, TmuxBackgroundPlan.openIn(sibling, "/work/app/.git", folderExists = true))
+        assertEquals(TmuxBackgroundPlan.OpenIn.ITS_PROJECT, TmuxBackgroundPlan.openIn(other, "/work/app/.git", folderExists = true))
+        assertEquals("its folder is gone", TmuxBackgroundPlan.OpenIn.THIS_WINDOW, TmuxBackgroundPlan.openIn(other, "/work/app/.git", folderExists = false))
+        assertEquals(listOf("set-option", "-t", "=a:", "@agenstorm_project", "/work/app"), TmuxBackgroundPlan.adopt("a", "/work/app"))
     }
 }

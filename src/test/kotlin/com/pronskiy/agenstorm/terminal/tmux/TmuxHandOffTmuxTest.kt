@@ -60,7 +60,7 @@ class TmuxHandOffTmuxTest {
         assertEquals(0, tmux(TmuxHandOffPlan.keepAlive("app-1", "/work/app")))
         old.destroyForcibly().waitFor()
 
-        assertEquals(0, tmux(TmuxHandOffPlan.keptInBackground("app-1")))
+        assertEquals(0, tmux(TmuxBackgroundPlan.keep("app-1", null)))
         assertTrue(waitFor { session("app-1")?.takeIf { it.background } } != null)
     }
 
@@ -70,7 +70,7 @@ class TmuxHandOffTmuxTest {
         val old = client(prefix + listOf("new-session", "-s", "app-1", "sleep", "60"))
         assertNotNull(waitFor { session("app-1")?.takeIf { it.clients == 1 } })
         assertEquals(0, tmux(TmuxHandOffPlan.keepAlive("app-1", "/work/app")))
-        assertEquals(0, tmux(TmuxHandOffPlan.keptInBackground("app-1")))
+        assertEquals(0, tmux(TmuxBackgroundPlan.keep("app-1", null)))
         old.destroyForcibly().waitFor()
         assertNotNull("kept", waitFor { session("app-1")?.takeIf { it.background && it.clients == 0 } })
 

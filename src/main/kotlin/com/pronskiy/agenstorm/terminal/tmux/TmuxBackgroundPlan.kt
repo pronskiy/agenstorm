@@ -35,6 +35,22 @@ object TmuxBackgroundPlan {
         }
     }
 
+    /** Step U3.3: the background terminals to list — kept, and shown by no tab — oldest first. */
+    fun listed(sessions: List<TmuxSession>): List<TmuxSession> =
+        sessions.filter { it.background && it.clients == 0 }.sortedBy { it.createdEpochSeconds }
+
+    enum class OpenIn { THIS_WINDOW, ITS_PROJECT }
+
+    /**
+     * Where *Open* puts [session]: this window when it is a worktree of this window's [repository] — any worktree's
+     * terminal can run in any of them — or when the folder it came from is gone; otherwise its own project's window.
+     */
+    fun openIn(session: TmuxSession, repository: String?, folderExists: Boolean): OpenIn =
+        if (!folderExists || session.repository == null || session.repository == repository) OpenIn.THIS_WINDOW else OpenIn.ITS_PROJECT
+
+    /** Opened in another worktree's window, a session belongs to that worktree from then on (U3.1, U3.2 read the tag). */
+    fun adopt(session: String, project: String): List<String> = listOf("set-option", "-t", "=$session:", "@agenstorm_project", project)
+
     /** The folder a session belongs to, as the quit prompt and the list name it: `fix-login` for `/work/app/.worktrees/fix-login`. */
     fun worktreeName(session: TmuxSession): String? = session.project?.trimEnd('/')?.substringAfterLast('/')?.ifEmpty { null }
 }

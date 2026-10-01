@@ -19,6 +19,8 @@
         <postStartupActivity implementation="com.pronskiy.agenstorm.terminal.tmux.TmuxReattach"/>
         <!-- U3.2: closing a project with a tmux tab running something asks to keep it or stop it. -->
         <projectCloseHandler implementation="com.pronskiy.agenstorm.terminal.tmux.TmuxProjectCloseHandler"/>
+        <!-- U3.3: "N background terminals" in every window's status bar while there are any. -->
+        <statusBarWidgetFactory id="agenstorm.backgroundTerminals" implementation="com.pronskiy.agenstorm.terminal.tmux.BackgroundTerminalsWidgetFactory"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
@@ -41,12 +43,17 @@
                   topic="com.intellij.terminal.frontend.toolwindow.TerminalTabsManagerListener"/>
     </projectListeners>
 
-    <actions>
+    <actions resource-bundle="messages.AgenstormBundle">
         <!-- J1.3: the maximize toggle joins the terminal's title bar, next to "New Tab". The group belongs to
              the Terminal plugin, so the button is registered here while the action itself stays in plugin.xml
              and works (hidden) in IDEs without that plugin. -->
         <reference ref="Agenstorm.ToggleTerminalMaximized">
             <add-to-group group-id="TerminalToolwindowActionGroup" anchor="first"/>
         </reference>
+        <!-- U3.3: "N background terminals" next to it, shown only while there are any. -->
+        <action id="Agenstorm.BackgroundTerminals" class="com.pronskiy.agenstorm.terminal.tmux.BackgroundTerminalsAction"
+                icon="AllIcons.Nodes.Console">
+            <add-to-group group-id="TerminalToolwindowActionGroup" anchor="after" relative-to-action="Agenstorm.ToggleTerminalMaximized"/>
+        </action>
     </actions>
 </idea-plugin>

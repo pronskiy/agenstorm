@@ -53,7 +53,7 @@ class TerminalHandOff : ProjectHandOff {
             opened
         }
         LOG.info("Agenstorm: handed ${moves.joinToString { it.session }} from ${from.name} to ${to.name}")
-        service<AgenstormAppScope>().scope.launch { settle(to, opened.toMap(), moves.map { it.session }) }
+        service<AgenstormAppScope>().scope.launch { settle(to, opened.toMap(), moves.associate { it.session to it.name }) }
     }
 
     private fun tabsOf(project: Project): List<TmuxHandOffPlan.Tab> =
@@ -66,9 +66,9 @@ class TerminalHandOff : ProjectHandOff {
      * fits the window to that tab. A session whose tab closed unstarted, or whose window closed first, becomes a
      * background terminal instead of a leftover nobody sees.
      */
-    private suspend fun settle(to: Project, tabs: Map<String, TerminalToolWindowTab>, sessions: List<String>) {
+    private suspend fun settle(to: Project, tabs: Map<String, TerminalToolWindowTab>, sessions: Map<String, String>) {
         val tmux = Tmux.getInstance()
-        val waiting = sessions.toMutableSet()
+        val waiting = sessions.keys.toMutableSet()
         while (waiting.isNotEmpty()) {
             delay(POLL)
             val now = withContext(Dispatchers.IO) { TmuxSessions.read(tmux).associateBy { it.name } }
@@ -83,7 +83,8 @@ class TerminalHandOff : ProjectHandOff {
                         waiting -= name
                     }
                     !alive || tabs[name] !in shown -> {
-                        withContext(Dispatchers.IO) { tmux.run(*TmuxHandOffPlan.keptInBackground(name).toTypedArray()) }
+                        withContext(Dispatchers.IO) { tmux.run(*TmuxBackgroundPlan.keep(name, sessions[name]).toTypedArray()) }
+                        BackgroundTerminals.getInstance().refresh()
                         waiting -= name
                     }
                 }
@@ -131,9 +132,6 @@ object TmuxHandOffPlan {
         "set-option", "-u", "-t", "=$session:", "@agenstorm_background", ";",
         "resize-window", "-A", "-t", "=$session:",
     )
-
-    /** A session no new tab ever attached to: kept, and listed as a background terminal (U3). */
-    fun keptInBackground(session: String): List<String> = listOf("set-option", "-t", "=$session:", "@agenstorm_background", "1")
 
     fun plan(tabs: List<Tab>, sessions: List<TmuxSession>, repository: String?): List<Move> {
         val byName = sessions.associateBy { it.name }

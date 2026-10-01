@@ -88,6 +88,7 @@ class TmuxTabsListener(private val project: Project) : TerminalTabsManagerListen
             if (!state.background) return
             if (state.clients > 0) {
                 withContext(Dispatchers.IO) { tmux.run(*TmuxHandOffPlan.settled(session).toTypedArray()) }
+                BackgroundTerminals.getInstance().refresh()
                 return
             }
             delay(1.seconds)
