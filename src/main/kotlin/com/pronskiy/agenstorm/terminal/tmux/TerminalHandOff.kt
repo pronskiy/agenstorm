@@ -2,6 +2,7 @@ package com.pronskiy.agenstorm.terminal.tmux
 
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
@@ -33,7 +34,7 @@ class TerminalHandOff : ProjectHandOff {
 
     override suspend fun handOff(from: Project, to: Project) {
         val tabs = withContext(Dispatchers.EDT) { tabsOf(from) }
-        LOG.info("Agenstorm: hand-off ${from.name} -> ${to.name}: tmux tabs ${tabs.map { it.session }}")
+        LOG.debug { "hand-off ${from.name} -> ${to.name}: tmux tabs ${tabs.map { it.session }}" }
         if (tabs.isEmpty()) return
         val tmux = Tmux.getInstance()
         val repository = to.basePath?.let { GitCommonDir.of(Path.of(it))?.toString() }
@@ -43,7 +44,7 @@ class TerminalHandOff : ProjectHandOff {
                 if (tmux.run(*TmuxHandOffPlan.keepAlive(move.session, toBase).toTypedArray()) == null) LOG.warn("Agenstorm: could not keep ${move.session} alive through the hand-off")
             }
         }
-        LOG.info("Agenstorm: hand-off ${from.name} -> ${to.name}: moving ${moves.map { it.session }} (repository $repository)")
+        LOG.debug { "hand-off ${from.name} -> ${to.name}: moving ${moves.map { it.session }} (repository $repository)" }
         if (moves.isEmpty()) return
         val opened = withContext(Dispatchers.EDT) {
             val opened = moves.mapIndexedNotNull { index, move -> open(to, move, focus = index == 0)?.let { move.session to it } }
