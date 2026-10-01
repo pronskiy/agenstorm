@@ -71,6 +71,18 @@ class WorktreesSettingsTest : BasePlatformTestCase() {
         assertTrue(state.worktreesPrepareOnAppear)
     }
 
+    fun testTmuxBackedTerminalsAreOffByDefault() {
+        val state = AgenstormSettings.getInstance().state
+        val box = UIUtil.uiTraverser(panel).filter(com.intellij.ui.components.JBCheckBox::class.java).first { it.name == "worktrees.tmux" }
+        assertFalse(state.terminalTmuxEnabled)
+        assertFalse(box.isSelected)
+
+        box.isSelected = true
+        configurable.apply()
+
+        assertTrue(state.terminalTmuxEnabled)
+    }
+
     fun testTurningTheFeatureOffIsAnnounced() {
         var announced = 0
         com.intellij.openapi.application.ApplicationManager.getApplication().messageBus.connect(testRootDisposable)

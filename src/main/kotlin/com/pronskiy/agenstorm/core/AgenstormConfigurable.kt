@@ -10,6 +10,7 @@ import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.MutableProperty
@@ -34,6 +35,7 @@ import com.pronskiy.agenstorm.terminal.OpenRequestServer
 import com.pronskiy.agenstorm.terminal.TerminalMaximizeLayout
 import com.pronskiy.agenstorm.terminal.enhance.EnhancerRulesTable
 import com.pronskiy.agenstorm.terminal.enhance.RuleRepository
+import com.pronskiy.agenstorm.terminal.tmux.Tmux
 import javax.swing.JComponent
 import kotlin.reflect.KMutableProperty1
 
@@ -255,6 +257,17 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .applyToComponent { name = "worktrees.runSetup" }
                     .comment(AgenstormBundle.message("settings.worktrees.runSetup.comment"))
             }
+            // U1.5 (Epic U): off by default, decision 89; tmux does not exist on Windows.
+            row {
+                val tmux = Tmux.getInstance().binary()
+                checkBox(AgenstormBundle.message("settings.worktrees.tmux"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.terminalTmuxEnabled }, { AgenstormSettings.getInstance().state.terminalTmuxEnabled = it })
+                    .applyToComponent { name = "worktrees.tmux" }
+                    .comment(
+                        if (tmux != null) AgenstormBundle.message("settings.worktrees.tmux.comment.found", tmux.toString())
+                        else AgenstormBundle.message("settings.worktrees.tmux.comment.missing"),
+                    )
+            }.visible(!SystemInfo.isWindows)
         }
         featureGroup("settings.group.statusBar", "settings.statusBar.hideStatusText", AgenstormSettings.State::statusBarHideStatusText, onApply = AgenstormSettingsListener::fire) {
             row {

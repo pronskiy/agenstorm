@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
  * public way to replace the command (`MutableShellExecOptions.setExecCommand` is internal); the platform calls it after
  * injecting shell integration and before the `ShellExecOptionsCustomizer`s, on a background thread. Only a shell is
  * wrapped, only locally, and a command that already is tmux — a hand-off tab's `attach-session` — passes untouched.
- * Registered in `agenstorm-terminal.xml`.
+ * Without tmux the tab is a plain shell and [TmuxMissingNotice] says so (U1.5). Registered in `agenstorm-terminal.xml`.
  */
 @Suppress("DEPRECATION")
 class TmuxShellCustomizer : LocalTerminalCustomizer() {
@@ -43,6 +43,7 @@ class TmuxShellCustomizer : LocalTerminalCustomizer() {
         val base = project.basePath ?: return null
         val repository = GitCommonDir.of(Path.of(base)) ?: return null
         val tmux = Tmux.getInstance()
+        if (tmux.binary() == null) return null.also { TmuxMissingNotice.showOnce(project) }
         val prefix = tmux.command() ?: return null
         val session = nextName(Path.of(base).fileName?.toString() ?: "terminal", tmux)
         return TmuxShellCommand.wrap(prefix, session, workingDirectory, envs, command, repository.toString(), base)
