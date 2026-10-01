@@ -24,11 +24,16 @@ data class TmuxSession(
 ) {
     val running: Boolean get() = panes.any { it.running }
 
-    /** What to call it: the running program's own title (Claude's `✳ Claude Code`), else its command, else the shell's. */
+    /**
+     * What to call it: the running program's own title (Claude's `✳ Claude Code`), else its command, else the shell's.
+     * tmux keeps a pane's last title, so a title naming the pane's folder is taken for one the shell set at its prompt
+     * before the program started — `sleep` under a title `fix-login` is `sleep` (U3 guardrail run).
+     */
     val label: String
         get() {
             val pane = panes.firstOrNull { it.running } ?: panes.firstOrNull() ?: return name
-            return pane.title.takeIf { pane.running } ?: pane.command
+            val folder = pane.path.trimEnd('/').substringAfterLast('/')
+            return pane.title?.takeIf { pane.running && (folder.isEmpty() || folder !in it) } ?: pane.command
         }
 }
 

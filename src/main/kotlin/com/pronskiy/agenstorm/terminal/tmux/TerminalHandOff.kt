@@ -5,8 +5,6 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
-import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
-import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.pronskiy.agenstorm.core.AgenstormAppScope
 import com.pronskiy.agenstorm.core.GitCommonDir
 import com.pronskiy.agenstorm.core.ProjectHandOff
@@ -26,8 +24,10 @@ import kotlin.time.Duration.Companion.seconds
  * sessions are left alone: their tabs close with the project and `destroy-unattached` ends them. The new tab runs
  * `tmux attach-session` as an ordinary shell tab — a non-shell one makes the platform's project-close check ask to
  * terminate it on the next switch (U2 guardrail run), while [TmuxTitleMirror] shows the program's title either way —
- * keeps a rename, and starts only once shown, at the size it is shown at. A session the new window never attaches before it
- * closes is kept as a background terminal (`@agenstorm_background`, U3) rather than lost.
+ * keeps a rename, and starts only once shown, at the size it is shown at. A tab of the new window already asking for the
+ * session — the platform restoring one from the last time that worktree was open, U3 guardrail run — is selected instead
+ * of a second one being made. A session the new window never attaches before it closes is kept as a background terminal
+ * (`@agenstorm_background`, U3) rather than lost.
  */
 class TerminalHandOff : ProjectHandOff {
 
@@ -45,15 +45,16 @@ class TerminalHandOff : ProjectHandOff {
         }
         LOG.debug { "hand-off ${from.name} -> ${to.name}: moving ${moves.map { it.session }} (repository $repository)" }
         if (moves.isEmpty()) return
-        val opened = withContext(Dispatchers.EDT) {
+        withContext(Dispatchers.EDT) {
+            val existing = TmuxTabs.of(to).associate { (tab, session) -> session to tab }
             val opened = moves.mapIndexedNotNull { index, move ->
-                TmuxTabs.openAttached(to, move.session, move.name, move.userDefinedTitle, focus = index == 0)?.let { move.session to it }
+                existing[move.session]?.also { if (index == 0) it.content.manager?.setSelectedContent(it.content) }
+                    ?: TmuxTabs.openAttached(to, move.session, move.name, move.userDefinedTitle, focus = index == 0)
             }
             if (opened.isNotEmpty()) TmuxTabs.showToolWindow(to, focus = true)
-            opened
         }
         LOG.info("Agenstorm: handed ${moves.joinToString { it.session }} from ${from.name} to ${to.name}")
-        service<AgenstormAppScope>().scope.launch { settle(to, opened.toMap(), moves.associate { it.session to it.name }) }
+        service<AgenstormAppScope>().scope.launch { settle(to, moves.associate { it.session to it.name }) }
     }
 
     private fun tabsOf(project: Project): List<TmuxHandOffPlan.Tab> =
@@ -62,18 +63,19 @@ class TerminalHandOff : ProjectHandOff {
         }
 
     /**
-     * Turns `destroy-unattached` back on for each moved session once a client is attached — its new tab started — and
-     * fits the window to that tab. A session whose tab closed unstarted, or whose window closed first, becomes a
-     * background terminal instead of a leftover nobody sees.
+     * Turns `destroy-unattached` back on for each moved session once a client is attached — a tab of the new window
+     * started — and fits the window to that tab. A session no tab of the window asks for any more (closed unstarted), or
+     * whose window closed first, becomes a background terminal instead of a leftover nobody sees. Any tab counts, not
+     * only the one the hand-off made: the safety net in [TmuxTabsListener] may have closed that one as a second tab.
      */
-    private suspend fun settle(to: Project, tabs: Map<String, TerminalToolWindowTab>, sessions: Map<String, String>) {
+    private suspend fun settle(to: Project, sessions: Map<String, String>) {
         val tmux = Tmux.getInstance()
         val waiting = sessions.keys.toMutableSet()
         while (waiting.isNotEmpty()) {
             delay(POLL)
             val now = withContext(Dispatchers.IO) { TmuxSessions.read(tmux).associateBy { it.name } }
             val alive = !to.isDisposed
-            val shown = if (alive) withContext(Dispatchers.EDT) { TerminalToolWindowTabsManager.getInstance(to).tabs.toSet() } else emptySet()
+            val shown = if (alive) withContext(Dispatchers.EDT) { TmuxTabs.of(to).map { it.second }.toSet() } else emptySet()
             for (name in waiting.toList()) {
                 val session = now[name]
                 when {
@@ -82,7 +84,7 @@ class TerminalHandOff : ProjectHandOff {
                         withContext(Dispatchers.IO) { tmux.run(*TmuxHandOffPlan.settled(name).toTypedArray()) }
                         waiting -= name
                     }
-                    !alive || tabs[name] !in shown -> {
+                    !alive || name !in shown -> {
                         withContext(Dispatchers.IO) { tmux.run(*TmuxBackgroundPlan.keep(name, sessions[name]).toTypedArray()) }
                         BackgroundTerminals.getInstance().refresh()
                         waiting -= name

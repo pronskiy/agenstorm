@@ -58,6 +58,8 @@ class TmuxSessionsTest {
         assertEquals("✳ Claude Code", claude.label) // Claude reports its version, 2.1.286, as its command
         assertEquals("sleep", sleeping.label) // tmux's default title, the host name, is not a program's
         assertEquals("bash", idle.label)
+        val stale = TmuxSessions.parse(line("app-6", "0", "1", "", "", "", "1", "sleep", "/work/app/.worktrees/fix-login", "fix-login", host))
+        assertEquals("a title the shell set before the program started", "sleep", stale.single().label)
     }
 
     @Test
