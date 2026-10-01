@@ -5,6 +5,9 @@
         <!-- G1.4: the shim directory goes in front of a new terminal's PATH, with the endpoint's port and
              token in the environment. The EP is @ApiStatus.Experimental (SPEC.md §2 accepts that). -->
         <shellExecOptionsCustomizer implementation="com.pronskiy.agenstorm.terminal.TerminalOpenExecOptionsCustomizer"/>
+        <!-- U1.4 (decision 90): a new tab's shell inside a tmux session. LocalTerminalCustomizer is deprecated, not
+             internal, and is the one public way to replace the command; MutableShellExecOptions.setExecCommand is internal. -->
+        <localTerminalCustomizer implementation="com.pronskiy.agenstorm.terminal.tmux.TmuxShellCustomizer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">

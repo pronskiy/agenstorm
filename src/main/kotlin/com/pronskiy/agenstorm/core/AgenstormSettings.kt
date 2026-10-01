@@ -132,6 +132,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var worktreesPrepareOnOpen: Boolean = true,
         /** Epic T: …or as soon as it appears, so an agent working there has them without the worktree being opened. */
         var worktreesPrepareOnAppear: Boolean = false,
+        /** Epic U: terminal tabs of a Git project run inside tmux sessions, so a worktree switch can hand them over (decision 89: off by default). */
+        var terminalTmuxEnabled: Boolean = false,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */
