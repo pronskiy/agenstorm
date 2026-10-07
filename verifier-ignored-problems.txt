@@ -1,0 +1,8 @@
+// Plugin Verifier 1.410 against the 2026.3 EAP 263.6259 (SPEC.md §7, 2026-10-07). The EAP moved intellij.platform.vcs
+// out of the IDE core into the bundled Version Control plugin (whose id became com.intellij.platform.vcs), and the
+// verifier resolves our com.intellij.modules.vcs dependency as a core product module with no classes behind it, so
+// every VCS class the plugin uses reads as missing. The classes are all there: the plugin compiles and its tests pass
+// against 263.6259. Remove these two lines once a verifier release follows the alias into the plugin.
+// Format: <plugin id>:<version, empty for any>:<case-insensitive regex matched against the problem's headline>.
+com.pronskiy.agenstorm::package 'com\.intellij\.(dvcs|vcs|openapi\.vcs|openapi\.diff\.impl\.patch)(\.\w+)*' is not found
+com.pronskiy.agenstorm::access to unresolved class com\.intellij\.(dvcs|vcs|openapi\.vcs|openapi\.diff\.impl\.patch)\..*

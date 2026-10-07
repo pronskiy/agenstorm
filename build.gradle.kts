@@ -122,6 +122,8 @@ intellijPlatform {
             VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
             VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
         )
+        // Two verifier false positives on the 2026.3 EAP's moved VCS classes, nothing else; the file says why (SPEC.md §7).
+        ignoredProblemsFile = layout.projectDirectory.file("verifier-ignored-problems.txt")
         ides {
             recommended()
             // IntelliJ IDEA does not bundle the PHP plugin: verifying against it proves the plugin
