@@ -114,6 +114,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var liveMarkupTables: Boolean = true,
         /** Epic M: the editor/preview layout buttons leave the top-right corner of every Markdown editor. */
         var markdownHideLayoutSwitcher: Boolean = false,
+        /** Epic W: the headings of a Markdown file in the editor's top-right corner, as a card or a ☰ pill (decision 97: on). */
+        var markdownTocEnabled: Boolean = true,
+        /** Epic W: the deepest heading level the contents widget lists, 1–6 (decision 97: 3). */
+        var markdownTocDepth: Int = 3,
         /** Epic N: right-anchored tool windows move to the left, which empties the right bar and makes the IDE hide it. */
         var hideRightToolWindowBar: Boolean = false,
         /** Epic S: the status bar's status text is hidden, so the bottom-left holds only what Agenstorm puts there. */

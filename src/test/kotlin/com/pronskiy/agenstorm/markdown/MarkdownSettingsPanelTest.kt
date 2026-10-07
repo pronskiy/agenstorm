@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormConfigurable
 import com.pronskiy.agenstorm.core.AgenstormSettings
@@ -86,6 +87,24 @@ class MarkdownSettingsPanelTest : BasePlatformTestCase() {
         assertEquals(1, fired)
         named<JBCheckBox>("markdown.checkboxes").isSelected = false
         configurable.apply()
+        assertEquals(2, fired)
+    }
+
+    fun testContentsOptionsShowTheDefaultsAndApplyWritesTheState() {
+        assertTrue(named<JBCheckBox>("markdown.toc.enabled").isSelected)
+        assertEquals("3", named<JBTextField>("markdown.toc.depth").text)
+        assertFalse(configurable.isModified)
+
+        var fired = 0
+        ApplicationManager.getApplication().messageBus.connect(testRootDisposable).subscribe(AgenstormSettingsListener.TOPIC, AgenstormSettingsListener { fired++ })
+        named<JBTextField>("markdown.toc.depth").text = "2"
+        configurable.apply()
+        assertEquals(2, AgenstormSettings.getInstance().state.markdownTocDepth)
+        assertEquals(1, fired)
+
+        named<JBCheckBox>("markdown.toc.enabled").isSelected = false
+        configurable.apply()
+        assertFalse(AgenstormSettings.getInstance().state.markdownTocEnabled)
         assertEquals(2, fired)
     }
 

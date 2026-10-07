@@ -32,6 +32,12 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
         }
     }
 
+    fun testTheContentsWidgetIsOnWithDepthThreeByDefault() {
+        val state = AgenstormSettings.State()
+        assertTrue(state.markdownTocEnabled)
+        assertEquals(3, state.markdownTocDepth)
+    }
+
     fun testEveryFeatureIsEnabledByDefault() {
         val state = AgenstormSettings.State()
         assertTrue(state.linksEnabled)

@@ -11,8 +11,10 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.Cell
 import com.intellij.ui.dsl.builder.MutableProperty
 import com.intellij.ui.dsl.builder.Panel
 import com.intellij.ui.dsl.builder.bindIntText
@@ -311,6 +313,25 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
         featureGroup("settings.group.markdownEditor", "settings.markdown.hideLayoutSwitcher", AgenstormSettings.State::markdownHideLayoutSwitcher, onApply = AgenstormSettingsListener::fire) {
             row {
                 comment(AgenstormBundle.message("settings.markdown.hideLayoutSwitcher.comment"))
+            }
+            // W2.1 (Epic W): on, depth 3 — decision 97. The range is markdown.toc.TocOutline.DEPTHS, spelled out
+            // because core/ does not import feature packages.
+            lateinit var toc: Cell<JBCheckBox>
+            row {
+                toc = checkBox(AgenstormBundle.message("settings.markdown.toc.enabled"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.markdownTocEnabled }, { AgenstormSettings.getInstance().state.markdownTocEnabled = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "markdown.toc.enabled" }
+                    .comment(AgenstormBundle.message("settings.markdown.toc.enabled.comment"))
+            }
+            row(AgenstormBundle.message("settings.markdown.toc.depth")) {
+                intTextField(1..6, 1)
+                    .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.markdownTocDepth }, { AgenstormSettings.getInstance().state.markdownTocDepth = it }))
+                    .enabledIf(toc.component.selected)
+                    .columns(4)
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "markdown.toc.depth" }
+                    .comment(AgenstormBundle.message("settings.markdown.toc.depth.comment"))
             }
         }
         featureGroup("settings.group.terminalEnhancer", "settings.terminal.enhancer.enabled", AgenstormSettings.State::terminalEnhancerEnabled, onApply = AgenstormSettingsListener::fire) {
