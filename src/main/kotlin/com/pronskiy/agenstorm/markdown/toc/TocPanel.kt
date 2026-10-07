@@ -13,7 +13,9 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import java.awt.BorderLayout
 import java.awt.Component
+import java.awt.Container
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.Font
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -139,7 +141,8 @@ class TocPanel : JPanel(BorderLayout()) {
             maxHeight = viewport.height / 2
             resized = true
         }
-        val next = TocFit.mode(viewport.width, viewport.marginColumns, viewport.spaceWidth, cardWidth(), JBUI.scale(TocFit.GAP))
+        val rightInset = viewport.scrollbarWidth + TocFit.SLOT_EDGE + slotGap()
+        val next = TocFit.mode(viewport.width, viewport.marginColumns, viewport.spaceWidth, cardWidth(), rightInset, JBUI.scale(TocFit.GAP))
         if (next != mode) {
             mode = next
             open = false
@@ -192,6 +195,16 @@ class TocPanel : JPanel(BorderLayout()) {
         }
         revalidate()
         repaint()
+    }
+
+    /** The horizontal gap of the floating-toolbar slot's `FlowLayout`, the first one above this panel. */
+    private fun slotGap(): Int {
+        var container: Container? = parent
+        while (container != null) {
+            (container.layout as? FlowLayout)?.let { return it.hgap }
+            container = container.parent
+        }
+        return TocFit.SLOT_GAP
     }
 
     private fun setHovered(row: Int) {

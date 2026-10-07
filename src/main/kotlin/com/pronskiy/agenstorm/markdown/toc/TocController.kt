@@ -57,7 +57,7 @@ class TocController(
 ) : Disposable {
 
     /** What the fit rule needs from the editor, in pixels and columns. */
-    data class Viewport(val width: Int, val height: Int, val marginColumns: Int, val spaceWidth: Int)
+    data class Viewport(val width: Int, val height: Int, val marginColumns: Int, val spaceWidth: Int, val scrollbarWidth: Int)
 
     @Volatile
     var state: TocState = TocState.EMPTY
@@ -139,7 +139,13 @@ class TocController(
     /** EDT. */
     fun viewport(): Viewport {
         val area = editor.scrollingModel.visibleArea
-        return Viewport(area.width, area.height, editor.settings.getRightMargin(project), EditorUtil.getPlainSpaceWidth(editor))
+        return Viewport(
+            area.width,
+            area.height,
+            editor.settings.getRightMargin(project),
+            EditorUtil.getPlainSpaceWidth(editor),
+            editor.scrollPane.verticalScrollBar.width,
+        )
     }
 
     override fun dispose() {
