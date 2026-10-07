@@ -70,6 +70,9 @@ class TocController(
 
     @Volatile
     private var disposed = false
+
+    /** Disposed with its toolbar, possibly between the action's BGT update and the panel's EDT bind. */
+    val isDisposed: Boolean get() = disposed || editor.isDisposed
     private val job: Job
 
     init {

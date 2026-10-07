@@ -1,5 +1,7 @@
 package com.pronskiy.agenstorm.markdown.toc
 
+import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.JBUI
 
@@ -38,6 +40,20 @@ class TocPanelTest : BasePlatformTestCase() {
         assertEquals(TocFit.Mode.PILL, panel.mode)
         panel.show(state, TocController.Viewport(width = 80 * 7 + card + 15 + 20 + 20 + JBUI.scale(TocFit.GAP), height = 800, marginColumns = 80, spaceWidth = 7, scrollbarWidth = 15))
         assertEquals(TocFit.Mode.CARD, panel.mode)
+    }
+
+    fun testAControllerDisposedBeforeTheUpdateArrivesIsNotBound() {
+        myFixture.configureByText("a.md", "# A\n\n## B\n")
+        val toolbarLifetime = Disposer.newDisposable(testRootDisposable, "toolbar")
+        val controller = TocService.getInstance(project).attach(myFixture.editor as EditorEx, toolbar = null, parent = toolbarLifetime)
+        val panel = TocPanel()
+        panel.bind(controller)
+        assertSame(controller, panel.boundController)
+
+        panel.bind(null)
+        Disposer.dispose(toolbarLifetime)
+        panel.bind(controller)
+        assertNull("a project closing between the BGT update and the EDT bind", panel.boundController)
     }
 
     fun testLongTitlesAreCappedAtTheMaximumWidth() {

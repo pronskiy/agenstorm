@@ -43,6 +43,9 @@ class TocPanel : JPanel(BorderLayout()) {
         private set
 
     private var controller: TocController? = null
+
+    /** The controller this panel follows, if any. */
+    internal val boundController: TocController? get() = controller
     private var subscription: Disposable? = null
     private var entries: List<TocEntry> = emptyList()
     private var current = -1
@@ -115,8 +118,12 @@ class TocPanel : JPanel(BorderLayout()) {
         relayout()
     }
 
-    /** Follows [next]'s state from now on; null lets go. EDT. */
-    fun bind(next: TocController?) {
+    /**
+     * Follows [next]'s state from now on; null lets go. A controller disposed since the update that handed it over —
+     * its project closing — is treated as null: reading its viewport would reach a disposed project. EDT.
+     */
+    fun bind(candidate: TocController?) {
+        val next = candidate?.takeUnless { it.isDisposed }
         if (next === controller) return
         subscription?.let(Disposer::dispose)
         subscription = null
