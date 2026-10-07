@@ -1,8 +1,11 @@
 package com.pronskiy.agenstorm.markdown.toc
 
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.EditorKind
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBScrollPane
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import java.awt.Dimension
 import javax.swing.JLayeredPane
@@ -55,7 +58,35 @@ class TocLayerTest : BasePlatformTestCase() {
         val scrollbarWidth = if (scrollbar.isVisible) scrollbar.width else 0
         assertEquals("against the scrollbar", 1000 - scrollbarWidth, layer.x + layer.width)
         assertTrue("a size of its own", layer.width > 0 && layer.height > 0)
-        assertEquals("no preferred size for the editor's layout, so the scrollbar is not pushed down", Dimension(0, 0), layer.preferredSize)
+        assertEquals("no width, and the scrollbar's own top as its height, so the editor's layout leaves the scrollbar alone", Dimension(0, scrollbar.y), layer.preferredSize)
+    }
+
+    /**
+     * A main editor keeps its scrollbar and inspection widget in the layered pane, next to our layer. Laid out again
+     * and again — every heading edit, fold or sticky-lines change does it — the scrollbar must keep starting below the
+     * widget at the same height, whether our layer shows or not.
+     */
+    fun testTheScrollbarKeepsItsLengthThroughRepeatedLayouts() {
+        val file = myFixture.configureByText("a.md", "# Only one heading, so the layer is installed but hidden\n").virtualFile
+        val main = EditorFactory.getInstance().createEditor(myFixture.getDocument(myFixture.file), project, file, false, EditorKind.MAIN_EDITOR) as EditorEx
+        try {
+            val pane = main.scrollPane.parent as JLayeredPane
+            assertTrue("the widget's layer is in the pane", pane.components.any { it is TocLayer })
+            val scrollbar = main.scrollPane.verticalScrollBar
+            assertSame("the scrollbar lives in the layered pane in a main editor", pane, scrollbar.parent)
+            val status = (main.scrollPane as JBScrollPane).statusComponent
+            assertNotNull("a main editor has its inspection widget", status)
+            assertSame("in the same pane", pane, status!!.parent)
+            val statusHeight = status.preferredSize.height
+            assertTrue(statusHeight > 0)
+            pane.setSize(800, 600)
+            scrollbar.setBounds(800 - 12, 0, 12, 600)
+            repeat(3) { pane.doLayout() }
+            assertEquals("below the inspection widget", statusHeight, scrollbar.y)
+            assertEquals("and only that much shorter, however often the pane is laid out", 600 - statusHeight, scrollbar.height)
+        } finally {
+            EditorFactory.getInstance().releaseEditor(main)
+        }
     }
 
     fun testHiddenBelowTwoHeadings() {

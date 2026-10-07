@@ -12,10 +12,12 @@ import javax.swing.JPanel
 /**
  * Step W2.8 (decision 98). The widget's own layer in the editor's layered pane, the pane `EditorImpl` keeps its scroll
  * pane, sticky lines, scrollbar and inspection widget in. That pane lays out any other child as the inspection widget:
- * at the top-right edge with its preferred size, the scrollbar pushed below it. So this layer reports no preferred size
- * — the scrollbar stays put — and whenever it is laid out takes its bounds from [TocPlacement] instead: against the
- * scrollbar, below the inspection widget. Its layer is above that widget's, so the pane lays it out first and the
- * inspection widget still has the last word on where the scrollbar starts.
+ * at the top-right edge with its preferred size, and the scrollbar moved to start at that size's height, keeping its
+ * own height minus the move. So this layer reports the scrollbar's current top as its preferred height — the pane's
+ * check then finds nothing to move (a height of 0 would move the scrollbar up, and the inspection widget, laid out
+ * next, would push it down and shorten it, a little more on every layout) — and whenever it is laid out takes its
+ * bounds from [TocPlacement] instead: against the scrollbar, below the inspection widget. Its layer is above that
+ * widget's, so the pane lays it out first and the inspection widget keeps the last word on where the scrollbar starts.
  */
 class TocLayer private constructor(private val controller: TocController) : JPanel(BorderLayout()) {
 
@@ -27,7 +29,7 @@ class TocLayer private constructor(private val controller: TocController) : JPan
         add(panel, BorderLayout.CENTER)
     }
 
-    override fun getPreferredSize(): Dimension = Dimension(0, 0)
+    override fun getPreferredSize(): Dimension = Dimension(0, controller.editor.scrollPane.verticalScrollBar?.y ?: 0)
 
     override fun setBounds(x: Int, y: Int, width: Int, height: Int) {
         val pane = parent ?: return super.setBounds(x, y, width, height)
