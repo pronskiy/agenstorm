@@ -121,7 +121,7 @@ class TocController(
     }
 
     /**
-     * Step W2.4. The caret to the heading, the heading near the top of the view (one line of air above it), the move
+     * Step W2.4. The caret to the heading, the heading near the top of the view ([AIR_LINES] above it), the move
      * recorded as a navigation so Back returns, and the focus back in the editor. EDT.
      */
     fun navigate(entry: TocEntry) {
@@ -130,7 +130,7 @@ class TocController(
         CommandProcessor.getInstance().executeCommand(project, {
             editor.selectionModel.removeSelection()
             editor.caretModel.moveToOffset(offset)
-            editor.scrollingModel.scrollVertically((editor.offsetToXY(offset).y - editor.lineHeight).coerceAtLeast(0))
+            editor.scrollingModel.scrollVertically((editor.offsetToXY(offset).y - AIR_LINES * editor.lineHeight).coerceAtLeast(0))
             IdeDocumentHistory.getInstance(project).includeCurrentCommandAsNavigation()
         }, AgenstormBundle.message("markdown.toc.navigate"), null)
         IdeFocusManager.getInstance(project).requestFocus(editor.contentComponent, true)
@@ -159,15 +159,21 @@ class TocController(
         for (listener in listeners) listener()
     }
 
-    /** The first logical line in view, read half a line below the top edge so a heading scrolled half out still counts. */
+    /**
+     * The line the current section is read at: half a line below the [AIR_LINES] a jump leaves above its heading, so
+     * the heading just clicked is the current one, and a heading scrolled half out of that band still counts.
+     */
     private fun topLine(): Int {
         val area = editor.scrollingModel.visibleArea
-        return editor.xyToLogicalPosition(Point(0, area.y + editor.lineHeight / 2)).line
+        return editor.xyToLogicalPosition(Point(0, area.y + AIR_LINES * editor.lineHeight + editor.lineHeight / 2)).line
     }
 
     private fun psiFile(): PsiFile? = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
 
     companion object {
         const val DEBOUNCE_MS = 300L
+
+        /** Lines of air a jump leaves above its heading; [topLine] reads below them, so the two agree. */
+        const val AIR_LINES = 1
     }
 }

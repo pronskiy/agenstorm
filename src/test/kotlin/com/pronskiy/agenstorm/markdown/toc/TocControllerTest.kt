@@ -2,6 +2,7 @@ package com.pronskiy.agenstorm.markdown.toc
 
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.EditorTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.pronskiy.agenstorm.core.AgenstormSettings
 
@@ -56,6 +57,18 @@ class TocControllerTest : BasePlatformTestCase() {
         controller.navigate(two)
         assertEquals(two.offset, myFixture.editor.caretModel.offset)
         assertFalse(myFixture.editor.selectionModel.hasSelection())
+    }
+
+    fun testAfterAJumpTheClickedHeadingIsCurrent() {
+        val controller = controllerFor((1..5).joinToString("\n") { "## Section $it\n\n" + "line\n".repeat(40) })
+        EditorTestUtil.setEditorVisibleSize(myFixture.editor, 80, 20)
+        myFixture.editor.scrollingModel.disableAnimation()
+        for (index in listOf(2, 0, 4, 1)) {
+            val entry = controller.state.visible[index]
+            controller.navigate(entry)
+            controller.refresh()
+            assertEquals("after jumping to ${entry.title}", index, controller.state.current)
+        }
     }
 
     fun testTheServiceDropsTheControllerWithItsToolbar() {
