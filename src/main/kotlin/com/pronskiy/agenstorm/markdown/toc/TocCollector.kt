@@ -51,14 +51,14 @@ object TocCollector {
         return 0
     }
 
-    /** The heading's text without emphasis, strike or code delimiters, link destinations and images; spaces collapsed. */
+    /** The heading's text without emphasis, strike, code or autolink delimiters, link destinations, images and inline HTML; spaces collapsed. */
     private fun visibleText(content: ASTNode): String =
         buildString { walk(content, this) }.replace(WHITESPACE, " ").trim()
 
     private fun walk(node: ASTNode, out: StringBuilder) {
         val type = node.elementType
         when {
-            type == MarkdownElementTypes.IMAGE -> Unit
+            type == MarkdownElementTypes.IMAGE || type == MarkdownTokenTypes.HTML_TAG -> Unit
             type in LINKS -> {
                 val text = node.findChildByType(MarkdownElementTypes.LINK_TEXT)
                     ?: node.findChildByType(MarkdownElementTypes.LINK_LABEL)
@@ -84,6 +84,7 @@ object TocCollector {
             MarkdownTokenTypes.BACKTICK -> parent == MarkdownElementTypes.CODE_SPAN
             MarkdownTokenTypes.LBRACKET, MarkdownTokenTypes.RBRACKET ->
                 parent == MarkdownElementTypes.LINK_TEXT || parent == MarkdownElementTypes.LINK_LABEL
+            MarkdownTokenTypes.LT, MarkdownTokenTypes.GT -> parent == MarkdownElementTypes.AUTOLINK
             else -> false
         }
     }

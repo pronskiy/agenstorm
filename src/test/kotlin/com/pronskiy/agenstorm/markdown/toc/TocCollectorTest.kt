@@ -40,6 +40,14 @@ class TocCollectorTest : BasePlatformTestCase() {
         assertEquals(listOf("Real"), TocCollector.collect(myFixture.file).map { it.title })
     }
 
+    fun testInlineHtmlIsLeftOutAndAutolinksLoseTheirBrackets() {
+        myFixture.configureByText(
+            "a.md",
+            "# <img src=\"logo.svg\" width=\"32\"> Agenstorm\n\n# <img src=\"logo.svg\">\n\n## See <https://x.dev>\n\n## <b>Bold</b> text\n",
+        )
+        assertEquals(listOf("Agenstorm", "See https://x.dev", "Bold text"), TocCollector.collect(myFixture.file).map { it.title })
+    }
+
     fun testFrontMatterEndsAtItsClosingLine() {
         assertEquals(0, TocCollector.frontMatterEnd("# Title\n"))
         assertEquals("---\na: b\n---".length, TocCollector.frontMatterEnd("---\na: b\n---\n# Title\n"))
