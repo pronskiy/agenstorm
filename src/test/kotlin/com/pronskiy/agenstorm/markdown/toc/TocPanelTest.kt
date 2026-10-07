@@ -95,7 +95,7 @@ class TocPanelTest : BasePlatformTestCase() {
         val panel = TocPanel(null)
         panel.show(state("x".repeat(400), "Install"), wide)
         assertEquals("capped, not grown to the title", JBUI.scale(TocPanel.MAX_WIDTH), panel.cardWidth())
-        assertEquals("narrower than the first cut", 220, TocPanel.MAX_WIDTH)
+        assertEquals("10 px narrower than 220, at Roman's word", 210, TocPanel.MAX_WIDTH)
     }
 
     fun testManyHeadingsAreCappedAtHalfTheEditor() {

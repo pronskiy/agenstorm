@@ -215,7 +215,7 @@ class TocPanel(private val controller: TocController?) : JPanel(BorderLayout()) 
     }
 
     companion object {
-        const val MAX_WIDTH = 220
+        const val MAX_WIDTH = 210
         const val MIN_WIDTH = 120
         private const val PADDING = 10
         private const val INDENT = 12
