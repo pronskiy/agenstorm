@@ -79,6 +79,12 @@ class TocPanelTest : BasePlatformTestCase() {
         assertIconInTopRightCorner(panel)
     }
 
+    fun testClicksOnTheCardsBlankPartsStayOnTheCard() {
+        val panel = TocPanel(null)
+        assertTrue("the card itself takes clicks, so its header strip and padding do not pass them to the text below", panel.mouseListeners.isNotEmpty())
+        assertTrue("the wheel still scrolls the editor underneath", panel.mouseWheelListeners.isEmpty())
+    }
+
     fun testTheScrollbarLeavesRoomForTheText() {
         val panel = TocPanel(null)
         val state = state("Agenstorm", "Install", "Features")

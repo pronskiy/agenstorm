@@ -103,6 +103,9 @@ class TocPanel(private val controller: TocController?) : JPanel(BorderLayout()) 
             component.addMouseListener(mouse)
             component.addMouseMotionListener(mouse)
         }
+        // The card's own blank parts — the header strip, the padding — take clicks too, or AWT hands them to the
+        // editor text underneath. No wheel listener: the wheel still scrolls the editor.
+        addMouseListener(object : MouseAdapter() {})
         relayout()
     }
 
