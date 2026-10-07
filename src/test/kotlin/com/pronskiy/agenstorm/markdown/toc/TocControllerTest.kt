@@ -19,7 +19,7 @@ class TocControllerTest : BasePlatformTestCase() {
 
     private fun controllerFor(text: String): TocController {
         myFixture.configureByText("a.md", text)
-        val controller = TocService.getInstance(project).attach(myFixture.editor as EditorEx, toolbar = null, parent = testRootDisposable)
+        val controller = TocService.getInstance(project).attach(myFixture.editor as EditorEx, testRootDisposable)
         controller.collectNow()
         return controller
     }
@@ -75,7 +75,7 @@ class TocControllerTest : BasePlatformTestCase() {
         myFixture.configureByText("a.md", "# A\n\n## B\n")
         val toolbarLifetime = Disposer.newDisposable(testRootDisposable, "toolbar")
         val service = TocService.getInstance(project)
-        val controller = service.attach(myFixture.editor as EditorEx, toolbar = null, parent = toolbarLifetime)
+        val controller = service.attach(myFixture.editor as EditorEx, toolbarLifetime)
         assertSame(controller, service.controllerFor(myFixture.editor))
         Disposer.dispose(toolbarLifetime)
         assertNull(service.controllerFor(myFixture.editor))
@@ -84,7 +84,7 @@ class TocControllerTest : BasePlatformTestCase() {
     fun testNothingIsNotifiedAfterDispose() {
         myFixture.configureByText("a.md", "# A\n\n## B\n")
         val toolbarLifetime = Disposer.newDisposable(testRootDisposable, "toolbar")
-        val controller = TocService.getInstance(project).attach(myFixture.editor as EditorEx, toolbar = null, parent = toolbarLifetime)
+        val controller = TocService.getInstance(project).attach(myFixture.editor as EditorEx, toolbarLifetime)
         var calls = 0
         controller.subscribe { calls++ }
         controller.refresh()

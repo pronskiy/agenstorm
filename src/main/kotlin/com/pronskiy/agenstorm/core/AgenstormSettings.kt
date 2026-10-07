@@ -118,6 +118,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var markdownTocEnabled: Boolean = true,
         /** Epic W: the deepest heading level the contents widget lists, 1–6 (decision 97: 3). */
         var markdownTocDepth: Int = 3,
+        /** Epic W: `auto` until the fold icon is first clicked, then `folded` or `unfolded` for every Markdown editor (decision 99). */
+        var markdownTocFold: String = "auto",
         /** Epic N: right-anchored tool windows move to the left, which empties the right bar and makes the IDE hide it. */
         var hideRightToolWindowBar: Boolean = false,
         /** Epic S: the status bar's status text is hidden, so the bottom-left holds only what Agenstorm puts there. */

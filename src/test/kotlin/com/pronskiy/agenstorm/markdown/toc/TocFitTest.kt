@@ -3,6 +3,8 @@ package com.pronskiy.agenstorm.markdown.toc
 import com.pronskiy.agenstorm.markdown.toc.TocFit.Mode.CARD
 import com.pronskiy.agenstorm.markdown.toc.TocFit.Mode.PILL
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -33,6 +35,15 @@ class TocFitTest {
     fun theScrollbarAndTheSlotsGapsCount() {
         // The old rule (card + 2 × 20) would have shown the card here: 280 px of room for a 240 px card.
         assertEquals(PILL, TocFit.mode(viewportWidth = 600 + 280, marginColumns = 120, spaceWidth = 5, cardWidth = 240, rightInset = 15 + 20 + 20))
+    }
+
+    @Test
+    fun theUsersFoldChoiceWinsOverTheWidth() {
+        assertFalse(TocFit.folded(TocFit.FOLD_AUTO, CARD))
+        assertTrue(TocFit.folded(TocFit.FOLD_AUTO, PILL))
+        assertTrue("folded on a wide window", TocFit.folded(TocFit.FOLD_FOLDED, CARD))
+        assertFalse("unfolded on a narrow window", TocFit.folded(TocFit.FOLD_UNFOLDED, PILL))
+        assertTrue("anything unknown is auto", TocFit.folded("sideways", PILL))
     }
 
     @Test

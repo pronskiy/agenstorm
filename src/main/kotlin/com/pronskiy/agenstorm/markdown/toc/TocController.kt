@@ -1,7 +1,6 @@
 package com.pronskiy.agenstorm.markdown.toc
 
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
@@ -10,7 +9,6 @@ import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.util.EditorUtil
-import com.intellij.openapi.editor.toolbar.floating.FloatingToolbarComponent
 import com.intellij.openapi.fileEditor.ex.IdeDocumentHistory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.IdeFocusManager
@@ -44,15 +42,14 @@ data class TocState(val visible: List<TocEntry>, val current: Int, val shows: Bo
 /**
  * Step W2.2. The contents of one Markdown editor: collected at once and again [DEBOUNCE_MS] after the last edit, the
  * current section re-read on every scroll and resize, the result kept in [state] for the action's BGT update and
- * pushed to the panel through [subscribe]. Made by [TocService] when the editor's floating toolbar registers our
- * provider and disposed with that toolbar, so it lives exactly as long as the editor has the widget's slot.
+ * pushed to [TocLayer] through [subscribe]. Made by [TocService] when a Markdown editor opens and disposed when it
+ * closes; the layer goes with it.
  */
 @OptIn(FlowPreview::class)
 class TocController(
     val editor: EditorEx,
     private val project: Project,
     scope: CoroutineScope,
-    val toolbar: FloatingToolbarComponent? = null,
     debounceMs: Long = DEBOUNCE_MS,
 ) : Disposable {
 
@@ -71,7 +68,6 @@ class TocController(
     @Volatile
     private var disposed = false
 
-    /** Disposed with its toolbar, possibly between the action's BGT update and the panel's EDT bind. */
     val isDisposed: Boolean get() = disposed || editor.isDisposed
     private val job: Job
 
@@ -116,10 +112,7 @@ class TocController(
         val settings = AgenstormSettings.getInstance().state
         val visible = TocOutline.visible(entries, settings.markdownTocDepth)
         val next = TocState(visible, TocOutline.current(visible, topLine()), settings.markdownTocEnabled && TocOutline.shows(visible))
-        val showsChanged = next.shows != state.shows
         state = next
-        // The toolbar re-runs the action's update on its own timer; ask at once so showing and hiding are not late.
-        if (showsChanged) (toolbar as? ActionToolbar)?.updateActionsAsync()
         notifyListeners()
     }
 

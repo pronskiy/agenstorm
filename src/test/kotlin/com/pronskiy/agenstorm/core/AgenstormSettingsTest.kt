@@ -36,6 +36,7 @@ class AgenstormSettingsTest : BasePlatformTestCase() {
         val state = AgenstormSettings.State()
         assertTrue(state.markdownTocEnabled)
         assertEquals(3, state.markdownTocDepth)
+        assertEquals("the width rule decides until the first click", "auto", state.markdownTocFold)
     }
 
     fun testEveryFeatureIsEnabledByDefault() {

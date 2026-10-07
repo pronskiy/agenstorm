@@ -21,10 +21,10 @@
         <gotoDeclarationHandler implementation="com.pronskiy.agenstorm.markdown.LinkTextGotoDeclarationHandler"/>
         <!-- markdown (Epic F): applies the settings page to open editors; core/ cannot call this feature directly. -->
         <postStartupActivity implementation="com.pronskiy.agenstorm.markdown.LiveMarkupStartupActivity"/>
-        <!-- markdown (Epic W): the headings in the top-right corner of a Markdown editor, in the editor's own
-             floating-toolbar slot (decision 96). The action inside is made in code, so Find Action never lists it. -->
-        <editorFloatingToolbarProvider id="Agenstorm.MarkdownContents"
-                                       implementation="com.pronskiy.agenstorm.markdown.toc.TocFloatingProvider"/>
+        <!-- markdown (Epic W): the headings in the top-right corner of a Markdown editor, in a layer of their own in
+             the editor's layered pane (decision 98); editors opened before the plugin loaded are attached at startup. -->
+        <editorFactoryListener implementation="com.pronskiy.agenstorm.markdown.toc.TocEditorListener"/>
+        <postStartupActivity implementation="com.pronskiy.agenstorm.markdown.toc.TocStartupActivity"/>
 
     </extensions>
 
