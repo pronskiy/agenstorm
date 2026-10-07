@@ -12,6 +12,9 @@ import com.intellij.openapi.editor.toolbar.floating.FloatingToolbarComponent
 import com.intellij.openapi.editor.toolbar.floating.FloatingToolbarProvider
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileTypeRegistry
+import com.intellij.openapi.util.Disposer
+import java.awt.FlowLayout
+import javax.swing.JComponent
 import org.intellij.plugins.markdown.lang.MarkdownFileType
 
 /**
@@ -35,6 +38,7 @@ class TocFloatingProvider : FloatingToolbarProvider {
         val project = editor.project ?: return
         if (project.isDisposed) return
         TocService.getInstance(project).attach(editor, component, parentDisposable)
+        hugTheEdge(component, parentDisposable)
         component.scheduleShow()
     }
 
@@ -46,6 +50,25 @@ class TocFloatingProvider : FloatingToolbarProvider {
 
     companion object {
         const val SHOWING_TIME_MS = 150
+
+        /**
+         * Step W2.7 (Roman, 2026-10-07: "so that it's basically stick to the right border"). The slot's container is a
+         * `FlowLayout(RIGHT, 20, 20)`; its horizontal gap goes to 0 for as long as our toolbar is in it, and comes back
+         * with it. The vertical gap stays, keeping the card below the inspection widget, and so do the editor's own
+         * 20 px and the scrollbar — that is `EditorImpl`'s layout. Plain Swing: no platform class is named.
+         */
+        internal fun hugTheEdge(toolbar: FloatingToolbarComponent, lifetime: Disposable) {
+            val slot = (toolbar as? JComponent)?.parent ?: return
+            val layout = slot.layout as? FlowLayout ?: return
+            val original = layout.hgap
+            if (original == 0) return
+            layout.hgap = 0
+            slot.revalidate()
+            Disposer.register(lifetime, Disposable {
+                layout.hgap = original
+                slot.revalidate()
+            })
+        }
 
         /** A main editor of a Markdown file in an open project; diffs and one-line editors never get the slot at all. */
         fun appliesTo(dataContext: DataContext): Boolean {

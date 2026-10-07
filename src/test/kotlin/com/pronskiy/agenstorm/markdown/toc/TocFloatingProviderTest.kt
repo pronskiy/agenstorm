@@ -6,7 +6,10 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.editor.toolbar.floating.FloatingToolbarComponent
 import com.intellij.openapi.editor.toolbar.floating.FloatingToolbarProvider
 import com.intellij.openapi.extensions.ExtensionPointName
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import java.awt.FlowLayout
+import javax.swing.JPanel
 
 /** Step W2.5: the provider is registered, applies to Markdown editors only, attaches a controller and stays shown through Esc. */
 class TocFloatingProviderTest : BasePlatformTestCase() {
@@ -22,6 +25,18 @@ class TocFloatingProviderTest : BasePlatformTestCase() {
         override fun scheduleShow() {
             shows++
         }
+        override fun hideImmediately() = Unit
+    }
+
+    /** A toolbar that is a component, in a slot laid out the way `EditorFloatingToolbar` is. */
+    private class SlotToolbar : JPanel(), FloatingToolbarComponent {
+        override var backgroundAlpha = 0f
+        override var showingTime = 0
+        override var hidingTime = 0
+        override var retentionTime = 0
+        override var autoHideable = false
+        override fun scheduleHide() = Unit
+        override fun scheduleShow() = Unit
         override fun hideImmediately() = Unit
     }
 
@@ -52,6 +67,19 @@ class TocFloatingProviderTest : BasePlatformTestCase() {
         assertEquals(1, toolbar.shows)
         provider.onHiddenByEsc(context())
         assertEquals(2, toolbar.shows)
+    }
+
+    fun testTheSlotLosesItsInnerGapWhileTheWidgetIsInIt() {
+        myFixture.configureByText("a.md", "# A\n\n## B\n")
+        val layout = FlowLayout(FlowLayout.RIGHT, 20, 20)
+        val toolbar = SlotToolbar()
+        JPanel(layout).add(toolbar)
+        val lifetime = Disposer.newDisposable(testRootDisposable, "toolbar")
+        TocFloatingProvider().register(context(), toolbar, lifetime)
+        assertEquals("against the right edge", 0, layout.hgap)
+        assertEquals("still below the inspection widget", 20, layout.vgap)
+        Disposer.dispose(lifetime)
+        assertEquals("given back with the toolbar", 20, layout.hgap)
     }
 
     fun testTheSlotNeverHidesByItself() {
