@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Contents in the corner: a Markdown file's headings show in the editor's top-right corner, against the scrollbar, as a card that stays put while scrolling, highlights the section on screen and jumps to a heading on click (Back returns). An icon in its corner folds it and unfolds it, in every Markdown file and remembered; until then it folds itself on windows too narrow for it beside the right margin. `#` to `###` by default. On by default under Settings | Tools | Agenstorm | Markdown editor.
+
 ## [1.11.0] - 2026-10-01
 
 ### Added

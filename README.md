@@ -15,7 +15,8 @@ result until the caret reaches them. Fenced code blocks and block quotes sit on 
 render in place — a proportional font, wrapped cells, a bold header — and a click edits one cell
 without leaving the rendered view. It is folding only: the file on disk never changes, and copying always copies raw Markdown.
 An optional switch also hides the editor/preview layout buttons. Soft-wrapped Markdown and text stop at
-the right margin's line, however wide the window.
+the right margin's line, however wide the window. The headings sit in the top-right corner as a contents card
+that stays put while you scroll, and a click jumps to one.
 
 ### Clickable file locations
 
@@ -106,6 +107,7 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 |---|---|---|
 | [Markdown live markup](#markdown-live-markup-1) | on | Markdown live markup |
 | [Soft wrap at the right margin](#soft-wrap-at-the-right-margin) | on | Soft wraps |
+| [Contents in the corner](#contents-in-the-corner) | on | Markdown editor |
 | [Clickable file locations](#clickable-file-locations-1) | on | Location links |
 | [`open` in the terminal](#opening-files-from-the-terminal) | on | Terminal |
 | [IDE as `$EDITOR`](#the-ide-as-your-terminals-editor-1) | on | Terminal editor |
@@ -208,6 +210,20 @@ It applies to the files the IDE soft-wraps — Settings | Editor | General | Sof
 files*, by default `*.md; *.txt; *.rst; *.adoc` — and leaves code, diff views, consoles and the terminal
 alone. On by default under **Soft wraps**. A file short enough to fit the window keeps its old width
 after a margin change until it is resized, zoomed or reopened.
+
+## Contents in the corner
+
+A Markdown file with two or more headings shows them in the editor's top-right corner, against the
+scrollbar: a card that stays put while the text scrolls, indented by level, with the section on screen in
+bold. Click a heading to jump to it; Back (⌘[) returns.
+
+The icon in the card's corner folds it into just the icon and back. That choice holds for every Markdown
+file and is remembered. Until you first click it, the card folds itself when the window has no room for it
+past the right margin and unfolds when it has.
+
+It lists `#` to `###` by default — Settings | Tools | Agenstorm | **Markdown editor** → *Heading levels*
+takes 1 to 6 — and leaves PHP and other editors, diffs and the preview pane alone. On by default. The
+card trusts the right margin to tell where the text ends: with soft wrap off, a long line can run under it.
 
 ---
 
