@@ -64,7 +64,7 @@ class TerminalHandOff : ProjectHandOff {
 
     /**
      * Turns `destroy-unattached` back on for each moved session once a client is attached — a tab of the new window
-     * started — and fits the window to that tab. A session no tab of the window asks for any more (closed unstarted), or
+     * started — and lets the window follow that tab's size. A session no tab of the window asks for any more (closed unstarted), or
      * whose window closed first, becomes a background terminal instead of a leftover nobody sees. Any tab counts, not
      * only the one the hand-off made: the safety net in [TmuxTabsListener] may have closed that one as a second tab.
      */
@@ -127,12 +127,15 @@ object TmuxHandOffPlan {
 
     /**
      * Once a tab is attached: the session ends with its tabs again — no longer a background terminal, if it was one
-     * (U3.1) — and fills the tab. In this order, since tmux stops a `;` chain at the first error.
+     * (U3.1) — and its window follows the tab's size. The attach already sized it (`window-size latest`); what is unset
+     * here is the `window-size manual` an earlier `resize-window -A` left behind, which froze the window at the tab's
+     * size of that moment and showed tmux's dots below or beside it once the tab grew. In this order, since tmux stops
+     * a `;` chain at the first error.
      */
     fun settled(session: String): List<String> = listOf(
         "set-option", "-t", "=$session:", "destroy-unattached", "on", ";",
         "set-option", "-u", "-t", "=$session:", "@agenstorm_background", ";",
-        "resize-window", "-A", "-t", "=$session:",
+        "set-option", "-w", "-u", "-t", "=$session:", "window-size",
     )
 
     fun plan(tabs: List<Tab>, sessions: List<TmuxSession>, repository: String?): List<Move> {

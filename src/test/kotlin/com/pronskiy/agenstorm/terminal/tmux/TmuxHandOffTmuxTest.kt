@@ -3,6 +3,7 @@ package com.pronskiy.agenstorm.terminal.tmux
 import com.intellij.openapi.util.io.NioFiles
 import com.pty4j.PtyProcess
 import com.pty4j.PtyProcessBuilder
+import com.pty4j.WinSize
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -50,6 +51,27 @@ class TmuxHandOffTmuxTest {
 
         new.destroyForcibly().waitFor()
         assertNotNull("settled, it ends with its last tab", waitFor { if (session("app-1") == null) true else null })
+    }
+
+    /**
+     * `resize-window` pins a window to `window-size manual`, so a settled window kept the size its tab had at that moment
+     * and showed tmux's dots below or beside itself once the tab grew (a maximized terminal, a wider tool window).
+     */
+    @Test
+    fun aSettledWindowKeepsFollowingItsTabsSize() {
+        start()
+        val old = client(prefix + listOf("new-session", "-s", "app-1", "sleep", "60"))
+        assertNotNull(waitFor { session("app-1")?.takeIf { it.clients == 1 } })
+        assertEquals(0, tmux(TmuxHandOffPlan.keepAlive("app-1", "/work/app")))
+        old.destroyForcibly().waitFor()
+        assertNotNull(waitFor { session("app-1")?.takeIf { it.clients == 0 } })
+
+        val tab = client(prefix + TmuxHandOffPlan.attach("app-1"), columns = 100, rows = 14)
+        assertNotNull(waitFor { windowSize("app-1").takeIf { it == "100x14" } })
+        assertEquals(0, tmux(TmuxHandOffPlan.settled("app-1")))
+
+        tab.winSize = WinSize(120, 45)
+        assertEquals("120x45", waitFor { windowSize("app-1").takeIf { it == "120x45" } } ?: windowSize("app-1"))
     }
 
     @Test
@@ -121,8 +143,14 @@ class TmuxHandOffTmuxTest {
         prefix = listOf(binary.toString(), "-u", "-L", socket, "-f", config.toString())
     }
 
-    private fun client(command: List<String>): PtyProcess =
-        PtyProcessBuilder(command.toTypedArray()).setEnvironment(System.getenv() + ("TERM" to "xterm-256color")).start().also { clients += it }
+    private fun client(command: List<String>, columns: Int = 80, rows: Int = 24): PtyProcess =
+        PtyProcessBuilder(command.toTypedArray()).setEnvironment(System.getenv() + ("TERM" to "xterm-256color"))
+            .setInitialColumns(columns).setInitialRows(rows).start().also { clients += it }
+
+    private fun windowSize(session: String): String {
+        val process = ProcessBuilder(prefix + listOf("display-message", "-p", "-t", "=$session:", "#{window_width}x#{window_height}")).redirectErrorStream(true).start()
+        return process.inputStream.bufferedReader().readText().trim().also { process.waitFor() }
+    }
 
     private fun tmux(args: List<String>): Int = ProcessBuilder(prefix + args).redirectErrorStream(true).start().let {
         it.inputStream.readBytes()

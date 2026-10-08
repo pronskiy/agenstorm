@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- tmux-backed terminals: a terminal handed to another worktree's window, or a background terminal opened again, no longer stays at the size its tab had at that moment — it follows the tab, instead of leaving rows of dots below or beside the output once the tab grows.
+
 ## [1.12.0] - 2026-10-08
 
 ### Added
