@@ -26,8 +26,8 @@ class AgentsPanelSyncTest : BasePlatformTestCase() {
     }
 
     fun testASelectionInFrontReachesThePanelBehind() {
-        val inFront = AgentsPanel(project, parent) { true }.also { it.render(groups) }
-        val behind = AgentsPanel(project, parent) { false }.also { it.render(groups) }
+        val inFront = AgentsPanel(project, parent, isFront = { true }).also { it.render(groups) }
+        val behind = AgentsPanel(project, parent, isFront = { false }).also { it.render(groups) }
 
         inFront.tree.setSelectionRow(1)
         behind.restore(AgentsSidebarState.getInstance().layout.value)
@@ -37,7 +37,7 @@ class AgentsPanelSyncTest : BasePlatformTestCase() {
     }
 
     fun testAPanelBehindDoesNotRecord() {
-        val behind = AgentsPanel(project, parent) { false }.also { it.render(groups) }
+        val behind = AgentsPanel(project, parent, isFront = { false }).also { it.render(groups) }
 
         behind.tree.setSelectionRow(0)
 
@@ -45,7 +45,7 @@ class AgentsPanelSyncTest : BasePlatformTestCase() {
     }
 
     fun testRestoringDoesNotEchoBack() {
-        val inFront = AgentsPanel(project, parent) { true }.also { it.render(groups) }
+        val inFront = AgentsPanel(project, parent, isFront = { true }).also { it.render(groups) }
         AgentsSidebarState.getInstance().update { it.copy(selected = "group:/w/alpha") }
 
         inFront.restore(AgentsSidebarState.getInstance().layout.value)
@@ -57,7 +57,7 @@ class AgentsPanelSyncTest : BasePlatformTestCase() {
     }
 
     fun testAProjectThatLeavesTakesItsSelectionWithIt() {
-        val panel = AgentsPanel(project, parent) { true }.also { it.render(groups) }
+        val panel = AgentsPanel(project, parent, isFront = { true }).also { it.render(groups) }
         panel.tree.setSelectionRow(1)
 
         panel.render(groups.take(1))
