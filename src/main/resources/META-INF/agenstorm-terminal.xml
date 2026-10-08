@@ -21,6 +21,11 @@
         <projectCloseHandler implementation="com.pronskiy.agenstorm.terminal.tmux.TmuxProjectCloseHandler"/>
         <!-- U3.3: "N background terminals" in every window's status bar while there are any. -->
         <statusBarWidgetFactory id="agenstorm.backgroundTerminals" implementation="com.pronskiy.agenstorm.terminal.tmux.BackgroundTerminalsWidgetFactory"/>
+        <!-- X1.2 (Epic X): the Agents sidebar, one per frame over one app-level model (decision 102); available only while
+             the setting is on (decision 104). -->
+        <toolWindow id="Agenstorm.Agents" anchor="left" icon="AllIcons.Nodes.Console"
+                    factoryClass="com.pronskiy.agenstorm.terminal.agents.AgentsToolWindowFactory"/>
+        <postStartupActivity implementation="com.pronskiy.agenstorm.terminal.agents.AgentsStartupActivity"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.pronskiy.agenstorm">
@@ -37,6 +42,8 @@
     <applicationListeners>
         <!-- U3.2: acting on a close's or a quit's answer once the close is certain. -->
         <listener class="com.pronskiy.agenstorm.terminal.tmux.TmuxProjectClosing" topic="com.intellij.openapi.project.ProjectCloseListener"/>
+        <!-- X1.2: a closed project leaves every window's Agents sidebar. -->
+        <listener class="com.pronskiy.agenstorm.terminal.agents.AgentsProjectClosed" topic="com.intellij.openapi.project.ProjectCloseListener"/>
     </applicationListeners>
 
     <projectListeners>
