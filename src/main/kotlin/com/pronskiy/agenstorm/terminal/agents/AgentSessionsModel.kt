@@ -40,8 +40,11 @@ class AgentSessionsModel(private val scope: CoroutineScope) : Disposable {
     }
 
     /** Calls [render] on the EDT with the groups now and after every change, until [parent] is disposed. */
-    fun collect(parent: Disposable, render: (List<ProjectGroup>) -> Unit) {
-        val job = scope.launch(Dispatchers.EDT) { groups.collect { render(it) } }
+    fun collect(parent: Disposable, render: (List<ProjectGroup>) -> Unit) = follow(groups, parent, render)
+
+    /** Calls [render] on the EDT with [flow]'s value now and after every change, until [parent] is disposed. */
+    fun <T> follow(flow: StateFlow<T>, parent: Disposable, render: (T) -> Unit) {
+        val job = scope.launch(Dispatchers.EDT) { flow.collect { render(it) } }
         Disposer.register(parent) { job.cancel() }
     }
 

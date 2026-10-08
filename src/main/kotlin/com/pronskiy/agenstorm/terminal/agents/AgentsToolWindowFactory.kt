@@ -12,7 +12,7 @@ import com.pronskiy.agenstorm.core.AgenstormSettings
 
 /**
  * Step X1.2. The Agents tool window, one per frame (decision 102), available only while the setting is on (decision
- * 104); its panel draws the app-level [AgentSessionsModel].
+ * 104); its panel draws the app-level [AgentSessionsModel], its layout follows [AgentsSidebarSync].
  */
 class AgentsToolWindowFactory : ToolWindowFactory, DumbAware {
 
@@ -32,7 +32,9 @@ class AgentsToolWindowFactory : ToolWindowFactory, DumbAware {
             ApplicationManager.getApplication().invokeLater {
                 for (project in ProjectManager.getInstance().openProjects) {
                     if (project.isDisposed) continue
-                    ToolWindowManager.getInstance(project).getToolWindow(ID)?.isAvailable = enabled
+                    val window = ToolWindowManager.getInstance(project).getToolWindow(ID) ?: continue
+                    window.isAvailable = enabled
+                    if (enabled) AgentsSidebarSync.getInstance().apply(project)
                 }
             }
         }

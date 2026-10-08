@@ -50,6 +50,9 @@
         <!-- U1.6 (decision 92): ✕ on a tmux tab running something asks, with the platform's dialog. -->
         <listener class="com.pronskiy.agenstorm.terminal.tmux.TmuxTabsListener"
                   topic="com.intellij.terminal.frontend.toolwindow.TerminalTabsManagerListener"/>
+        <!-- X1.4 (Epic X): the Agents sidebar shown, hidden, resized or moved in the window in front becomes every window's. -->
+        <listener class="com.pronskiy.agenstorm.terminal.agents.AgentsToolWindowListener"
+                  topic="com.intellij.openapi.wm.ex.ToolWindowManagerListener"/>
     </projectListeners>
 
     <actions resource-bundle="messages.AgenstormBundle">
