@@ -26,8 +26,9 @@ import java.nio.file.Path
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Steps X1.2 and X2.4. The one model every window's Agents sidebar draws (decision 102): a group per open project, in
- * the same order everywhere, with the Claude Code sessions running in it and where each can be shown. While the setting
+ * Steps X1.2, X2.4 and X3.2. The one model every window's Agents sidebar draws (decision 102): a group per open
+ * project, in the same order everywhere, with the Claude Code sessions running in it and where each can be shown, and
+ * its newest past sessions ([AgenstormSettings.State.agentSessionsHistory] of them). While the setting
  * is on it reads `~/.claude/sessions` every [POLL], and at once when a project opens ([AgentsStartupActivity]) or closes
  * ([AgentsProjectClosed]) and when a Terminal tab is added ([AgentsTabsListener]); with the setting off it reads nothing
  * there. The settings page turns the sidebar on and off in every window through [AgentsToolWindowFactory.syncAvailability].
@@ -38,6 +39,7 @@ class AgentSessionsModel(private val scope: CoroutineScope) : Disposable {
     private val groupsFlow = MutableStateFlow<List<ProjectGroup>>(emptyList())
     private val passes = Mutex()
     private val finished = FinishedTracker()
+    private val transcripts = ClaudeTranscripts()
 
     /** `~/.claude`; tests point it elsewhere. */
     internal var claudeHome: () -> Path = ClaudeLiveSessions::home
@@ -64,7 +66,9 @@ class AgentSessionsModel(private val scope: CoroutineScope) : Disposable {
      */
     fun refresh(closing: Project? = null) {
         val before = groupsFlow.value.associateBy { it.basePath }
-        groupsFlow.value = ProjectGroup.sorted(openGroups(closing).map { it.copy(sessions = before[it.basePath]?.sessions.orEmpty()) })
+        groupsFlow.value = ProjectGroup.sorted(openGroups(closing).map { group ->
+            before[group.basePath]?.let { group.copy(sessions = it.sessions, history = it.history) } ?: group
+        })
         scope.launch { pass(closing) }
     }
 
@@ -85,17 +89,20 @@ class AgentSessionsModel(private val scope: CoroutineScope) : Disposable {
             groupsFlow.value = ProjectGroup.sorted(projects)
             return@withLock
         }
-        val rows = withContext(Dispatchers.IO) {
-            val live = ClaudeLiveSessions.read(claudeHome())
+        val limit = AgenstormSettings.getInstance().state.agentSessionsHistory
+        val (rows, history) = withContext(Dispatchers.IO) {
+            val home = claudeHome()
+            val live = ClaudeLiveSessions.read(home)
             val background = BackgroundTerminals.getInstance().sessions.value.mapTo(HashSet()) { it.name }
             val places = AgentTabLocator.locateAll(live, probes, background, ProcessTree.snapshot())
             val grouped = SessionGrouping.group(live, projects.map { it.basePath })
             val done = finished.update(grouped.flatMap { (base, sessions) -> sessions.map { it to base } }, front)
+            val running = live.mapTo(HashSet()) { it.sessionId }
             grouped.mapValues { (_, sessions) ->
                 sessions.map { SessionRow(it, places[it.sessionId] ?: SessionPlace.Elsewhere, it.sessionId in done) }
-            }
+            } to projects.associate { it.basePath to transcripts.recent(home, it.basePath, limit, running) }
         }
-        groupsFlow.value = ProjectGroup.sorted(projects.map { it.copy(sessions = rows[it.basePath].orEmpty()) })
+        groupsFlow.value = ProjectGroup.sorted(projects.map { it.copy(sessions = rows[it.basePath].orEmpty(), history = history[it.basePath].orEmpty()) })
     }
 
     private fun openGroups(closing: Project?): List<ProjectGroup> =

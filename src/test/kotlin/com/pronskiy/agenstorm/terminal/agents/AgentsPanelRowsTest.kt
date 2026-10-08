@@ -12,19 +12,22 @@ class AgentsPanelRowsTest : BasePlatformTestCase() {
 
     private lateinit var parent: com.intellij.openapi.Disposable
     private lateinit var panel: AgentsPanel
-    private val clicks = mutableListOf<Pair<String, String>>()
+    private val clicks = mutableListOf<Pair<ClickPlan, String>>()
 
     private fun row(id: String, status: String = "idle", place: SessionPlace<ProjectTab> = SessionPlace.Elsewhere, finished: Boolean = false) =
         SessionRow(LiveSession(pid = 1, sessionId = id, cwd = "/w/app", name = id, status = status, tmuxSession = null, updatedAt = null, entrypoint = "cli"), place, finished)
 
-    private fun groups(vararg app: SessionRow) = listOf(ProjectGroup("app", "/w/app", app.toList()), ProjectGroup("other", "/w/other"))
+    private fun groups(vararg app: SessionRow, history: List<PastSession> = emptyList()) =
+        listOf(ProjectGroup("app", "/w/app", app.toList(), history), ProjectGroup("other", "/w/other"))
+
+    private fun past(id: String) = PastSession(id, "/w/app", "title $id", lastActivity = 0)
 
     override fun setUp() {
         super.setUp()
         AgentsSidebarState.getInstance().loadState(AgentsSidebarState.Layout())
         parent = Disposer.newDisposable()
         panel = AgentsPanel(project, parent, isFront = { true })
-        panel.onClick = { row, group -> clicks += row.session.sessionId to group.basePath }
+        panel.onClick = { plan, id -> clicks += plan to id }
     }
 
     override fun tearDown() {
@@ -36,9 +39,11 @@ class AgentsPanelRowsTest : BasePlatformTestCase() {
         }
     }
 
-    private fun children(row: Int): List<SessionRow> {
+    private fun children(row: Int): List<SessionRow> = items(row).filterIsInstance<SessionRow>()
+
+    private fun items(row: Int): List<Any> {
         val node = panel.tree.getPathForRow(row).lastPathComponent as DefaultMutableTreeNode
-        return (0 until node.childCount).map { (node.getChildAt(it) as DefaultMutableTreeNode).userObject as SessionRow }
+        return (0 until node.childCount).map { (node.getChildAt(it) as DefaultMutableTreeNode).userObject }
     }
 
     fun testSessionsAreRowsUnderTheirProject() {
@@ -74,7 +79,7 @@ class AgentsPanelRowsTest : BasePlatformTestCase() {
         panel.click(panel.tree.getPathForRow(1))
         panel.click(panel.tree.getPathForRow(0))
 
-        assertEquals(listOf("a" to "/w/app"), clicks)
+        assertEquals("a session outside the IDE: nothing to do, but the click is still told", listOf(ClickPlan.Nothing to "a"), clicks)
     }
 
     fun testStatusMarks() {
@@ -98,5 +103,43 @@ class AgentsPanelRowsTest : BasePlatformTestCase() {
         assertEquals(ClickPlan.Focus(tab), ClickPlan.of(row("a", place = SessionPlace.InTab(tab)), "/w/app"))
         assertEquals(ClickPlan.Background("app-1a2b", "/w/app"), ClickPlan.of(row("a", place = SessionPlace.Background("app-1a2b")), "/w/app"))
         assertEquals(ClickPlan.Nothing, ClickPlan.of(row("a"), "/w/app"))
+    }
+
+    fun testPastSessionsComeAfterTheRunningOnes() {
+        panel.render(groups(row("a"), history = listOf(past("p1"), past("p2"))))
+
+        assertEquals(listOf("a", "p1", "p2"), items(0).map { (it as? SessionRow)?.session?.sessionId ?: (it as PastSession).sessionId })
+        assertEquals("past:p1", AgentsPanel.idOf(panel.tree.getPathForRow(2)))
+    }
+
+    fun testAPastSessionThatEndsLeavesTheRestInPlace() {
+        panel.render(groups(row("a"), history = listOf(past("p1"))))
+        panel.tree.setSelectionRow(2)
+
+        panel.render(groups(row("a"), history = listOf(past("p1").copy(title = "renamed"))))
+
+        assertEquals("past:p1", panel.tree.selectionPath?.let(AgentsPanel::idOf))
+        assertEquals("renamed", (items(0)[1] as PastSession).title)
+    }
+
+    fun testAClickOnAPastSessionResumesItInItsProject() {
+        panel.render(groups(row("a"), history = listOf(past("p1"))))
+
+        panel.click(panel.tree.getPathForRow(2))
+
+        assertEquals(listOf(ClickPlan.Resume("/w/app", "/w/app", "p1", "title p1") to "p1"), clicks)
+    }
+
+    fun testCopySessionIdWorksOnAPastSessionToo() {
+        panel.render(groups(history = listOf(past("p1"))))
+        panel.tree.setSelectionRow(1)
+
+        assertEquals("p1", CustomizedDataContext.withSnapshot(DataContext.EMPTY_CONTEXT) { sink -> panel.uiDataSnapshot(sink) }.getData(AgentsPanel.SESSION_ID))
+    }
+
+    fun testOnlyASessionIdIsEverTyped() {
+        assertEquals("claude --resume aaaaaaaa-1111-4111-8111-111111111111", AgentResume.command("aaaaaaaa-1111-4111-8111-111111111111"))
+        assertNull(AgentResume.command("x; rm -rf ~"))
+        assertNull(AgentResume.command("aaaaaaaa-1111-4111-8111-111111111111\necho"))
     }
 }

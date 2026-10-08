@@ -48,9 +48,10 @@ import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 
 /**
- * Steps X1.2, X1.4, X2.5 and X2.6. One frame's view of the Agents sidebar: a group per open project, in the model's
- * order, with this frame's own project in bold — the one thing that differs between windows (decision 102) — and under
- * each the Claude Code sessions running there. A click on a session brings up where it runs (decision 103). The
+ * Steps X1.2, X1.4, X2.5, X2.6 and X3.2. One frame's view of the Agents sidebar: a group per open project, in the
+ * model's order, with this frame's own project in bold — the one thing that differs between windows (decision 102) —
+ * and under each the Claude Code sessions running there, then its newest past ones in grey. A click on a running
+ * session brings up where it runs, on a past one resumes it in a new tab (decision 103). The
  * selected row, the folded groups and the scroll position are the shared [AgentsSidebarState]'s: changed here only from
  * the window in front ([isFront]), and followed here from every other window.
  */
@@ -77,10 +78,10 @@ class AgentsPanel(
 
     val scrollPane: JScrollPane = ScrollPaneFactory.createScrollPane(tree, true)
 
-    /** Clicks go here; the IDE opens the session, tests record it. */
-    internal var onClick: (SessionRow, ProjectGroup) -> Unit = { row, group ->
-        AgentSessionsModel.getInstance().seen(row.session.sessionId)
-        AgentSessionOpener.open(ClickPlan.of(row, group.basePath))
+    /** Clicks go here, with the session's id; the IDE carries the plan out, tests record it. */
+    internal var onClick: (ClickPlan, String) -> Unit = { plan, sessionId ->
+        AgentSessionsModel.getInstance().seen(sessionId)
+        AgentSessionOpener.open(plan)
     }
 
     init {
@@ -117,7 +118,7 @@ class AgentsPanel(
             groupNodes().zip(groups).forEach { (node, group) ->
                 node.userObject = group
                 treeModel.nodeChanged(node)
-                (0 until node.childCount).map { node.getChildAt(it) as DefaultMutableTreeNode }.zip(group.sessions).forEach { (child, row) ->
+                (0 until node.childCount).map { node.getChildAt(it) as DefaultMutableTreeNode }.zip(group.sessions + group.history).forEach { (child, row) ->
                     child.userObject = row
                     treeModel.nodeChanged(child)
                 }
@@ -128,7 +129,7 @@ class AgentsPanel(
             root.removeAllChildren()
             for (group in groups) {
                 val node = DefaultMutableTreeNode(group)
-                group.sessions.forEach { node.add(DefaultMutableTreeNode(it, false)) }
+                (group.sessions + group.history).forEach { node.add(DefaultMutableTreeNode(it, false)) }
                 root.add(node)
             }
             treeModel.reload()
@@ -154,13 +155,19 @@ class AgentsPanel(
     internal fun isOwn(group: ProjectGroup): Boolean = group.basePath == project.basePath
 
     internal fun click(path: TreePath) {
-        val row = (path.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? SessionRow ?: return
         val group = (path.parentPath?.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? ProjectGroup ?: return
-        onClick(row, group)
+        when (val item = (path.lastPathComponent as? DefaultMutableTreeNode)?.userObject) {
+            is SessionRow -> onClick(ClickPlan.of(item, group.basePath), item.session.sessionId)
+            is PastSession -> onClick(ClickPlan.of(item, group.basePath), item.sessionId)
+        }
     }
 
     override fun uiDataSnapshot(sink: DataSink) {
-        sink[SESSION_ID] = ((tree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? SessionRow)?.session?.sessionId
+        sink[SESSION_ID] = when (val item = (tree.selectionPath?.lastPathComponent as? DefaultMutableTreeNode)?.userObject) {
+            is SessionRow -> item.session.sessionId
+            is PastSession -> item.sessionId
+            else -> null
+        }
     }
 
     private fun recordTree(change: (AgentsSidebarState.Layout) -> AgentsSidebarState.Layout) {
@@ -197,6 +204,12 @@ class AgentsPanel(
                     SessionRowText.ago(item.session.updatedAt, now())?.let { append("  $it", SimpleTextAttributes.GRAYED_SMALL_ATTRIBUTES) }
                     SessionRowText.hint(item)?.let { append("  $it", SimpleTextAttributes.GRAYED_ITALIC_ATTRIBUTES) }
                     toolTipText = SessionRowText.tooltip(item)
+                }
+                is PastSession -> {
+                    icon = AllIcons.Vcs.History
+                    append(item.title, SimpleTextAttributes.GRAYED_ATTRIBUTES)
+                    SessionRowText.ago(item.lastActivity, now())?.let { append("  $it", SimpleTextAttributes.GRAYED_SMALL_ATTRIBUTES) }
+                    toolTipText = AgenstormBundle.message("agents.click.past")
                 }
             }
         }
@@ -255,10 +268,12 @@ class AgentsPanel(
         fun idOf(path: TreePath): String? = when (val item = (path.lastPathComponent as? DefaultMutableTreeNode)?.userObject) {
             is ProjectGroup -> "group:${item.basePath}"
             is SessionRow -> "session:${item.session.sessionId}"
+            is PastSession -> "past:${item.sessionId}"
             else -> null
         }
 
         /** What decides whether rows can be updated in place: the projects and their sessions, in order. */
-        private fun shapeOf(groups: List<ProjectGroup>) = groups.map { group -> group.basePath to group.sessions.map { it.session.sessionId } }
+        private fun shapeOf(groups: List<ProjectGroup>) =
+            groups.map { group -> Triple(group.basePath, group.sessions.map { it.session.sessionId }, group.history.map { it.sessionId }) }
     }
 }

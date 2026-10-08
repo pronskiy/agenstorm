@@ -17,6 +17,9 @@ sealed interface ClickPlan {
     /** Runs outside the IDE: nothing to show. */
     data object Nothing : ClickPlan
 
+    /** Step X3.3. A past session: a new Terminal tab of the project at [basePath], in [cwd], running `claude --resume`. */
+    data class Resume(val basePath: String, val cwd: String, val sessionId: String, val title: String) : ClickPlan
+
     companion object {
         /** Pure. */
         fun of(row: SessionRow, basePath: String): ClickPlan = when (val place = row.place) {
@@ -24,6 +27,9 @@ sealed interface ClickPlan {
             is SessionPlace.Background -> Background(place.tmuxSession, basePath)
             SessionPlace.Elsewhere -> Nothing
         }
+
+        /** Pure. */
+        fun of(past: PastSession, basePath: String): ClickPlan = Resume(basePath, past.cwd, past.sessionId, past.title)
     }
 }
 
@@ -46,6 +52,11 @@ object AgentSessionOpener {
                 BackgroundTerminals.getInstance().open(project, session)
             }
             ClickPlan.Nothing -> Unit
+            is ClickPlan.Resume -> {
+                val project = projectAt(plan.basePath) ?: return
+                ProjectUtil.focusProjectWindow(project, true)
+                AgentResume.start(project, plan.cwd, plan.sessionId, plan.title)
+            }
         }
     }
 

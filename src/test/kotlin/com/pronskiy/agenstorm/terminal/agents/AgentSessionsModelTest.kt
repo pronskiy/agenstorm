@@ -5,6 +5,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.writeText
@@ -36,10 +37,10 @@ class AgentSessionsModelTest : BasePlatformTestCase() {
     }
 
     /** A session file for this very JVM, so it counts as running. */
-    private fun writeSession(status: String, cwd: String = project.basePath!!) {
+    private fun writeSession(status: String, cwd: String = project.basePath!!, id: String = "test-session") {
         val started = self.info().startInstant().get().toEpochMilli()
         home.resolve("sessions/${self.pid()}.json").writeText(
-            """{"pid":${self.pid()},"sessionId":"test-session","cwd":"$cwd","startedAt":$started,"status":"$status","name":"x2-test"}""",
+            """{"pid":${self.pid()},"sessionId":"$id","cwd":"$cwd","startedAt":$started,"status":"$status","name":"x2-test"}""",
         )
     }
 
@@ -84,5 +85,21 @@ class AgentSessionsModelTest : BasePlatformTestCase() {
 
         assertTrue(model.groups.value.all { it.sessions.isEmpty() })
         model.claudeHome = { home }
+    }
+
+    fun testPastSessionsOfTheProjectAreListedButNotARunningOne() {
+        AgenstormSettings.getInstance().state.agentSessionsEnabled = true
+        AgenstormSettings.getInstance().state.agentSessionsHistory = 1
+        val folder = ClaudeTranscripts.folderOf(home, project.basePath!!).createDirectories()
+        folder.resolve("aaaaaaaa-1111-4111-8111-111111111111.jsonl").writeText("""{"type":"ai-title","aiTitle":"older"}""" + "\n")
+        folder.resolve("bbbbbbbb-2222-4222-8222-222222222222.jsonl").writeText("""{"type":"ai-title","aiTitle":"newer"}""" + "\n")
+        Files.setLastModifiedTime(folder.resolve("aaaaaaaa-1111-4111-8111-111111111111.jsonl"), FileTime.fromMillis(1_000))
+        // The newest transcript is the running session's own: not history.
+        folder.resolve("cccccccc-3333-4333-8333-333333333333.jsonl").writeText("""{"type":"ai-title","aiTitle":"running"}""" + "\n")
+        writeSession("idle", id = "cccccccc-3333-4333-8333-333333333333")
+
+        waitFor("the history never showed") { model.groups.value.single { it.basePath == project.basePath }.history.isNotEmpty() }
+
+        assertEquals(listOf("newer"), model.groups.value.single { it.basePath == project.basePath }.history.map { it.title })
     }
 }

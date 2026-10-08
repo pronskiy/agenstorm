@@ -5,9 +5,15 @@ data class SessionRow(val session: LiveSession, val place: SessionPlace<ProjectT
 
 /**
  * Step X1.2. One open project in the Agents sidebar: what it is called and where it lives — the base path is its
- * identity — and, from X2, the sessions running in it.
+ * identity — and, from X2, the sessions running in it, and from X3 its past ones.
  */
-data class ProjectGroup(val name: String, val basePath: String, val sessions: List<SessionRow> = emptyList()) {
+data class ProjectGroup(
+    val name: String,
+    val basePath: String,
+    val sessions: List<SessionRow> = emptyList(),
+    /** Step X3.2: its newest past sessions, newest first. */
+    val history: List<PastSession> = emptyList(),
+) {
 
     companion object {
         /**
