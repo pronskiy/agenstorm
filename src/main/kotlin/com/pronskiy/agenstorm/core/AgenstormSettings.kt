@@ -150,6 +150,10 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var softWrapAtRightMargin: Boolean = true,
         /** Epic U: terminal tabs of a Git project run inside tmux sessions, so a worktree switch can hand them over (decision 89: off by default). */
         var terminalTmuxEnabled: Boolean = false,
+        /** Epic X: the Agents sidebar, Claude Code sessions of every open project in one list (decision 104: off by default). */
+        var agentSessionsEnabled: Boolean = false,
+        /** Epic X: past sessions listed per project in the Agents sidebar (decision 104: 10, from 0 to 50). */
+        var agentSessionsHistory: Int = 10,
         /** Epic G: comma-separated command names the shim is installed under; each one shadows the real command inside IDE terminals. */
         var terminalOpenCommandNames: String = "open",
         /** Epic G: let the IDE claim files it treats as binary; off means a PDF or a PNG goes to macOS, not to the editor. */

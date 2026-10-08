@@ -396,6 +396,27 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .comment(AgenstormBundle.message("settings.terminal.open.unknownFileTypes.comment"))
             }
         }
+        // X1.1 (Epic X): off, ten past sessions per project — decision 104. The range is spelled out here because core/
+        // does not import feature packages.
+        group(AgenstormBundle.message("settings.group.agents")) {
+            lateinit var agents: Cell<JBCheckBox>
+            row {
+                agents = checkBox(AgenstormBundle.message("settings.agents.enabled"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.agentSessionsEnabled }, { AgenstormSettings.getInstance().state.agentSessionsEnabled = it })
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "agents.enabled" }
+                    .comment(AgenstormBundle.message("settings.agents.enabled.comment"))
+            }
+            row(AgenstormBundle.message("settings.agents.history")) {
+                intTextField(0..50, 1)
+                    .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.agentSessionsHistory }, { AgenstormSettings.getInstance().state.agentSessionsHistory = it }))
+                    .enabledIf(agents.component.selected)
+                    .columns(4)
+                    .onApply { AgenstormSettingsListener.fire() }
+                    .applyToComponent { name = "agents.history" }
+                    .comment(AgenstormBundle.message("settings.agents.history.comment"))
+            }
+        }
         featureGroup("settings.group.notifications", "settings.notifications.autoDismiss.enabled", AgenstormSettings.State::notificationsAutoDismissEnabled) {
             row(AgenstormBundle.message("settings.notifications.autoDismiss.seconds")) {
                 intTextField(AutoDismissPolicy.SECONDS_RANGE, 1)
