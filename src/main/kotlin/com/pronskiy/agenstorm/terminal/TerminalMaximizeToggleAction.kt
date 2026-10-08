@@ -93,12 +93,13 @@ class TerminalMaximizeToggleAction : ToggleAction(), DumbAware {
         const val TERMINAL_TOOL_WINDOW_ID = "Terminal"
 
         /**
-         * EDT, right after the terminal was maximized: the editor tabs above it stay whole (J1.8), and a click on
-         * one of them gives the editor back (J1.9, J1.10).
+         * EDT, right after the terminal was maximized: the editor tabs above it stay whole (J1.8), a click on one of
+         * them gives the editor back (J1.9, J1.10), and so does a file you open (J1.12).
          */
         fun afterMaximized(project: Project, terminal: ToolWindow) {
             EditorTabRow.uncover(project, terminal)
             project.service<EditorTabClickWatcher>().watch()
+            project.service<TerminalEditorReturn>().watch()
         }
 
         /**

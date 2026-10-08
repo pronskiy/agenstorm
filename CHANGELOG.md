@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Maximize Terminal: opening a file while the terminal fills the editor's area gives the editor back, as clicking a tab does — a path clicked in the terminal, `open`, Navigate or Recent Files, a click in the Project view. A file an agent opens in the background while you type in the terminal leaves the terminal maximized.
+
 ### Added
 
 - Contents in the corner: a Markdown file's headings show in the editor's top-right corner, against the scrollbar, as a card that stays put while scrolling, highlights the section on screen and jumps to a heading on click (Back returns). An icon in its corner folds it and unfolds it, in every Markdown file and remembered; until then it folds itself on windows too narrow for it beside the right margin. `#` to `###` by default. On by default under Settings | Tools | Agenstorm | Markdown editor.

@@ -77,6 +77,12 @@ class EditorTabClickWatcher(private val project: Project) : Disposable {
         listening = registration
     }
 
+    /** EDT. A file you opened gave the editor back (J1.12): the row works as after a tab click, J1.10. */
+    fun arm() {
+        armed = true
+        watch()
+    }
+
     /** EDT, once the project is open: listens again if the row was armed when the project was last closed. */
     fun resume() {
         if (armed && AgenstormSettings.getInstance().state.terminalMaximizeEnabled) watch()

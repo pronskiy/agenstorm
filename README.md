@@ -588,6 +588,9 @@ button in the terminal's title bar.
 
 - The terminal fills the editor's area; the same key gives the editor back and returns the caret.
 - The editor tabs stay visible above it; clicking one opens that file and gives the editor back.
+- Opening a file gives the editor back too: a path clicked in the terminal, `open`, Navigate or Recent
+  Files, a click in the Project view. A file an agent opens in the background while you type in the
+  terminal leaves it where it is.
 - After that, clicking the tab that is already active fills the editor's area with the terminal again;
   clicking any other tab just switches to it.
 - A terminal that was maximized when you closed the project is maximized again when you open it.
