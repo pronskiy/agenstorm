@@ -53,4 +53,14 @@ class FinishedTrackerTest {
     fun idleFromTheStartIsNotFinished() {
         assertEquals(emptySet<String>(), tracker.update(listOf(session("a", "idle") to "/w/app"), front = null))
     }
+
+    @Test
+    fun currentSeesAClickSinceTheLastRead() {
+        tracker.update(listOf(session("a", "busy") to "/w/app"), front = null)
+        tracker.update(listOf(session("a", "idle") to "/w/app"), front = null)
+
+        tracker.seen("a")
+
+        assertEquals(emptySet<String>(), tracker.current())
+    }
 }

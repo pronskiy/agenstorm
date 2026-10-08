@@ -142,4 +142,13 @@ class AgentsPanelRowsTest : BasePlatformTestCase() {
         assertNull(AgentResume.command("x; rm -rf ~"))
         assertNull(AgentResume.command("aaaaaaaa-1111-4111-8111-111111111111\necho"))
     }
+
+    fun testARowLetsGoOfAClosingProjectsTab() {
+        val tab = fakeTab(project)
+        val inTab = row("a", place = SessionPlace.InTab(tab))
+
+        assertEquals(SessionPlace.Elsewhere, inTab.withoutTabOf(project).place)
+        assertSame(inTab, inTab.withoutTabOf(null))
+        assertSame("its project is not disposed", inTab, inTab.withoutClosedTab())
+    }
 }

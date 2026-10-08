@@ -59,14 +59,12 @@ object AgentTabLocator {
      * here: asking for them would make the content and start the platform's restore of last run's tabs (Epic U).
      */
     fun probes(): List<TabProbe<ProjectTab>> = ProjectManager.getInstance().openProjects.filter { !it.isDisposed }.flatMap { project ->
-        val window = ToolWindowManager.getInstance(project).getToolWindow(TmuxTabs.TOOL_WINDOW)
-        if (window?.contentManagerIfCreated == null) return@flatMap emptyList()
-        val tabs = try {
-            TerminalToolWindowTabsManager.getInstance(project).tabs
-        } catch (_: IllegalStateException) {
-            emptyList()
-        }
-        tabs.map { TabProbe(ProjectTab(project, it), shellPid(it), TmuxTabs.sessionOf(it)) }
+        // A project still opening or already closing may answer with an exception; it has no tabs to show then.
+        runCatching {
+            val window = ToolWindowManager.getInstance(project).getToolWindow(TmuxTabs.TOOL_WINDOW)
+            if (window?.contentManagerIfCreated == null) return@runCatching emptyList()
+            TerminalToolWindowTabsManager.getInstance(project).tabs.map { TabProbe(ProjectTab(project, it), shellPid(it), TmuxTabs.sessionOf(it)) }
+        }.getOrDefault(emptyList())
     }
 
     /** The processes under [pid], any thread. */

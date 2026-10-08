@@ -43,7 +43,9 @@ object ClaudeLiveSessions {
     fun read(claudeHome: Path, alive: (pid: Long, startedAt: Long?) -> Boolean = ::isAlive): List<LiveSession> {
         val dir = claudeHome.resolve("sessions")
         if (!dir.isDirectory()) return emptyList()
-        return dir.listDirectoryEntries("*.json")
+        // Claude Code removes a file when its session ends, also while this lists the folder.
+        val files = runCatching { dir.listDirectoryEntries("*.json") }.getOrDefault(emptyList())
+        return files
             .mapNotNull { file -> runCatching { file.readText() }.getOrNull()?.let(::parse) }
             .filter { alive(it.pid, it.startedAt) }
             .sortedBy { it.pid }

@@ -1,7 +1,18 @@
 package com.pronskiy.agenstorm.terminal.agents
 
+import com.intellij.openapi.project.Project
+
 /** Step X2.4. One running session in the sidebar: what Claude says about it, where it can be shown, and its dot. */
-data class SessionRow(val session: LiveSession, val place: SessionPlace<ProjectTab>, val finished: Boolean)
+data class SessionRow(val session: LiveSession, val place: SessionPlace<ProjectTab>, val finished: Boolean) {
+
+    /** The same row, pointing at no tab of [closing] — the model is app-wide and must not keep a closed project. */
+    fun withoutTabOf(closing: Project?): SessionRow =
+        if (closing != null && (place as? SessionPlace.InTab)?.tab?.project == closing) copy(place = SessionPlace.Elsewhere) else this
+
+    /** The same row, pointing at no tab of a project that is gone. */
+    fun withoutClosedTab(): SessionRow =
+        if ((place as? SessionPlace.InTab)?.tab?.project?.isDisposed == true) copy(place = SessionPlace.Elsewhere) else this
+}
 
 /**
  * Step X1.2. One open project in the Agents sidebar: what it is called and where it lives — the base path is its

@@ -51,4 +51,12 @@ class SessionGroupingTest {
         assertEquals(listOf("there"), grouped.getValue("/w/other").map { it.sessionId })
         assertEquals(setOf("/w/app", "/w/other"), grouped.keys)
     }
+
+    @Test
+    fun aProjectReachedThroughASymlinkOwnsTheSessionsInItsRealFolder() {
+        val roots = mapOf("/tmp/x0/app" to "/tmp/x0/app", "/private/tmp/x0/app" to "/tmp/x0/app")
+
+        assertEquals("/tmp/x0/app", SessionGrouping.owner("/private/tmp/x0/app/src", roots))
+        assertEquals(setOf("/tmp/x0/app"), SessionGrouping.group(listOf(session("s", "/private/tmp/x0/app")), roots).keys)
+    }
 }

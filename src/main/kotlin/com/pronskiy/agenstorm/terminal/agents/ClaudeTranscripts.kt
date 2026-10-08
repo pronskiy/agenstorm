@@ -50,7 +50,8 @@ class ClaudeTranscripts {
     private fun read(file: Path, modified: Long, basePath: String): PastSession? {
         val size = runCatching { Files.size(file) }.getOrNull() ?: return null
         cache[file]?.takeIf { it.size == size && it.modified == modified }?.let { return it.session }
-        val title = titleOf(file, size)
+        // A read that failed is not "no title": it is tried again next time rather than remembered.
+        val title = runCatching { titleOf(file, size) }.getOrElse { return null }
         val session = title?.let { PastSession(file.nameWithoutExtension, basePath, it, modified) }
         cache[file] = Seen(size, modified, session)
         return session
@@ -69,13 +70,12 @@ class ClaudeTranscripts {
 
         fun folderOf(home: Path, basePath: String): Path = home.resolve("projects").resolve(basePath.replace(Regex("[^A-Za-z0-9]"), "-"))
 
-        /** The title of the transcript [file] of [size] bytes, or null when it has none. */
+        /** The title of the transcript [file] of [size] bytes, or null when it has none; throws when it cannot be read. */
         fun titleOf(file: Path, size: Long): String? {
-            val tail = runCatching { chunk(file, (size - TAIL_BYTES).coerceAtLeast(0), size) }.getOrNull() ?: return null
+            val tail = chunk(file, (size - TAIL_BYTES).coerceAtLeast(0), size)
             titleIn(tail, cutFirst = size > TAIL_BYTES)?.let { return it }
             if (size <= TAIL_BYTES) return null
-            val head = runCatching { chunk(file, 0, minOf(size, HEAD_BYTES.toLong())) }.getOrNull() ?: return null
-            return titleIn(head, cutLast = size > HEAD_BYTES)
+            return titleIn(chunk(file, 0, minOf(size, HEAD_BYTES.toLong())), cutLast = size > HEAD_BYTES)
         }
 
         /**

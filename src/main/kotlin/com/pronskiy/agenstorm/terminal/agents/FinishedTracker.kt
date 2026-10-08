@@ -25,6 +25,10 @@ class FinishedTracker {
         return finished.toSet()
     }
 
+    /** The finished ids now, with every [seen] since the last [update] taken into account. */
+    @Synchronized
+    fun current(): Set<String> = finished.toSet()
+
     @Synchronized
     fun seen(sessionId: String) {
         finished.remove(sessionId)

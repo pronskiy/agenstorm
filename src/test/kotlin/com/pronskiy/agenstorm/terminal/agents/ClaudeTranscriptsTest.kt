@@ -109,4 +109,18 @@ class ClaudeTranscriptsTest {
 
         assertEquals("whole", ClaudeTranscripts.titleIn(text, cutFirst = true, cutLast = true))
     }
+
+    @Test
+    fun aTranscriptThatCouldNotBeReadIsTriedAgain() {
+        val path = file(id(3))
+        val permissions = Files.getPosixFilePermissions(path)
+        Files.setPosixFilePermissions(path, emptySet())
+        try {
+            assertEquals(listOf(id(2), id(1)), reader.recent(home, "/work/app", limit = 10, running = emptySet()).map { it.sessionId })
+        } finally {
+            Files.setPosixFilePermissions(path, permissions)
+        }
+
+        assertEquals("same size and time, read now", listOf(id(2), id(1), id(3)), reader.recent(home, "/work/app", limit = 10, running = emptySet()).map { it.sessionId })
+    }
 }
