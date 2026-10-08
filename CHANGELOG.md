@@ -4,13 +4,15 @@
 
 ## [Unreleased]
 
-### Changed
-
-- Maximize Terminal: opening a file while the terminal fills the editor's area gives the editor back, as clicking a tab does — a path clicked in the terminal, `open`, Navigate or Recent Files, a click in the Project view. A file an agent opens in the background while you type in the terminal leaves the terminal maximized.
+## [1.12.0] - 2026-10-08
 
 ### Added
 
 - Contents in the corner: a Markdown file's headings show in the editor's top-right corner, against the scrollbar, as a card that stays put while scrolling, highlights the section on screen and jumps to a heading on click (Back returns). An icon in its corner folds it and unfolds it, in every Markdown file and remembered; until then it folds itself on windows too narrow for it beside the right margin. `#` to `###` by default. On by default under Settings | Tools | Agenstorm | Markdown editor.
+
+### Changed
+
+- Maximize Terminal: opening a file while the terminal fills the editor's area gives the editor back, as clicking a tab does — a path clicked in the terminal, `open`, Navigate or Recent Files, a click in the Project view. A file an agent opens in the background while you type in the terminal leaves the terminal maximized.
 
 ## [1.11.0] - 2026-10-01
 
@@ -193,7 +195,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.11.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.12.0...HEAD
+[1.12.0]: https://github.com/pronskiy/agenstorm/compare/1.11.0...1.12.0
 [1.11.0]: https://github.com/pronskiy/agenstorm/compare/1.10.0...1.11.0
 [1.10.0]: https://github.com/pronskiy/agenstorm/compare/1.9.3...1.10.0
 [1.9.3]: https://github.com/pronskiy/agenstorm/compare/1.9.2...1.9.3
