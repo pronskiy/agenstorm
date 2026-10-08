@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Agents sidebar: one list of the Claude Code sessions in every open project — the running ones with Claude's own status (working, waiting for you, idle, and a dot for one that finished while you were in another project) and each project's recent ones. It looks the same in every window: open, width, side, selection and scroll follow you across project switches and restarts. A click brings up the Terminal tab a session runs in, in its own project's window, brings a background terminal back as a tab, or resumes a past session in a new tab with `claude --resume`. Off by default under Settings | Tools | Agenstorm | Agents.
+
 ### Fixed
 
 - tmux-backed terminals: a terminal handed to another worktree's window, or a background terminal opened again, no longer stays at the size its tab had at that moment — it follows the tab, instead of leaving rows of dots below or beside the output once the tab grows.

@@ -62,6 +62,13 @@ started in a terminal. Worktrees nested in the repository stay out of the projec
 With tmux and one setting, terminals running an agent or a dev server follow the switch to the next
 worktree, and can be kept running when a window closes or the IDE quits.
 
+### One list of your agents
+
+An Agents sidebar lists the Claude Code sessions of every open project: the running ones, with what
+Claude says each is doing, and the recent ones to pick up again. It looks the same in every window, so
+switching projects changes everything but it. A click brings up the terminal tab a session runs in, in
+its own project's window, or resumes a past one in a new tab. Off by default.
+
 ### A terminal that fills the window
 
 One key fills the editor's area with the terminal, and the same key gives the editor back. Other
@@ -116,6 +123,7 @@ Free and open source, MIT: https://github.com/pronskiy/agenstorm
 | [Idle projects offloaded](#offloaded-projects) | on | Project tabs |
 | [Worktrees as tabs](#worktrees) | on | Worktrees |
 | [Terminals that follow the switch (tmux)](#terminals-that-follow-the-switch) | **off** | Worktrees |
+| [Agents sidebar](#agents-sidebar) | **off** | Agents |
 | [Window title without file names](#window-title) | on | Window title |
 | [Terminal fills the window](#filling-the-window-with-the-terminal) | on | Terminal size |
 | [Terminal output that folds](#terminal-output-that-folds-1) | on | Terminal output |
@@ -539,6 +547,44 @@ Window titles name the project, not whichever file happens to be open. On by def
 Tools → Agenstorm → Window title.
 
 ---
+
+## Agents sidebar
+
+Off by default: **Show the Agents sidebar** under Settings | Tools | Agenstorm | Agents. It adds an
+**Agents** tool window on the left, the same in every project window.
+
+It lists, under each open project, the Claude Code sessions running in it — in any Terminal tab, plain or
+tmux-backed, in any window — and below them the project's last ten sessions (**Past sessions per project**,
+0 for none), under the titles Claude gives them. Each running session shows Claude's own status:
+
+- a spinner while Claude works, an orange dot while it waits for you, a grey one when it is idle;
+- a **blue dot** when it finished while its project was not the one in front, until you click it;
+- *tmux* when it runs in a tmux-backed tab, *background* for a [background terminal](#terminals-that-follow-the-switch),
+  *outside the IDE* for one in another terminal app.
+
+A click on a running session brings its project's window to the front with the Terminal open on that tab.
+A background terminal comes back as a tab first. A past session opens in a new Terminal tab of its project,
+in its folder, with `claude --resume <id>` typed in once the shell is ready, so your PATH and shell setup
+apply. **Copy Session ID** in the context menu copies the id for doing that by hand.
+
+**The same in every window.** Opening, closing, resizing or moving the sidebar in one window does the same
+in all of them, and so does selecting a row, folding a project or scrolling; a project opened later takes
+the same layout, and it survives a restart. Only your own changes count: a new project that opens its
+Project view on the same side does not close the sidebar everywhere — the sidebar stays.
+
+**Where it comes from.** Claude Code writes a file per running session to `~/.claude/sessions/` and keeps
+its transcripts in `~/.claude/projects/`; the sidebar reads those, every two seconds while it is on, and
+nothing else. It reads nothing with the setting off and sends nothing anywhere. A session is matched to its
+tab by its tmux session's name or by the processes under the tab's shell.
+
+Good to know:
+
+- Claude Code only, for now, and only sessions inside an open project's folder.
+- PhpStorm 2026.3 ships JetBrains' own *Agent Sessions* window (the Air plugin). Its window cannot be
+  changed by another plugin, and a click there resumes a session in Air's own view rather than finding your
+  terminal tab — hence this one, titled *Agents* to tell them apart.
+- A session in a terminal of the classic engine, or in another terminal app, is listed but has nothing to
+  bring up.
 
 ## Opening files from the terminal
 

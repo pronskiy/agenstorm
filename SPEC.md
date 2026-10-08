@@ -65,6 +65,7 @@
 | 2026-10-09 | **Phase X1 closed**: the Agents sidebar is one layout in every window — X1.1–X1.4 built, every guardrail measured in the robot IDE (Roman away), one hole fixed on the way: only the user's changes count (decision 106 proposed) | Claude (build, robot run, text) |
 | 2026-10-09 | **Phase X2 closed**: live sessions in the sidebar and the jump to their tab — X2.1–X2.6 built, every guardrail measured in the robot IDE with four real Claude sessions (Roman away) | Claude (build, robot run, text) |
 | 2026-10-09 | **Phase X3 closed**: past sessions in the sidebar and resume in a new Terminal tab — X3.1–X3.3 built, guardrails measured in the robot IDE (Roman away) | Claude (build, robot run, text) |
+| 2026-10-09 | **Epic X built** on branch `epic-x`: X4.1 docs, the exit verifier Compatible with zero internal API. Roman's look and decisions 105–106 outstanding | Claude (docs, verifier, text) |
 
 ### Status legend
 
@@ -72,7 +73,9 @@
 
 ### Current focus
 
-**Now on:** **Epic X, Phase X4** (docs and the verifier) → **X4.1**. **Phase X3 is closed** (2026-10-09): each project's newest past sessions show under its running ones, titled as Claude titles them, and a click resumes one in a new Terminal tab of its project — tmux-backed or plain — with the conversation back. Measured in the robot IDE while Roman was away.
+**Now on:** **Epic X is built** (2026-10-09, branch `epic-x`, not merged): X0–X4 ✅ and every guardrail measured in the robot IDE while Roman was away ("close ide yourself when needed"). Waiting for Roman: **his own look** in the sandbox (the guardrails were measured, not seen — *Unmoved* above all), **decisions 105 and 106** to confirm, and the call on merging `epic-x` into `main` and on a release. `check` green (1188 tests), verifier Compatible on all four IDEs with zero internal API.
+
+**Before that:** **Epic X, Phase X4** (docs and the verifier) → **X4.1**. **Phase X3 is closed** (2026-10-09): each project's newest past sessions show under its running ones, titled as Claude titles them, and a click resumes one in a new Terminal tab of its project — tmux-backed or plain — with the conversation back. Measured in the robot IDE while Roman was away.
 
 **Before that:** **Epic X, Phase X3** (history and resume) → **X3.1**. **Phase X2 is closed** (2026-10-09): the sidebar lists the Claude Code sessions of every open project with Claude's own status, a dot for one that finished while its project was not in front, and a click brings up the Terminal tab it runs in — in the right window — or brings a background terminal back as a tab; one outside the IDE is listed and does nothing. All measured in the robot IDE with four real sessions while Roman was away.
 
@@ -175,6 +178,7 @@ Agenstorm is an open-source (MIT) PhpStorm plugin that removes the friction an a
 | Project tabs mechanism | Own toolbar widget in `MainToolbarLeft` replacing `main.toolbar.Project`; the macOS window tabs stay **on** and only their row is hidden per frame | The registry key is not just the tabs' look: under the New UI it is the switch `JdkEx.getTabbingModeInvocator()` reads, so turning it off means no `NSWindowTabGroup` and a window per project. Hiding the row is enough because `IdeRootPane.CustomHeaderRootLayout` gives it height only while it is visible, and nothing is re-parented, so `MacWinTabsHandlerV2`'s bookkeeping (`getTabsComponent` wants exactly one child) is untouched. Decision 32 |
 | Terminals across projects | Opt-in (decision 89): a terminal tab's shell runs inside a tmux session on Agenstorm's own socket, wrapped by a `LocalTerminalCustomizer`; a tab of another project attaches through the tab builder's `shellCommand` (decision 90) | tmux holds the process outside the IDE, so it outlives the project; the platform's own transferable sessions and `setExecCommand` are `@Internal`, and `LocalTerminalCustomizer` is deprecated, not internal |
 | Worktrees | Each worktree is its own project, reopened in the same frame by the Project view's worktree strip (a busy one kept behind); listing through git4idea's public `GitRepository.getWorkingTreeHolder()`, create and remove through `GitLineHandler(GitCommand.WORKTREE)`; nested worktrees excluded with `DirectoryIndexExcludePolicy`; index reuse only through the bundled Shared Indexes plugin's `sharedIndexLocalFinder`, behind its own optional `config-file` and the T0 spike | `Git.createWorkingTree` changed signature between 262 and 263 and git4idea's worktree services are `@Internal` in 263; retargeting one project's content root leaves every `$PROJECT_DIR$`-anchored setting on the main checkout. Decisions 73–78 |
+| Agents sidebar | One `<toolWindow>` per frame over one app-level model and one shared layout state (decisions 102, 105, 106): the layout is recorded from the window in front on the user's own changes and applied to every other window at once — `ToolWindow.show`/`hide`/`setAnchor` and one `ToolWindowEx.stretchWidth` delta after layout; sessions come from Claude Code's own files (`~/.claude/sessions`, `~/.claude/projects`), matched to tabs by tmux session name or by the processes under a tab's shell (`TerminalStartupOptions.getPid`, Experimental) | No public frame-independent panel exists and a Swing component cannot be in two frames; Air's *Agent Sessions* window is internal and its click resumes a session in its own view |
 | Location link syntax | Bare `path:line[:col]` (GitHub/compiler style), resolved relative to file → project base → content roots → unique basename | It is what agents and tools already emit; no URL scheme, no Toolbox dependency |
 | Distribution | JetBrains Marketplace, GitHub Actions (build, test, `verifyPlugin`), MIT | Public from day one |
 | Tests | Platform test framework (`BasePlatformTestCase`, `testData/`) for references, scratch filter, settings, prompt builder, diff trimming; manual checklists for frame/tabs/live markup UI | UI-heavy epics are verified by guardrail checklists, logic by unit tests |
@@ -2748,13 +2752,13 @@ Throwaway code in the robot IDE (removed after); each answer recorded here. A no
 
 | Step | Description | Status | Notes |
 |------|-------------|--------|-------|
-| X4.1 | README (a sentence in the plugin description, a features-table row, a section), CHANGELOG `[Unreleased]`, the CLAUDE.md inventory, a §2 row for the sidebar's mechanism | 🔲 | |
+| X4.1 | README (a sentence in the plugin description, a features-table row, a section), CHANGELOG `[Unreleased]`, the CLAUDE.md inventory, a §2 row for the sidebar's mechanism | ✅ | 2026-10-09: README — a paragraph in the plugin description (*One list of your agents*), a features-table row (off, *Agents*) and an *Agents sidebar* section (what it lists, the marks, the click, the same layout everywhere and that only the user's changes count, where the data comes from, Air's window, the limits); CHANGELOG `[Unreleased]` → Added; the CLAUDE.md overview and inventory; a §2 row *Agents sidebar* |
 
 **Exit guardrails — Epic X**
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Verifier | Compatible on PS/IU 262 and 263, zero internal | 🔲 | |
+| Verifier | Compatible on PS/IU 262 and 263, zero internal | ✅ | 2026-10-09: **Compatible on PS-262.10968.76, IU-262.10968.63, PS-263.6259.29 and IU-263.6259.32, zero internal API**; experimental 243 (1.12.0: 183 — the 60 new ones all in `terminal/agents/`, the reworked terminal's `@Experimental` API), deprecated 4 on 262 and 14 on 263, unchanged; none of the ignored 263.6259 problems (§7) is Epic X's |
 
 **Later, deliberately not specified:** Codex (its rollouts in `~/.codex/sessions`, no live-session file), offloaded projects and every folder in `~/.claude`, Air's own sessions and views, a notification when a session finishes, sending a prompt from the sidebar, search and archive.
 
