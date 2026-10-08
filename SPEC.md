@@ -60,6 +60,7 @@
 | 2026-10-07 | **Epic W built**: W1.1–W1.3, W2.1–W2.10 and W3.1 on branch `epic-w`; after Roman's sandbox looks the widget left the floating-toolbar slot for its own layer against the scrollbar and gained a remembered fold icon (decisions 98–99); Phase W2 signed off ("all good"); the exit verifier waits on the 263.6259 VCS question in §7 | Claude (build), Roman (choices, sign-off) |
 | 2026-10-08 | **J1.12 built and signed off** (opening a file gives the editor back from a maximized terminal; only your own opens, Roman's choice); **1.12.0 cut** with Epic W and J1.12 | Claude (build, cut), Roman (choices, sign-off) |
 | 2026-10-08 | **1.12.0 released**: uploaded, review passed in about two hours, the draft published as Latest | Claude (upload, publish), Roman (go-aheads) |
+| 2026-10-09 | **Epic X spec'd:** one *Agents* sidebar for the Claude Code sessions of every open project, the same in every window; a click brings up the Terminal tab a session runs in, or resumes a past one in a new tab. Our own tool window over Claude Code's session files, because Air's *Agent Sessions* window is internal. Spike first (X0). Decisions 100–104 | Roman (request, the calls on scope and behaviour), Claude (investigation of Air and of Claude Code's files, platform facts, text) |
 
 ### Status legend
 
@@ -67,7 +68,9 @@
 
 ### Current focus
 
-**Now on:** nothing spec'd is open; **1.12.0 is released** (2026-10-08, see below). **1.12.0 is cut** (2026-10-08, on Roman's "push and cut 1.12.0"): `pluginVersion = 1.12.0`, the changelog section patched (`[1.12.0] - 2026-10-08`, compare links updated, *Added* before *Changed*), `agenstorm-1.12.0.zip` built (1.9 MB; the plugin jar 1,025 entries, nothing but classes and resources; sha256 `d074c071…`), `./gradlew check` green (1094 tests, against the 2026.3 EAP) and the verifier **Compatible on PS-262.10968.76, PS-263.6259.29, IU-262.10968.63 and IU-263.6259.32 with zero internal usages** (deprecated 4 on 262, 14 on 263; experimental 183 — the 263.6259 VCS false positives ignored through `verifier-ignored-problems.txt`, §7). It carries **Epic W** (contents in the corner of Markdown editors, with its fold icon) and **J1.12** (opening a file gives the editor back from a maximized terminal). **Pushed and uploaded 2026-10-08:** `build.yml` on `9e98626` (37749618708) green on all four jobs with the 1.12.0 draft made; on Roman's "dispatch the upload once the build is green" the **Marketplace upload** workflow (37751234230) green, `agenstorm-1.12.0-signed.zip` (1.9 MB) attached to the draft. **1.12.0 is released** (2026-10-08): on Roman's "publish the draft once review passes", the update server listed 1.12.0 at 10:50 — about two hours after the upload — and the draft was published as Latest at once (`https://github.com/pronskiy/agenstorm/releases/tag/1.12.0`, `agenstorm-1.12.0-signed.zip`). `release.yml` (37752504392) came back green with *"1.12.0 is being served - this release is installable"*. **`pluginVersion` stays 1.12.0** until there is something to release.
+**Now on:** **Epic X is spec'd** (2026-10-09): one *Agents* sidebar for the Claude Code sessions of every open project. Waiting for Roman's review of the epic and of decisions 100–104 (104's defaults are Claude's proposal). Then **X0.1**, the spike, which needs the sandbox and Roman's eyes.
+
+**Before that:** **1.12.0 is released** (2026-10-08, see below). **1.12.0 is cut** (2026-10-08, on Roman's "push and cut 1.12.0"): `pluginVersion = 1.12.0`, the changelog section patched (`[1.12.0] - 2026-10-08`, compare links updated, *Added* before *Changed*), `agenstorm-1.12.0.zip` built (1.9 MB; the plugin jar 1,025 entries, nothing but classes and resources; sha256 `d074c071…`), `./gradlew check` green (1094 tests, against the 2026.3 EAP) and the verifier **Compatible on PS-262.10968.76, PS-263.6259.29, IU-262.10968.63 and IU-263.6259.32 with zero internal usages** (deprecated 4 on 262, 14 on 263; experimental 183 — the 263.6259 VCS false positives ignored through `verifier-ignored-problems.txt`, §7). It carries **Epic W** (contents in the corner of Markdown editors, with its fold icon) and **J1.12** (opening a file gives the editor back from a maximized terminal). **Pushed and uploaded 2026-10-08:** `build.yml` on `9e98626` (37749618708) green on all four jobs with the 1.12.0 draft made; on Roman's "dispatch the upload once the build is green" the **Marketplace upload** workflow (37751234230) green, `agenstorm-1.12.0-signed.zip` (1.9 MB) attached to the draft. **1.12.0 is released** (2026-10-08): on Roman's "publish the draft once review passes", the update server listed 1.12.0 at 10:50 — about two hours after the upload — and the draft was published as Latest at once (`https://github.com/pronskiy/agenstorm/releases/tag/1.12.0`, `agenstorm-1.12.0-signed.zip`). `release.yml` (37752504392) came back green with *"1.12.0 is being served - this release is installable"*. **`pluginVersion` stays 1.12.0** until there is something to release.
 
 **Before that:** **Epic W is built, closed and merged into `main`** (2026-10-07, not pushed): W1.1–W1.3, W2.1–W2.10 (W2.5 and W2.7 superseded by W2.8, decisions 98–99) and W3.1 ✅, Phase W2 signed off by Roman ("all good"), two code reviews' findings fixed, `check` green (1088 tests). The exit verifier is ✅: the 263.6259 EAP's 14 VCS problems turned out to be verifier false positives (runtime-checked on 263.6259) and are ignored through `verifier-ignored-problems.txt` until a verifier release catches up (§7). The `epic-w` branch and the plan file are deleted. Next is Roman's call: push, and a 1.12.0 cut.
 
@@ -2634,6 +2637,117 @@ Platform facts (checked 2026-10-07 in PS-262.8665.265 and PS-263.5701.46 by deco
 
 ---
 
+### Epic X — One agents sidebar for every project  ·  after 1.12.0
+
+**Goal:** one list of the Claude Code sessions in all open projects, the live ones with what they are doing and the recent ones to pick back up, in a sidebar that looks the same in every project window, so switching project tabs changes everything but it. A click on a live session brings up the Terminal tab it runs in, in its own project's window; a click on a past one resumes it in a new Terminal tab there.
+
+**Success metrics:** with two projects in one window, switching between their tabs leaves the sidebar's open state, width, side, scroll, selection and expanded groups where they were; a `claude` started in any Terminal tab of either project, plain or tmux-backed, is listed under its project within 3 s, and its busy/idle status follows within 3 s of a change; a click on it shows that tab in that project's window, caret in the terminal, within 1 s; a session that goes idle while its project is not in front carries a dot until it is clicked; a click on a past session opens a new Terminal tab in its project running `claude --resume <id>` in its folder; with the setting off there is no sidebar and nothing reads `~/.claude`; zero internal API, `verifyPlugin` Compatible on PS/IU 262 and 263.
+
+Roman, 2026-10-08: "i want to have agent sessions tool window to be a singleton across all projects and clicking on session openning an already opened terminal window in specific project, basically to have a sidebar control plane across all projects". Asked in the brainstorm the same day, he named Air's *Agent Sessions* window as the one he meant and chose: sessions run in Terminal tool-window tabs, not in Air's own view; the sidebar looks like it never moved when the window swaps projects (over one floating window, or sharing only the content); live sessions plus recent history (over live only, or every terminal tab); Claude Code only for now; open projects only (over Agenstorm's offloaded tabs too, or every folder in `~/.claude`); a past session resumed in a new Terminal tab (over handing it to Air, or a menu only); the dot for a session that finished while he was away; and the sync built before the live list. Decisions 100–104.
+
+Platform facts (checked 2026-10-08 in PS-263.5701.46 by decompiling the Gradle cache's copy; the terminal API used here is in 262 as well, per Epic U's facts):
+
+- **Air already has an *Agent Sessions* window, and it cannot be changed from outside.** `com.intellij.air` (263 only, bundled, public alpha) registers the tool window `air.threads`, stripe title *Agent Sessions*, ⌘2. It is one instance per frame over app-level state (`SessionTreeUiStateStore`); selection is per project, and open state and width are not shared between frames. A click opens Air's own session view, an editor tab (`agent-thread-view` VFS) or the `air.chat` tool window, whose embedded terminal runs `claude --resume <id>`. It never looks at the Terminal tool window's tabs, so a `claude` started there is resumed a second time rather than found. Every Air module, its ~70 extension points and its topics are `visibility="internal"`; the one way in, the action `AgentThreads.OpenThreadByRef` fed by data-key names, is not a published contract and is not used.
+- **Claude Code writes its live sessions to disk.** One `~/.claude/sessions/<pid>.json` per running `claude` (2.1.29x): `pid`, `sessionId`, `cwd`, `name` + `nameSource` (`auto`, `user`), `status` (`busy` and `idle` seen), `updatedAt`, `kind` (`interactive`), `entrypoint` (`cli`, `claude-desktop`), and, inside tmux, `tmux` = `<session>:@<window>.%<pane>`, which names the tmux session directly. A file can outlive its process, so the pid is checked. Air reads the same files. The format is undocumented (risk register).
+- **History is in the transcripts.** `~/.claude/projects/<cwd, its / and . turned into ->/<sessionId>.jsonl` (other characters not yet seen; X3.1 checks), one JSON object per line. Titles are appended as they change: `custom-title` (`customTitle`, the user's rename), `agent-name` (`agentName`) and `ai-title` (`aiTitle`), so the last of each near the end of the file is the current one; `last-prompt` as well.
+- **A terminal tab can be matched to its process.** `TerminalView.startupOptionsDeferred` → `TerminalStartupOptions.getPid()` (`org.jetbrains.plugins.terminal.session`, Experimental) is the shell's pid, and the JDK's `ProcessHandle.of(pid).descendants()` lists what runs under it. In a tmux-backed tab `claude` runs under the tmux server instead, and is found through the `tmux` field and `TmuxTabs.sessionOf(tab)`. `TerminalView.sendText` is Experimental; `TerminalView.getSessionDeferred` and `setTopComponent` are its two internal members, not used.
+- **A tab is shown by selecting its content.** There is no `selectTab`: `ToolWindowManager.getToolWindow("Terminal")`, `contentManager.setSelectedContent(tab.content)`, `activate`. The project's window comes to front with `ProjectUtil.focusProjectWindow(project, true)`. Epic U's background terminals already do both.
+- **Tool windows are per project; there is no app-level panel.** A `<toolWindow>` gets one instance per frame and a Swing component cannot be in two frames, so "one sidebar" is one view per frame over one app-level model and one shared layout state. Public levers: `ToolWindowFactory.shouldBeAvailable`, `ToolWindow.show`/`hide`/`setAnchor`/`setAvailable`, `ToolWindowEx.stretchWidth(int)` (a delta), `ToolWindowManagerListener.stateChanged(ToolWindowManager, ToolWindowManagerEventType)` (`MovedOrResized`, `ShowToolWindow`, `HideToolWindow`) and `toolWindowShown(ToolWindow)`. Internal, not used: `ToolWindowManagerEx.getLayout()` (`DesktopLayout`), `setSideCustomWidth`, the three-argument `stateChanged`. Whether `stretchWidth` and `show` take effect on a frame that is not in front (a hidden macOS window tab), and whether applying them when a frame comes to front shows a jump, is X0's question.
+
+Package `terminal/agents/`, registered in `agenstorm-terminal.xml`: inside the terminal feature, so it uses `terminal/tmux/` (`TmuxTabs`, `BackgroundTerminals`) without one feature importing another. The `~/.claude` root is injected everywhere it is read, so tests never touch the real one.
+
+#### Phase X0 — Spike: can the sidebar look unmoved, and can a session find its tab?
+
+Throwaway code in the sandbox; each answer recorded here. A no on X0.1 stops the epic for a rethink; decision 105 records the outcome.
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| X0.1 | Two projects in one window (Epic E's merged window tabs), a bare tool window of ours in each: change its open state, width and side in one, then switch tabs. Applied to every frame at once vs. when a frame comes to front; does `stretchWidth`/`show` take on a frame that is not in front; is there a visible jump on the switch | 🔲 | |
+| X0.2 | Session → tab: a `claude` in a plain reworked tab found through `getPid()` + `descendants()`; one in a tmux-backed tab (Epic U on) through the `tmux` field and `TmuxTabs.sessionOf`; a classic-engine tab found or listed as not in a tab | 🔲 | |
+| X0.3 | Resume: a tab from `createTabBuilder().workingDirectory(cwd)` and `sendText("claude --resume <id>\n")` once shell integration is ready picks the conversation up in its folder, with tmux on and off | 🔲 | |
+
+**Exit guardrails — Phase X0**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Go | X0.1 finds a way the switch shows no visible jump, or Roman accepts what it shows; X0.2 finds both kinds of tab | 🔲 | |
+
+#### Phase X1 — The sidebar, the same in every window
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| X1.1 | Settings `agentSessionsEnabled` (off) and `agentSessionsHistory` (10, from 0 to 50) in a new *Agents* group: *Show the Agents sidebar: Claude Code sessions in all open projects* and *Past sessions per project*, applied through `AgenstormSettingsListener` | 🔲 | |
+| X1.2 | `AgentsToolWindowFactory`: tool window `Agenstorm.Agents`, *Agents*, left, no shortcut; `shouldBeAvailable` follows the setting, and `setAvailable` on every open project when it changes. `AgentsPanel`: one group per open project, sorted by name, the current one bold; no sessions yet | 🔲 | |
+| X1.3 | `AgentsSidebarState` (app, `agenstorm-agents.xml`): visible, width, anchor, selected id, expanded groups, scroll offset. `SidebarSyncPlan`, pure: (the shared state, one frame's current state) → operations (show or hide, a `stretchWidth` delta, `setAnchor`) | 🔲 | |
+| X1.4 | Record from the frame in front only, so nothing echoes: a project `ToolWindowManagerListener` for show, hide, resize and move, the panel for selection, expansion and scroll. Apply to the other frames the way X0.1 chose; every panel follows selection, expansion and scroll itself | 🔲 | |
+
+**Exit guardrails — Phase X1** (sandbox, two projects in one window)
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Tests | X1's tests green in `./gradlew check` | 🔲 | |
+| Unmoved | Open, close, resize, move to the right, scroll, select and fold groups in one project; switching to the other shows exactly that, and back again | 🔲 | |
+| Off switch | Setting off removes the sidebar from every window; on brings it back as it was | 🔲 | |
+| Restart | The sidebar's state survives an IDE restart | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+
+#### Phase X2 — Live sessions and the jump
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| X2.1 | `ClaudeLiveSessions`, pure over the injected root: `sessions/*.json` → `LiveSession(pid, sessionId, cwd, name, status, tmuxSession, updatedAt, entrypoint)`; missing and unknown fields tolerated, unreadable files skipped, the alive check injected | 🔲 | |
+| X2.2 | `SessionGrouping`, pure: sessions + the open projects' base paths → groups; the longest base path that contains `cwd` wins (a worktree under `.claude/worktrees/` goes to its own project when that is open, else to the main one); sessions outside every open project are dropped | 🔲 | |
+| X2.3 | `AgentTabLocator`: (project, session) → `Tab(tab)`, `Background(tmux session)` or `Elsewhere`; plain tabs through the shell pid's descendants, tmux tabs through `TmuxTabs.sessionOf`; never makes the Terminal tool window's content (`TmuxTabs.of(project, create = false)`); the process tree and the tmux map injected for tests | 🔲 | |
+| X2.4 | `AgentSessionsModel` (app service, injected `CoroutineScope`): a `StateFlow` of groups, re-read every 2 s while the setting is on, and on project open and close and `TerminalTabsManagerListener` tab added; busy → idle while its project is not in front marks the session *finished* until it is clicked | 🔲 | |
+| X2.5 | Rows: status (busy spinner, idle dot, finished dot), name, relative time; hints *tmux*, *background*, *outside the IDE*; context menu *Copy Session ID* | 🔲 | |
+| X2.6 | `ClickPlan`, pure: row → `Focus(project, tab)`, `Background(name)`, `Resume(project, cwd, id)` or `Nothing`. The opener: `focusProjectWindow`, the Terminal tool window activated with the tab selected and focused; a background session brought back as a tab through `BackgroundTerminals`, then focused; *outside the IDE* does nothing and says why in its tooltip | 🔲 | |
+
+**Exit guardrails — Phase X2** (sandbox: two projects, `claude` in a plain tab and in a tmux tab in each, one background session, one started outside the IDE)
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Tests | X2's tests green in `./gradlew check` | 🔲 | |
+| Listed | Every session within 3 s under the right project, named as Claude names it | 🔲 | |
+| Status | Busy and idle follow within 3 s | 🔲 | |
+| Jump | A click lands on the right tab in the right window with the caret in it, also from the other project | 🔲 | |
+| Background | A click brings a background session back as a tab and shows it | 🔲 | |
+| Finished | The dot appears while its project is not in front and goes with the click | 🔲 | |
+| Outside | Listed, a click does nothing, the tooltip says why | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+
+#### Phase X3 — History and resume
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| X3.1 | `ClaudeTranscripts`, pure over the injected root: for a project's base path, `projects/<encoded>/*.jsonl` newest first, `agentSessionsHistory` of them, live ones left out; the title from the last `custom-title`, else `agent-name`, else `ai-title`, else `last-prompt`, read from a bounded tail of the file; a file is read again only when its mtime changes | 🔲 | |
+| X3.2 | History rows, grey, after the live ones in each group | 🔲 | |
+| X3.3 | Resume: a new Terminal tab in the session's project, its `cwd` as working directory, named after the session; `claude --resume <id>` sent once shell integration is ready (the quoting tested); the row turns live when Claude writes its file | 🔲 | |
+
+**Exit guardrails — Phase X3**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Tests | X3's tests green in `./gradlew check` | 🔲 | |
+| History | The last ten sessions of each project listed with the titles Claude's `/resume` shows | 🔲 | |
+| Resume | A click opens a new tab with the conversation back, with tmux on and off | 🔲 | |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+
+#### Phase X4 — Docs
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| X4.1 | README (a sentence in the plugin description, a features-table row, a section), CHANGELOG `[Unreleased]`, the CLAUDE.md inventory, a §2 row for the sidebar's mechanism | 🔲 | |
+
+**Exit guardrails — Epic X**
+
+| Guardrail | Criteria (pass/fail) | Status | Actual outcome |
+|-----------|----------------------|--------|----------------|
+| Verifier | Compatible on PS/IU 262 and 263, zero internal | 🔲 | |
+
+**Later, deliberately not specified:** Codex (its rollouts in `~/.codex/sessions`, no live-session file), offloaded projects and every folder in `~/.claude`, Air's own sessions and views, a notification when a session finishes, sending a prompt from the sidebar, search and archive.
+
+---
+
 ### Release 1.0  ·  next — after Epic G and Epic H's Phase H1
 
 **Goal:** A Marketplace-ready 1.0.0 built from `main`: version and change notes set, the verifier green on PhpStorm and IntelliJ IDEA 2026.2, the ZIP installed by hand once. Publishing itself is Roman's.
@@ -2700,6 +2814,9 @@ Platform facts (checked 2026-10-07 in PS-262.8665.265 and PS-263.5701.46 by deco
 | The contents card covers the end of long lines when soft wrap at the margin is off | Med | Low | The fit rule (W1.3) trusts the right margin, which Epic V keeps clear by default; documented, and the pill is one window-width away |
 | Hover from the ☰ pill into the opened card misbehaves inside an `ActionToolbar` (its own mouse handling, tooltips, update timer) | Med | Med | First check of the W2 run; fallback is click-to-open only |
 | A later platform build changes the floating-toolbar slot (position, Esc, applicability) | Low–Med | Med | Public EP used by JetBrains' own buttons; `verifyPlugin` and the W2 guardrails at each platform bump |
+| Claude Code changes its undocumented `~/.claude/sessions/<pid>.json` or transcript format (Epic X) | Med | Med | Tolerant parsers with fixtures per Claude Code version; an unknown status is shown as it comes; a missing piece leaves a row without that detail, never an error. Air reads the same files, so a change breaks JetBrains' own window too |
+| The Agents sidebar visibly jumps on a project switch because a frame that is not in front does not lay out | Med | Med | X0.1 answers it before any code; the fallback, applying when a frame comes to front, is Roman's call |
+| A session's process is not found under any tab (classic engine, remote or WSL shells, `claude` behind a wrapper) | Med | Low | The row still shows, marked *outside the IDE*; tmux tabs are matched by session name, not by pid |
 
 ---
 
@@ -2806,6 +2923,11 @@ Platform facts (checked 2026-10-07 in PS-262.8665.265 and PS-263.5701.46 by deco
 | 97 | 2026-10-07 | **Epic W's behaviour: the full card when the room beside the right margin fits it, else a ☰ pill that opens on hover or click; H1–H3 by default (`markdownTocDepth`, 1–6), shown from two headings up; the current section is the last heading at or above the viewport's top line; on by default** | Roman's choices in the brainstorm. The right margin is what soft wrap (Epic V) keeps clear, so in the default setup the card covers no text, and the pill keeps the corner quiet on narrow windows — which is why on by default is acceptable for new visible UI | Roman (choices; confirmed 2026-10-07: "confirm 96, 97"), Claude (proposal) |
 | 98 | 2026-10-07 | **Epic W: the contents widget leaves the floating-toolbar slot for a layer of its own in the editor's layered pane, placed by itself against the vertical scrollbar, just below the inspection widget** (reverses decision 96's host) | Roman after two sandbox looks: "it should be even more to the right" — the slot always sits the editor's 20 px plus the scrollbar in (`EditorImpl`'s layout, same in 262 and 263), and nothing public moves it. In the layered pane an unknown child is laid out as the inspection widget, so ours reports the scrollbar's current top as its preferred height (leaving the scrollbar where it is — a height of 0, the first build's, shortened the scrollbar on every extra layout, found by the second Epic W review), sits above that widget's layer, and sets its own bounds whenever it is laid out. Plain Swing on public API (`EditorEx.getScrollPane()`, `JBScrollPane.getStatusComponent()`); the cost is depending on the editor's layer stack, which a platform change could rearrange. Esc no longer hides it | Roman (chose it, 2026-10-07), Claude (research, proposal) |
 | 99 | 2026-10-07 | **Epic W: a fold icon in the widget's top-right corner, in both states; a click folds or unfolds it, and that choice applies to every Markdown editor and is remembered (`markdownTocFold`: `auto` until the first click). The width rule decides only while it is `auto`; hovering no longer opens the pill; the card is narrower (200 px at most: 220 first, then twice 10 px narrower at Roman's word)** (amends decision 97) | Roman: "the icon should remain in the right top corner of the widget — if i unfolded it on a narrow screen it should still stay unfolded, and if folded on wide screen, then should remain folded", and "make the widget a little narrower" | Roman (asked; chose remembered everywhere, 2026-10-07), Claude (proposal) |
+| 100 | 2026-10-09 | **Epic X: our own sidebar, tool window `Agenstorm.Agents` titled *Agents*, instead of changing Air's *Agent Sessions*** | Air's window is one instance per frame with nothing shared, its click resumes a session in Air's own view instead of finding the Terminal tab it runs in, and every Air module is `visibility="internal"`; the title keeps clear of Air's stripe button | Roman (the window he meant, the behaviour), Claude (investigation, the title) |
+| 101 | 2026-10-09 | **Epic X reads Claude Code's own files: `~/.claude/sessions/<pid>.json` for live sessions, `~/.claude/projects/*/*.jsonl` for history; Claude Code only and open projects only for now** | The files carry pid, cwd, name, status and the tmux session, which is all the list and the jump need, and Air reads the same ones; Codex has no live-session file | Roman (scope), Claude (the source) |
+| 102 | 2026-10-09 | **Epic X's one sidebar is one tool window per frame over one app-level model and one shared layout state (open, width, side, selection, expansion, scroll); only the frame in front records, the others apply; the content is the same everywhere, only the current project is bold** | No public app-level panel exists and a Swing component cannot be in two frames; Roman: it should look like it never moved when the window swaps projects | Roman (the behaviour), Claude (the mechanism) |
+| 103 | 2026-10-09 | **Epic X's click: a live session → the Terminal tab it runs in, in its project's window; a background tmux session → back as a tab; a past session → a new Terminal tab in its project running `claude --resume <id>` through `sendText`; a session outside the IDE → nothing** | Sent through the user's shell, so PATH, Epic G's shims and Epic U's tmux wrap all apply | Roman |
+| 104 | 2026-10-09 | **Epic X is off by default (`agentSessionsEnabled`), shows ten past sessions per project (`agentSessionsHistory`) and has no default shortcut** | Like Epic U, a new window stays out of the way until asked for; Air already takes ⌘2 | Claude (proposal, Roman to confirm) |
 
 ---
 
