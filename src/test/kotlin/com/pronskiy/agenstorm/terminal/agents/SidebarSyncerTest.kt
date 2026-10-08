@@ -44,7 +44,12 @@ class SidebarSyncerTest {
         all = { windows.keys.toList() },
         enabled = { enabled },
         later = { _, action -> queue.addLast(action) },
-    )
+    ).also { syncer -> windows.keys.forEach(syncer::apply) }
+
+    init {
+        // The width checks every first apply queues, as the event queue would run them.
+        runLater()
+    }
 
     /** One turn of the event queue: what was queued so far, not what those actions queue again. */
     private fun runLater() {
@@ -144,6 +149,120 @@ class SidebarSyncerTest {
         runLater()
 
         assertFalse(windows.getValue("beta").visible)
+        assertEquals(576, state.layout.value.width)
+    }
+
+    @Test
+    fun aWindowRecordsOnlyOnceItTookTheSharedLayout() {
+        state.update { it.copy(visible = true, width = 576, anchor = "left") }
+        val gamma = FakeWindow(visible = false)
+        windows["gamma"] = gamma
+        front = "gamma"
+
+        syncer.record("gamma")
+        assertTrue("its own closed sidebar is not everyone's", state.layout.value.visible)
+
+        syncer.apply("gamma")
+        runLater()
+        gamma.layOut()
+        gamma.visible = false
+        syncer.record("gamma")
+        assertFalse("closed after it took the layout: that is the user's", state.layout.value.visible)
+    }
+
+    @Test
+    fun aWindowMadeAvailableAgainWaitsForTheLayout() {
+        windows.getValue("alpha").apply { visible = true; width = 576 }
+        syncer.record("alpha")
+        runLater()
+
+        syncer.unsync("alpha")
+        windows.getValue("alpha").visible = false
+        syncer.record("alpha")
+        assertTrue(state.layout.value.visible)
+
+        syncer.apply("alpha")
+        assertTrue(windows.getValue("alpha").visible)
+    }
+
+    @Test
+    fun aChangeTheUserMadeInFrontIsRecorded() {
+        windows.getValue("alpha").apply { visible = true; width = 576 }
+
+        syncer.changed("alpha", byUser = true)
+
+        assertTrue(state.layout.value.visible)
+        assertTrue(windows.getValue("beta").visible)
+    }
+
+    @Test
+    fun aChangeNobodyMadeIsUndone() {
+        state.update { it.copy(visible = true, width = 576, anchor = "left") }
+        windows.keys.forEach(syncer::apply)
+        runLater()
+        windows.values.forEach(FakeWindow::layOut)
+        windows.getValue("alpha").visible = false
+
+        syncer.changed("alpha", byUser = false)
+
+        assertTrue("the platform closed it, the shared layout reopens it", windows.getValue("alpha").visible)
+        assertTrue(state.layout.value.visible)
+    }
+
+    @Test
+    fun aClickBehindIsNotTheUsersSidebar() {
+        state.update { it.copy(visible = true, width = 576, anchor = "left") }
+        windows.keys.forEach(syncer::apply)
+        windows.getValue("beta").visible = false
+
+        syncer.changed("beta", byUser = true)
+
+        assertTrue(windows.getValue("beta").visible)
+        assertTrue(state.layout.value.visible)
+    }
+
+    /** Every window at the shared 576 px, all checks run. */
+    private fun settled() {
+        state.update { it.copy(visible = true, width = 576, anchor = "left") }
+        windows.values.forEach { it.visible = true; it.width = 576 }
+        windows.keys.forEach(syncer::apply)
+        repeat(10) { runLater() }
+    }
+
+    @Test
+    fun aWidthTheWindowInFrontSettlesAtIsTheUsers() {
+        settled()
+        windows.getValue("alpha").width = 700
+
+        syncer.changed("alpha", byUser = false)
+        runLater()
+        windows.getValue("beta").layOut()
+
+        assertEquals(700, state.layout.value.width)
+        assertEquals(700, windows.getValue("beta").width)
+    }
+
+    @Test
+    fun aWidthOnItsWayIsNotTheUsers() {
+        settled()
+        syncer.apply("alpha")
+        windows.getValue("alpha").width = 456
+
+        syncer.changed("alpha", byUser = false)
+
+        assertEquals("our own stretch is still pending there", 576, state.layout.value.width)
+    }
+
+    @Test
+    fun aWidthBehindIsPutBack() {
+        settled()
+        windows.getValue("beta").width = 456
+
+        syncer.changed("beta", byUser = false)
+        runLater()
+        windows.getValue("beta").layOut()
+
+        assertEquals(576, windows.getValue("beta").width)
         assertEquals(576, state.layout.value.width)
     }
 }

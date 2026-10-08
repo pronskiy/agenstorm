@@ -1,6 +1,8 @@
 package com.pronskiy.agenstorm.terminal.agents
 
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.diagnostic.debug
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectCloseListener
 import com.intellij.openapi.startup.ProjectActivity
@@ -11,6 +13,7 @@ import kotlinx.coroutines.withContext
 class AgentsStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         AgentSessionsModel.getInstance().refresh()
+        logger<AgentsStartupActivity>().debug { "startup ${project.name}" }
         withContext(Dispatchers.EDT) { AgentsSidebarSync.getInstance().apply(project) }
     }
 }

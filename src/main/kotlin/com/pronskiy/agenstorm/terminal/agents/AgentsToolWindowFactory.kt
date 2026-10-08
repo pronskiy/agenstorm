@@ -33,6 +33,7 @@ class AgentsToolWindowFactory : ToolWindowFactory, DumbAware {
                 for (project in ProjectManager.getInstance().openProjects) {
                     if (project.isDisposed) continue
                     val window = ToolWindowManager.getInstance(project).getToolWindow(ID) ?: continue
+                    AgentsSidebarSync.getInstance().unsync(project)
                     window.isAvailable = enabled
                     if (enabled) AgentsSidebarSync.getInstance().apply(project)
                 }

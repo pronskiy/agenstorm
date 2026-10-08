@@ -1,8 +1,11 @@
 package com.pronskiy.agenstorm.terminal.agents
 
+import com.intellij.ide.IdeEventQueue
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.debug
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.wm.IdeFocusManager
@@ -12,6 +15,7 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowEx
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import java.awt.event.InputEvent
 
 /**
  * Step X1.4. [SidebarSyncer] over the IDE's windows: a project is a window, the one in front is the last focused frame's,
@@ -29,13 +33,21 @@ class AgentsSidebarSync {
         later = { project, action -> ApplicationManager.getApplication().invokeLater(action, project.disposed) },
     )
 
-    fun record(project: Project) {
-        if (!project.isDisposed) syncer.record(project)
+    /** The Agents tool window of [project] changed; a change during a click or a key press is the user's. */
+    fun changed(project: Project) {
+        if (project.isDisposed) return
+        val byUser = IdeEventQueue.getInstance().trueCurrentEvent is InputEvent
+        LOG.debug { "changed ${project.name}: byUser=$byUser front=${front()?.name} ${toolWindow(project)?.let(::describe)}" }
+        syncer.changed(project, byUser)
     }
 
     fun apply(project: Project) {
-        if (!project.isDisposed) syncer.apply(project)
+        if (project.isDisposed) return
+        LOG.debug { "apply ${project.name}: ${toolWindow(project)?.let(::describe)} shared=${AgentsSidebarState.getInstance().layout.value}" }
+        syncer.apply(project)
     }
+
+    fun unsync(project: Project) = syncer.unsync(project)
 
     fun forget(project: Project) = syncer.forget(project)
 
@@ -53,6 +65,10 @@ class AgentsSidebarSync {
     }
 
     companion object {
+        private val LOG = logger<AgentsSidebarSync>()
+
+        private fun describe(window: ToolWindow) = "visible=${window.isVisible} width=${window.component.width} anchor=${window.anchor} available=${window.isAvailable}"
+
         fun getInstance(): AgentsSidebarSync = service()
 
         fun toolWindow(project: Project): ToolWindow? =
@@ -65,14 +81,16 @@ class AgentsSidebarSync {
     }
 }
 
-/** Step X1.4. Shows, hides, resizes and moves of a window's Agents sidebar are recorded — from the window in front only. */
+/** Step X1.4. Shows, hides, resizes and moves of a window's Agents sidebar: recorded when the user made them in the window in front, undone otherwise. */
 class AgentsToolWindowListener(private val project: Project) : ToolWindowManagerListener {
 
     override fun stateChanged(toolWindowManager: ToolWindowManager, changeType: ToolWindowManagerListener.ToolWindowManagerEventType) {
-        if (toolWindowManager.getToolWindow(AgentsToolWindowFactory.ID) != null) AgentsSidebarSync.getInstance().record(project)
+        if (toolWindowManager.getToolWindow(AgentsToolWindowFactory.ID) == null) return
+        logger<AgentsToolWindowListener>().debug { "stateChanged ${project.name} $changeType" }
+        AgentsSidebarSync.getInstance().changed(project)
     }
 
     override fun toolWindowShown(toolWindow: ToolWindow) {
-        if (toolWindow.id == AgentsToolWindowFactory.ID) AgentsSidebarSync.getInstance().record(project)
+        if (toolWindow.id == AgentsToolWindowFactory.ID) AgentsSidebarSync.getInstance().changed(project)
     }
 }
