@@ -6,13 +6,24 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.ColoredTreeCellRenderer
 import com.intellij.ui.SimpleTextAttributes
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import java.nio.file.Files
 
 /** Step X1.2: the sidebar follows the setting, lists the open projects and marks its own. */
 class AgentsToolWindowTest : BasePlatformTestCase() {
 
+    private val emptyHome = Files.createTempDirectory("claude-home")
+
+    override fun setUp() {
+        super.setUp()
+        // The setting goes on below: the model's poll must not read the real ~/.claude.
+        AgentSessionsModel.getInstance().claudeHome = { emptyHome }
+    }
+
     override fun tearDown() {
         try {
             AgenstormSettings.getInstance().loadState(AgenstormSettings.State())
+            AgentSessionsModel.getInstance().claudeHome = ClaudeLiveSessions::home
+            Files.deleteIfExists(emptyHome)
         } finally {
             super.tearDown()
         }

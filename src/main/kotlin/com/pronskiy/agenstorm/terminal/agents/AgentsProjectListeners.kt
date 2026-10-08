@@ -6,6 +6,8 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectCloseListener
 import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.terminal.frontend.toolwindow.TerminalTabsManagerListener
+import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -24,4 +26,9 @@ class AgentsProjectClosed : ProjectCloseListener {
         AgentSessionsModel.getInstance().refresh(closing = project)
         AgentsSidebarSync.getInstance().forget(project)
     }
+}
+
+/** Step X2.4. A new Terminal tab may be where a session runs: read again now rather than at the next poll. */
+class AgentsTabsListener : TerminalTabsManagerListener {
+    override fun tabAdded(tab: TerminalToolWindowTab) = AgentSessionsModel.getInstance().refresh()
 }

@@ -1,10 +1,13 @@
 package com.pronskiy.agenstorm.terminal.agents
 
+/** Step X2.4. One running session in the sidebar: what Claude says about it, where it can be shown, and its dot. */
+data class SessionRow(val session: LiveSession, val place: SessionPlace<ProjectTab>, val finished: Boolean)
+
 /**
- * Step X1.2. One open project in the Agents sidebar: what it is called and where it lives; the base path is its identity.
- * The sessions under it come in X2.
+ * Step X1.2. One open project in the Agents sidebar: what it is called and where it lives — the base path is its
+ * identity — and, from X2, the sessions running in it.
  */
-data class ProjectGroup(val name: String, val basePath: String) {
+data class ProjectGroup(val name: String, val basePath: String, val sessions: List<SessionRow> = emptyList()) {
 
     companion object {
         /**

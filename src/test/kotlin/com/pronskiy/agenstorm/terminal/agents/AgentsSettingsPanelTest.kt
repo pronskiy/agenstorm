@@ -8,6 +8,7 @@ import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormConfigurable
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.AgenstormSettingsListener
+import java.nio.file.Files
 import javax.swing.JComponent
 
 /** Step X1.1: the Agents group starts off with ten past sessions, and each change reaches the sidebar through the settings topic. */
@@ -16,8 +17,12 @@ class AgentsSettingsPanelTest : BasePlatformTestCase() {
     private lateinit var configurable: AgenstormConfigurable
     private lateinit var panel: JComponent
 
+    private val emptyHome = Files.createTempDirectory("claude-home")
+
     override fun setUp() {
         super.setUp()
+        // Applying the setting starts the model's reads: never of the real ~/.claude.
+        AgentSessionsModel.getInstance().claudeHome = { emptyHome }
         AgenstormSettings.getInstance().loadState(AgenstormSettings.State())
         configurable = AgenstormConfigurable()
         panel = configurable.createComponent()!!
@@ -27,6 +32,8 @@ class AgentsSettingsPanelTest : BasePlatformTestCase() {
         try {
             configurable.disposeUIResources()
             AgenstormSettings.getInstance().loadState(AgenstormSettings.State())
+            AgentSessionsModel.getInstance().claudeHome = ClaudeLiveSessions::home
+            Files.deleteIfExists(emptyHome)
         } finally {
             super.tearDown()
         }
