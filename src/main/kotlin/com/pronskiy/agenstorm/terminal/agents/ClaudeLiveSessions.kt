@@ -24,6 +24,7 @@ data class LiveSession(
     val tmuxSession: String?,
     val updatedAt: Long?,
     val entrypoint: String?,
+    val startedAt: Long? = null,
 )
 
 /**
@@ -43,16 +44,13 @@ object ClaudeLiveSessions {
         val dir = claudeHome.resolve("sessions")
         if (!dir.isDirectory()) return emptyList()
         return dir.listDirectoryEntries("*.json")
-            .mapNotNull { file -> runCatching { file.readText() }.getOrNull()?.let(::parseWithStart) }
-            .filter { (session, startedAt) -> alive(session.pid, startedAt) }
-            .map { it.first }
+            .mapNotNull { file -> runCatching { file.readText() }.getOrNull()?.let(::parse) }
+            .filter { alive(it.pid, it.startedAt) }
             .sortedBy { it.pid }
     }
 
     /** One file's text → its session, or null when it is not a session. */
-    fun parse(text: String): LiveSession? = parseWithStart(text)?.first
-
-    private fun parseWithStart(text: String): Pair<LiveSession, Long?>? {
+    fun parse(text: String): LiveSession? {
         val o = runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull() ?: return null
         fun string(key: String) = (o[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
         fun long(key: String) = (o[key] as? JsonPrimitive)?.longOrNull
@@ -66,8 +64,9 @@ object ClaudeLiveSessions {
             tmuxSession = string("tmux")?.substringBefore(':')?.takeIf { it.isNotEmpty() },
             updatedAt = long("updatedAt"),
             entrypoint = string("entrypoint"),
+            startedAt = long("startedAt"),
         )
-        return session to long("startedAt")
+        return session
     }
 
     /** The process [pid] runs and started when the file says it did, give or take a minute; no start time to compare is a yes. */

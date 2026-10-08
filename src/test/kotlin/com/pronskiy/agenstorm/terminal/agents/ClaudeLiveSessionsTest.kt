@@ -29,6 +29,7 @@ class ClaudeLiveSessionsTest {
                 tmuxSession = "app-1a2b",
                 updatedAt = 1791495015923,
                 entrypoint = "cli",
+                startedAt = 1791494204512,
             ),
             session,
         )
