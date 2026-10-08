@@ -1,0 +1,5 @@
+{"type": "last-prompt", "lastPrompt": "first prompt", "sessionId": "10000000-0000-4000-8000-000000000000"}
+{"type": "user", "message": {"content": "hi"}}
+{"type": "ai-title", "aiTitle": "Fix the login form", "sessionId": "10000000-0000-4000-8000-000000000000"}
+{"type": "agent-name", "agentName": "fix-login", "sessionId": "10000000-0000-4000-8000-000000000000"}
+{"type": "ai-title", "aiTitle": "Fix the login form and its tests", "sessionId": "10000000-0000-4000-8000-000000000000"}
