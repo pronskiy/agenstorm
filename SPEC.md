@@ -64,6 +64,7 @@
 | 2026-10-09 | **Phase X0 closed — go** (decision 105 proposed): eager apply keeps the sidebar the same in both frames of one window, hidden native tab included, with no relayout on a switch; sessions found by tmux name and by pid, the click jumps across projects, resume works (tmux tabs need tmux's own readiness signal). Measured in the robot IDE while Roman was away | Claude (spike, robot run, text) |
 | 2026-10-09 | **Phase X1 closed**: the Agents sidebar is one layout in every window — X1.1–X1.4 built, every guardrail measured in the robot IDE (Roman away), one hole fixed on the way: only the user's changes count (decision 106 proposed) | Claude (build, robot run, text) |
 | 2026-10-09 | **Phase X2 closed**: live sessions in the sidebar and the jump to their tab — X2.1–X2.6 built, every guardrail measured in the robot IDE with four real Claude sessions (Roman away) | Claude (build, robot run, text) |
+| 2026-10-09 | **Phase X3 closed**: past sessions in the sidebar and resume in a new Terminal tab — X3.1–X3.3 built, guardrails measured in the robot IDE (Roman away) | Claude (build, robot run, text) |
 
 ### Status legend
 
@@ -71,7 +72,9 @@
 
 ### Current focus
 
-**Now on:** **Epic X, Phase X3** (history and resume) → **X3.1**. **Phase X2 is closed** (2026-10-09): the sidebar lists the Claude Code sessions of every open project with Claude's own status, a dot for one that finished while its project was not in front, and a click brings up the Terminal tab it runs in — in the right window — or brings a background terminal back as a tab; one outside the IDE is listed and does nothing. All measured in the robot IDE with four real sessions while Roman was away.
+**Now on:** **Epic X, Phase X4** (docs and the verifier) → **X4.1**. **Phase X3 is closed** (2026-10-09): each project's newest past sessions show under its running ones, titled as Claude titles them, and a click resumes one in a new Terminal tab of its project — tmux-backed or plain — with the conversation back. Measured in the robot IDE while Roman was away.
+
+**Before that:** **Epic X, Phase X3** (history and resume) → **X3.1**. **Phase X2 is closed** (2026-10-09): the sidebar lists the Claude Code sessions of every open project with Claude's own status, a dot for one that finished while its project was not in front, and a click brings up the Terminal tab it runs in — in the right window — or brings a background terminal back as a tab; one outside the IDE is listed and does nothing. All measured in the robot IDE with four real sessions while Roman was away.
 
 **Before that:** **Epic X, Phase X2** (live sessions and the jump) → **X2.1**. **Phase X1 is closed** (2026-10-09): the Agents sidebar is the same in every window — open, width, side, selection — and survives a restart and the setting going off and on; every exit guardrail measured in the robot IDE while Roman was away, his look still to come. The run found and fixed one hole: a change nobody made (a new project's Project view on the same side) used to be recorded and would have closed the sidebar everywhere — now only the user's changes count (decision 106, proposed; 105 still to confirm too).
 
@@ -2736,10 +2739,10 @@ Throwaway code in the robot IDE (removed after); each answer recorded here. A no
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Tests | X3's tests green in `./gradlew check` | 🔲 | |
-| History | The last ten sessions of each project listed with the titles Claude's `/resume` shows | 🔲 | |
-| Resume | A click opens a new tab with the conversation back, with tmux on and off | 🔲 | |
-| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Tests | X3's tests green in `./gradlew check` | ✅ | 2026-10-09: `./gradlew check` green, 1188 tests (93 of them Epic X's) |
+| History | The last ten sessions of each project listed with the titles Claude's `/resume` shows | ✅ | 2026-10-09, robot IDE, Roman away: `alpha` listed its two past sessions and `beta` its one, newest first, under the titles Claude gave them (`Ok-x2`, `Ok-alpha`, `Ok-beta` — its `ai-title`s); none of the empty sessions from earlier runs showed. Not compared against `/resume`'s own list, which is interactive |
+| Resume | A click opens a new tab with the conversation back, with tmux on and off | ✅ | 2026-10-09, same run: a click on `alpha`'s `Ok-alpha` with tmux on opened a tmux-backed tab in `alpha` (its window to front), typed `claude --resume 463d261d-…` once the prompt settled, and the conversation came back (`❯ Reply with exactly the word: ok-alpha` / `⏺ ok-alpha`); the row then moved to the running sessions under the same id. With tmux off, `beta`'s `Ok-beta` opened a plain bash tab, ready by shell integration, conversation back the same way |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | ✅ | 2026-10-09: no SEVERE or ERROR with an Agenstorm frame; one INFO line per resume naming how the shell was found ready |
 
 #### Phase X4 — Docs
 
