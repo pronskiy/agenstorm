@@ -63,6 +63,7 @@
 | 2026-10-09 | **Epic X spec'd:** one *Agents* sidebar for the Claude Code sessions of every open project, the same in every window; a click brings up the Terminal tab a session runs in, or resumes a past one in a new tab. Our own tool window over Claude Code's session files, because Air's *Agent Sessions* window is internal. Spike first (X0). Decisions 100–104 | Roman (request, the calls on scope and behaviour), Claude (investigation of Air and of Claude Code's files, platform facts, text) |
 | 2026-10-09 | **Phase X0 closed — go** (decision 105 proposed): eager apply keeps the sidebar the same in both frames of one window, hidden native tab included, with no relayout on a switch; sessions found by tmux name and by pid, the click jumps across projects, resume works (tmux tabs need tmux's own readiness signal). Measured in the robot IDE while Roman was away | Claude (spike, robot run, text) |
 | 2026-10-09 | **Phase X1 closed**: the Agents sidebar is one layout in every window — X1.1–X1.4 built, every guardrail measured in the robot IDE (Roman away), one hole fixed on the way: only the user's changes count (decision 106 proposed) | Claude (build, robot run, text) |
+| 2026-10-09 | **Phase X2 closed**: live sessions in the sidebar and the jump to their tab — X2.1–X2.6 built, every guardrail measured in the robot IDE with four real Claude sessions (Roman away) | Claude (build, robot run, text) |
 
 ### Status legend
 
@@ -70,7 +71,9 @@
 
 ### Current focus
 
-**Now on:** **Epic X, Phase X2** (live sessions and the jump) → **X2.1**. **Phase X1 is closed** (2026-10-09): the Agents sidebar is the same in every window — open, width, side, selection — and survives a restart and the setting going off and on; every exit guardrail measured in the robot IDE while Roman was away, his look still to come. The run found and fixed one hole: a change nobody made (a new project's Project view on the same side) used to be recorded and would have closed the sidebar everywhere — now only the user's changes count (decision 106, proposed; 105 still to confirm too).
+**Now on:** **Epic X, Phase X3** (history and resume) → **X3.1**. **Phase X2 is closed** (2026-10-09): the sidebar lists the Claude Code sessions of every open project with Claude's own status, a dot for one that finished while its project was not in front, and a click brings up the Terminal tab it runs in — in the right window — or brings a background terminal back as a tab; one outside the IDE is listed and does nothing. All measured in the robot IDE with four real sessions while Roman was away.
+
+**Before that:** **Epic X, Phase X2** (live sessions and the jump) → **X2.1**. **Phase X1 is closed** (2026-10-09): the Agents sidebar is the same in every window — open, width, side, selection — and survives a restart and the setting going off and on; every exit guardrail measured in the robot IDE while Roman was away, his look still to come. The run found and fixed one hole: a change nobody made (a new project's Project view on the same side) used to be recorded and would have closed the sidebar everywhere — now only the user's changes count (decision 106, proposed; 105 still to confirm too).
 
 **Before that:** **Epic X, Phase X1** (the sidebar the same in every window) → **X1.1**. **Phase X0 is closed — go** (2026-10-09, decision 105 proposed): in the robot IDE an eager apply keeps the sidebar identical across two projects in one window — width, side and visibility, on the hidden native tab too, with no relayout on a switch — a session is found in a tmux tab by its session name and in a plain tab by pid, a click jumps to it across projects, and a past session resumes in a new tab (tmux tabs need tmux's own readiness signal). Roman was away ("close ide yourself when needed"), so the go is measured, not seen; his look comes with X1's *Unmoved* guardrail.
 
@@ -2712,14 +2715,14 @@ Throwaway code in the robot IDE (removed after); each answer recorded here. A no
 
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
-| Tests | X2's tests green in `./gradlew check` | 🔲 | |
-| Listed | Every session within 3 s under the right project, named as Claude names it | 🔲 | |
-| Status | Busy and idle follow within 3 s | 🔲 | |
-| Jump | A click lands on the right tab in the right window with the caret in it, also from the other project | 🔲 | |
-| Background | A click brings a background session back as a tab and shows it | 🔲 | |
-| Finished | The dot appears while its project is not in front and goes with the click | 🔲 | |
-| Outside | Listed, a click does nothing, the tooltip says why | 🔲 | |
-| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | 🔲 | |
+| Tests | X2's tests green in `./gradlew check` | ✅ | 2026-10-09: `./gradlew check` green, 1175 tests (75 of them Epic X's) |
+| Listed | Every session within 3 s under the right project, named as Claude names it | ✅ | 2026-10-09, robot IDE, Roman away, four real `claude` 2.1.295 sessions — in a tmux tab of `alpha`, a plain tab of `beta`, an Epic U background terminal of `alpha`, and the user's own tmux in `beta`'s folder: all four under the right project, named as Claude names them — the tmux tab and the plain tab each pointing at their tab, the background terminal as *background*, the other tmux as *outside the IDE* |
+| Status | Busy and idle follow within 3 s | ✅ | 2026-10-09, same run: a one-word prompt to `alpha`'s session with `beta` in front — `busy` in the model 1.1 s after Enter, `idle` 2.2 s after that |
+| Jump | A click lands on the right tab in the right window with the caret in it, also from the other project | ✅ | 2026-10-09, same run: a click (a mouse event dispatched to the row) on `alpha`'s session in `beta`'s sidebar selected `alpha`'s native tab, showed its Terminal and selected the session's tab over the one that was selected (`resume 463d261d`) |
+| Background | A click brings a background session back as a tab and shows it | ✅ | 2026-10-09, same run: a click on the background terminal made it a tab of `alpha` (attached, no longer flagged background) and the row pointed at that tab at the next read |
+| Finished | The dot appears while its project is not in front and goes with the click | ✅ | 2026-10-09, same run: the dot was on `alpha`'s session when it went `busy` → `idle` with `beta` in front, and went with the click |
+| Outside | Listed, a click does nothing, the tooltip says why | ✅ | 2026-10-09, same run: listed and greyed; a click changed neither the selected window nor `beta`'s selected Terminal tab; tooltip "Claude: idle. It runs outside the IDE, so there is nothing to bring up here." |
+| Log | No `com.pronskiy.agenstorm` SEVERE/ERROR after the run | ✅ | 2026-10-09: no SEVERE or ERROR with an Agenstorm frame; the demo sessions ended afterwards, Roman's own four tmux sessions untouched |
 
 #### Phase X3 — History and resume
 
