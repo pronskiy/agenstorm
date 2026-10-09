@@ -68,6 +68,7 @@
 | 2026-10-09 | **Epic X built** on branch `epic-x`: X4.1 docs, the exit verifier Compatible with zero internal API. Roman's look and decisions 105–106 outstanding | Claude (docs, verifier, text) |
 | 2026-10-09 | **Epic X code review**, fixed the same day: one failing read no longer stops the sessions poll for the rest of the run; the model is written in one atomic update against the projects open at that moment, so a project closed mid-read stays out, a dot cleared meanwhile stays cleared, and no row keeps a closed project's tab; past sessions re-listed every 15 s and on events instead of every 2 s; a transcript that failed to read is tried again rather than remembered as untitled; a project reached through a symlink owns the sessions in its real folder. 4 tests more, `check` green (1192), verifier unchanged | Claude (review, fixes, text) |
 | 2026-10-09 | **Epic X, Phase X5** after Roman's first look: the sidebar in the lower part of its side, kept there in every window, and session marks right under their project's folder icon | Roman (requests), Claude (build, text) |
+| 2026-10-09 | **Epic X merged into `main`** (fast-forward, not pushed); decisions 105 and 106 confirmed | Roman ("merge into main", "confirm 105 and 106"), Claude (merge, text) |
 
 ### Status legend
 
@@ -75,7 +76,9 @@
 
 ### Current focus
 
-**Now on:** **Epic X is built** (2026-10-09, branch `epic-x`, not merged): X0–X4 ✅ and every guardrail measured in the robot IDE while Roman was away ("close ide yourself when needed"). Phase X5 (lower part of the side, marks under the folder icon) added after Roman's first look and signed off ("looks good"). Decisions 105 and 106 confirmed by Roman ("confirm 105 and 106"). Waiting for Roman: the call on merging `epic-x` into `main` and on a release. `check` green (1192 tests), verifier Compatible on all four IDEs with zero internal API; a code review's five findings fixed.
+**Now on:** **Epic X is built, closed and merged into `main`** (2026-10-09, fast-forward, not pushed; the `epic-x` branch deleted): X0–X5 ✅, decisions 100–106 confirmed, `check` green (1196 tests), verifier Compatible on all four IDEs with zero internal API. Next is Roman's call: a look in `runIde` at the sidebar staying put across a project switch (measured in the robot IDE, not seen), push, and a 1.13.0 cut.
+
+**Before that:** **Epic X is built** (2026-10-09, branch `epic-x`, not merged): X0–X4 ✅ and every guardrail measured in the robot IDE while Roman was away ("close ide yourself when needed"). Phase X5 (lower part of the side, marks under the folder icon) added after Roman's first look and signed off ("looks good"). Decisions 105 and 106 confirmed by Roman ("confirm 105 and 106"). Waiting for Roman: the call on merging `epic-x` into `main` and on a release. `check` green (1192 tests), verifier Compatible on all four IDEs with zero internal API; a code review's five findings fixed.
 
 **Before that:** **Epic X, Phase X4** (docs and the verifier) → **X4.1**. **Phase X3 is closed** (2026-10-09): each project's newest past sessions show under its running ones, titled as Claude titles them, and a click resumes one in a new Terminal tab of its project — tmux-backed or plain — with the conversation back. Measured in the robot IDE while Roman was away.
 
