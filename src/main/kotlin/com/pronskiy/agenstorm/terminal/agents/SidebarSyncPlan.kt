@@ -2,13 +2,17 @@ package com.pronskiy.agenstorm.terminal.agents
 
 /**
  * Step X1.3. What one window's Agents tool window looks like now: open or not, its width as last laid out (0 when it
- * never was), its side.
+ * never was), its side, and whether it is in the lower part of that side ([split], X5.1).
  */
-data class FrameLayout(val visible: Boolean, val width: Int, val anchor: String)
+data class FrameLayout(val visible: Boolean, val width: Int, val anchor: String, val split: Boolean = true)
 
 /** One change to one window's Agents tool window. */
 sealed interface SidebarStep {
     data class SetAnchor(val anchor: String) : SidebarStep
+
+    /** `ToolWindow.setSplitMode`: the lower part of the side, or the upper. */
+    data class SetSplit(val split: Boolean) : SidebarStep
+
     data object Show : SidebarStep
     data object Hide : SidebarStep
 
@@ -29,6 +33,7 @@ object SidebarSyncPlan {
 
     fun steps(shared: AgentsSidebarState.Layout, current: FrameLayout): List<SidebarStep> = buildList {
         if (shared.anchor.isNotEmpty() && shared.anchor != current.anchor) add(SidebarStep.SetAnchor(shared.anchor))
+        if (shared.split != current.split) add(SidebarStep.SetSplit(shared.split))
         if (shared.visible && !current.visible) add(SidebarStep.Show)
         if (!shared.visible && current.visible) add(SidebarStep.Hide)
     }
@@ -45,6 +50,7 @@ object SidebarSyncPlan {
         shared.copy(
             visible = current.visible,
             anchor = current.anchor,
+            split = current.split,
             width = if (current.visible && current.width > 0) current.width else shared.width,
         )
 }

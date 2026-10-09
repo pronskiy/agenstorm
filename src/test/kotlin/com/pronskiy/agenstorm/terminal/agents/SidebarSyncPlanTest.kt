@@ -88,4 +88,12 @@ class SidebarSyncPlanTest {
         assertEquals(listOf("/w/old"), recorded.collapsed)
         assertEquals(40, recorded.scroll)
     }
+
+    @Test
+    fun theLowerOrUpperPartOfTheSideFollowsToo() {
+        val upper = FrameLayout(visible = true, width = 576, anchor = "left", split = false)
+
+        assertEquals("the lower part by default", listOf(SidebarStep.SetSplit(true)), SidebarSyncPlan.steps(shared, upper))
+        assertEquals(false, SidebarSyncPlan.record(shared, upper).split)
+    }
 }

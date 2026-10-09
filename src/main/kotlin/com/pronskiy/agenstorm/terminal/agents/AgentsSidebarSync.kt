@@ -54,10 +54,11 @@ class AgentsSidebarSync {
     private class ToolWindowSidebar(private val window: ToolWindow) : SidebarWindow {
         override val available: Boolean get() = window.isAvailable
 
-        override fun layout() = FrameLayout(window.isVisible, window.component.width, window.anchor.toString())
+        override fun layout() = FrameLayout(window.isVisible, window.component.width, window.anchor.toString(), window.isSplitMode)
 
         override fun run(step: SidebarStep) = when (step) {
             is SidebarStep.SetAnchor -> window.setAnchor(ToolWindowAnchor.fromText(step.anchor), null)
+            is SidebarStep.SetSplit -> window.setSplitMode(step.split, null)
             SidebarStep.Show -> window.show()
             SidebarStep.Hide -> window.hide()
             is SidebarStep.Stretch -> (window as? ToolWindowEx)?.stretchWidth(step.delta) ?: Unit

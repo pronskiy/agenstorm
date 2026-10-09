@@ -1,11 +1,14 @@
 package com.pronskiy.agenstorm.terminal.agents
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.CustomizedDataContext
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.AnimatedIcon
-import javax.swing.tree.DefaultMutableTreeNode
+import com.intellij.ui.ColoredTreeCellRenderer
+import com.intellij.ui.RowIcon
+import javax.swing.Icon
 
 /** Steps X2.5 and X2.6: sessions under their project, updated in place, and a click on one handed on with its project. */
 class AgentsPanelRowsTest : BasePlatformTestCase() {
@@ -41,10 +44,8 @@ class AgentsPanelRowsTest : BasePlatformTestCase() {
 
     private fun children(row: Int): List<SessionRow> = items(row).filterIsInstance<SessionRow>()
 
-    private fun items(row: Int): List<Any> {
-        val node = panel.tree.getPathForRow(row).lastPathComponent as DefaultMutableTreeNode
-        return (0 until node.childCount).map { (node.getChildAt(it) as DefaultMutableTreeNode).userObject }
-    }
+    /** The rows under the project shown at [groupRow], down to the next project. */
+    private fun items(groupRow: Int): List<Any> = panel.shownRows().drop(groupRow + 1).takeWhile { it !is ProjectGroup }
 
     fun testSessionsAreRowsUnderTheirProject() {
         panel.render(groups(row("a"), row("b")))
@@ -150,5 +151,39 @@ class AgentsPanelRowsTest : BasePlatformTestCase() {
         assertEquals(SessionPlace.Elsewhere, inTab.withoutTabOf(project).place)
         assertSame(inTab, inTab.withoutTabOf(null))
         assertSame("its project is not disposed", inTab, inTab.withoutClosedTab())
+    }
+
+    fun testAClickOnAProjectFoldsItInEveryWindowAndAgainUnfoldsIt() {
+        panel.render(groups(row("a"), history = listOf(past("p1"))))
+        val other = AgentsPanel(project, parent, isFront = { false }).also { it.render(groups(row("a"), history = listOf(past("p1")))) }
+
+        panel.click(panel.tree.getPathForRow(0))
+        other.restore(AgentsSidebarState.getInstance().layout.value)
+
+        assertEquals(listOf("app", "other"), panel.shownRows().map { (it as ProjectGroup).name })
+        assertEquals(listOf("app", "other"), other.shownRows().map { (it as ProjectGroup).name })
+        assertTrue(clicks.isEmpty())
+
+        panel.click(panel.tree.getPathForRow(0))
+        assertEquals(4, panel.tree.rowCount)
+    }
+
+    fun testEachMarkSitsRightUnderTheFolderIcon() {
+        panel.render(groups(row("a", status = "busy"), history = listOf(past("p1"))))
+
+        val icons = (0 until 3).map { iconAt(it) as RowIcon }
+
+        assertSame(AllIcons.Nodes.Folder, icons[0].getIcon(1))
+        assertSame(AnimatedIcon.Default.INSTANCE, icons[1].getIcon(1))
+        assertSame(AllIcons.Vcs.History, icons[2].getIcon(1))
+        assertEquals("the chevron's slot is as wide as the blank before a mark", icons[0].getIcon(0)!!.iconWidth, icons[1].getIcon(0)!!.iconWidth)
+        assertEquals(icons[0].getIcon(0)!!.iconWidth, icons[2].getIcon(0)!!.iconWidth)
+        assertEquals("every row starts at the same x", panel.tree.getRowBounds(0).x, panel.tree.getRowBounds(1).x)
+    }
+
+    private fun iconAt(row: Int): Icon? {
+        val renderer = panel.tree.cellRenderer as ColoredTreeCellRenderer
+        renderer.getTreeCellRendererComponent(panel.tree, panel.tree.getPathForRow(row).lastPathComponent, false, false, true, row, false)
+        return renderer.icon
     }
 }

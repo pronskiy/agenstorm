@@ -67,6 +67,7 @@
 | 2026-10-09 | **Phase X3 closed**: past sessions in the sidebar and resume in a new Terminal tab — X3.1–X3.3 built, guardrails measured in the robot IDE (Roman away) | Claude (build, robot run, text) |
 | 2026-10-09 | **Epic X built** on branch `epic-x`: X4.1 docs, the exit verifier Compatible with zero internal API. Roman's look and decisions 105–106 outstanding | Claude (docs, verifier, text) |
 | 2026-10-09 | **Epic X code review**, fixed the same day: one failing read no longer stops the sessions poll for the rest of the run; the model is written in one atomic update against the projects open at that moment, so a project closed mid-read stays out, a dot cleared meanwhile stays cleared, and no row keeps a closed project's tab; past sessions re-listed every 15 s and on events instead of every 2 s; a transcript that failed to read is tried again rather than remembered as untitled; a project reached through a symlink owns the sessions in its real folder. 4 tests more, `check` green (1192), verifier unchanged | Claude (review, fixes, text) |
+| 2026-10-09 | **Epic X, Phase X5** after Roman's first look: the sidebar in the lower part of its side, kept there in every window, and session marks right under their project's folder icon | Roman (requests), Claude (build, text) |
 
 ### Status legend
 
@@ -2760,6 +2761,15 @@ Throwaway code in the robot IDE (removed after); each answer recorded here. A no
 | Guardrail | Criteria (pass/fail) | Status | Actual outcome |
 |-----------|----------------------|--------|----------------|
 | Verifier | Compatible on PS/IU 262 and 263, zero internal | ✅ | 2026-10-09: **Compatible on PS-262.10968.76, IU-262.10968.63, PS-263.6259.29 and IU-263.6259.32, zero internal API**; experimental 243 (1.12.0: 183 — the 60 new ones all in `terminal/agents/`, the reworked terminal's `@Experimental` API), deprecated 4 on 262 and 14 on 263, unchanged; none of the ignored 263.6259 problems (§7) is Epic X's |
+
+#### Phase X5 — Roman's first look
+
+Roman, 2026-10-09, with a screenshot of the sidebar: "I want the agents toolwindow to appear in the lower part of the side" and "move agent sessions list to the left so that dots are right below the folder icon".
+
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| X5.1 | The sidebar in the lower part of its side: `side="true"` on the `<toolWindow>`, and `split` in the shared layout (on by default, so layouts saved before move down too) applied with `ToolWindow.setSplitMode` and recorded like the side — from the window in front, on the user's own change | ✅ | 2026-10-09, 2 tests (the split step and its record; moving to the upper part counts only on input). Robot IDE: both windows in split mode, the Project view above it; with both open they share the side's width, and the width the column settles at is recorded like any other |
+| X5.2 | Session rows under the folder icon: every row a child of the hidden root, a project's sessions the rows after it; each row's icon two slots — a project's fold chevron and folder, a blank and a session's mark — so a mark sits exactly under the folder. Folding is the panel's own: a click on a project row, or ← and →, writes the shared `collapsed` | ✅ | 2026-10-09, 2 tests (a click folds the project in every window and again unfolds it; the chevron's slot as wide as the blank, every row at the same x). The platform's tree indent comes from `DefaultTreeUI`'s painter, which is internal, hence our own slots rather than a narrower indent. Rendered from the robot IDE: marks under the folder icons. `check` green, 1196 tests |
 
 **Later, deliberately not specified:** Codex (its rollouts in `~/.codex/sessions`, no live-session file), offloaded projects and every folder in `~/.claude`, Air's own sessions and views, a notification when a session finishes, sending a prompt from the sidebar, search and archive.
 

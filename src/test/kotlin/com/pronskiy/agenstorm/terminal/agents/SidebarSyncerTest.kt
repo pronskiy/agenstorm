@@ -9,16 +9,17 @@ import org.junit.Test
 class SidebarSyncerTest {
 
     /** A tool window that lays out only when [layOut] says so, like Swing after `stretchWidth`. */
-    private class FakeWindow(var visible: Boolean = false, var width: Int = 0, var anchor: String = "left", override var available: Boolean = true) : SidebarWindow {
+    private class FakeWindow(var visible: Boolean = false, var width: Int = 0, var anchor: String = "left", override var available: Boolean = true, var split: Boolean = true) : SidebarWindow {
         val steps = mutableListOf<SidebarStep>()
         private var pendingDelta = 0
 
-        override fun layout() = FrameLayout(visible, width, anchor)
+        override fun layout() = FrameLayout(visible, width, anchor, split)
 
         override fun run(step: SidebarStep) {
             steps += step
             when (step) {
                 is SidebarStep.SetAnchor -> anchor = step.anchor
+                is SidebarStep.SetSplit -> split = step.split
                 SidebarStep.Show -> { visible = true; if (width == 0) width = 456 }
                 SidebarStep.Hide -> visible = false
                 is SidebarStep.Stretch -> pendingDelta += step.delta
@@ -264,5 +265,19 @@ class SidebarSyncerTest {
 
         assertEquals(576, windows.getValue("beta").width)
         assertEquals(576, state.layout.value.width)
+    }
+
+    @Test
+    fun movingToTheUpperPartIsTheUsersOnlyOnInput() {
+        settled()
+        windows.getValue("alpha").split = false
+
+        syncer.changed("alpha", byUser = false)
+        assertTrue("the platform's: put back", windows.getValue("alpha").split)
+
+        windows.getValue("alpha").split = false
+        syncer.changed("alpha", byUser = true)
+        assertFalse(state.layout.value.split)
+        assertFalse(windows.getValue("beta").split)
     }
 }

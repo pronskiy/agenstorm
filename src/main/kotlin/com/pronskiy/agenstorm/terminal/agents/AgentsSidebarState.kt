@@ -19,13 +19,15 @@ import kotlinx.coroutines.flow.asStateFlow
 class AgentsSidebarState : PersistentStateComponent<AgentsSidebarState.Layout> {
 
     /**
-     * [width] 0 and [anchor] "" mean not recorded yet; [selected] is a row's id, "" for none; [collapsed] holds the base
-     * paths of folded groups, so a project that joins starts unfolded.
+     * [width] 0 and [anchor] "" mean not recorded yet; [split] puts it in the lower part of its side, where it starts
+     * (X5.1); [selected] is a row's id, "" for none; [collapsed] holds the base paths of folded groups, so a project that
+     * joins starts unfolded.
      */
     data class Layout(
         var visible: Boolean = false,
         var width: Int = 0,
         var anchor: String = "",
+        var split: Boolean = true,
         var selected: String = "",
         var collapsed: MutableList<String> = mutableListOf(),
         var scroll: Int = 0,

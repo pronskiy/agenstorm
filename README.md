@@ -551,10 +551,12 @@ Tools → Agenstorm → Window title.
 ## Agents sidebar
 
 Off by default: **Show the Agents sidebar** under Settings | Tools | Agenstorm | Agents. It adds an
-**Agents** tool window on the left, the same in every project window.
+**Agents** tool window in the lower part of the left side, under the Project view, the same in every
+project window.
 
 It lists, under each open project, the Claude Code sessions running in it — in any Terminal tab, plain or
-tmux-backed, in any window — and below them the project's last ten sessions (**Past sessions per project**,
+tmux-backed, in any window — each one's mark right under the project's folder icon, and below them the
+project's last ten sessions (**Past sessions per project**,
 0 for none), under the titles Claude gives them. Each running session shows Claude's own status:
 
 - a spinner while Claude works, an orange dot while it waits for you, a grey one when it is idle;
@@ -567,8 +569,11 @@ A background terminal comes back as a tab first. A past session opens in a new T
 in its folder, with `claude --resume <id>` typed in once the shell is ready, so your PATH and shell setup
 apply. **Copy Session ID** in the context menu copies the id for doing that by hand.
 
+A click on a project folds it, or unfolds it (← and → do the same).
+
 **The same in every window.** Opening, closing, resizing or moving the sidebar in one window does the same
-in all of them, and so does selecting a row, folding a project or scrolling; a project opened later takes
+in all of them — to the other side, or between the upper and lower part — and so does selecting a row,
+folding a project or scrolling; a project opened later takes
 the same layout, and it survives a restart. Only your own changes count: a new project that opens its
 Project view on the same side does not close the sidebar everywhere — the sidebar stays.
 

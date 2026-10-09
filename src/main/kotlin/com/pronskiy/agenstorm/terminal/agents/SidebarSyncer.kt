@@ -53,7 +53,7 @@ class SidebarSyncer<K : Any>(
         val window = windows(key)?.takeIf { it.available } ?: return
         val shared = state.layout.value
         val current = window.layout()
-        if (current.visible != shared.visible || (shared.anchor.isNotEmpty() && current.anchor != shared.anchor)) return apply(key)
+        if (current.visible != shared.visible || current.split != shared.split || (shared.anchor.isNotEmpty() && current.anchor != shared.anchor)) return apply(key)
         if (key !in widthPending && SidebarSyncPlan.widthStep(shared, current) != null) record(key)
     }
 

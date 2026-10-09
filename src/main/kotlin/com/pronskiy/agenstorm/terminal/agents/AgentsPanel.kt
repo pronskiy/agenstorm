@@ -17,11 +17,12 @@ import com.intellij.ui.ClientProperty
 import com.intellij.ui.ColoredTreeCellRenderer
 import com.intellij.ui.JBColor
 import com.intellij.ui.PopupHandler
+import com.intellij.ui.RowIcon
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.tree.TreeUtil
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import java.awt.BorderLayout
 import java.awt.Color
@@ -41,14 +42,12 @@ import javax.swing.JTree
 import javax.swing.SwingUtilities
 import javax.swing.Timer
 import javax.swing.ToolTipManager
-import javax.swing.event.TreeExpansionEvent
-import javax.swing.event.TreeExpansionListener
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 
 /**
- * Steps X1.2, X1.4, X2.5, X2.6 and X3.2. One frame's view of the Agents sidebar: a group per open project, in the
+ * Steps X1.2, X1.4, X2.5, X2.6, X3.2 and X5.2. One frame's view of the Agents sidebar: a group per open project, in the
  * model's order, with this frame's own project in bold — the one thing that differs between windows (decision 102) —
  * and under each the Claude Code sessions running there, then its newest past ones in grey. A click on a running
  * session brings up where it runs, on a past one resumes it in a new tab (decision 103). The
@@ -66,12 +65,19 @@ class AgentsPanel(
     private val treeModel = DefaultTreeModel(root)
     private val state = AgentsSidebarState.getInstance()
 
+    /** The model's groups as last rendered; the rows shown are these, less the folded projects' sessions. */
+    private var groups: List<ProjectGroup> = emptyList()
+
     /** Set while this panel changes its own tree, so the change is not taken for the user's. */
     private var restoring = false
 
+    /**
+     * Every row is a child of the hidden root (X5.2): a project's sessions are not its tree children but the rows after
+     * it, so each status mark sits right under the project's folder icon, and folding is the panel's own.
+     */
     val tree: Tree = Tree(treeModel).apply {
         isRootVisible = false
-        showsRootHandles = true
+        showsRootHandles = false
         cellRenderer = Renderer()
         ClientProperty.put(this, AnimatedIcon.ANIMATION_IN_RENDERER_ALLOWED, true)
     }
@@ -88,10 +94,6 @@ class AgentsPanel(
         add(scrollPane, BorderLayout.CENTER)
         ToolTipManager.sharedInstance().registerComponent(tree)
         tree.addTreeSelectionListener { recordTree { it.apply { selected = tree.selectionPath?.let(::idOf).orEmpty() } } }
-        tree.addTreeExpansionListener(object : TreeExpansionListener {
-            override fun treeExpanded(event: TreeExpansionEvent) = recordTree { it.apply { groupOf(event.path)?.let { g -> collapsed.remove(g.basePath) } } }
-            override fun treeCollapsed(event: TreeExpansionEvent) = recordTree { it.apply { groupOf(event.path)?.let { g -> if (g.basePath !in collapsed) collapsed.add(g.basePath) } } }
-        })
         scrollPane.verticalScrollBar.model.addChangeListener { recordTree { it.apply { scroll = scrollPane.verticalScrollBar.value } } }
         tree.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -100,7 +102,15 @@ class AgentsPanel(
         })
         tree.addKeyListener(object : KeyAdapter() {
             override fun keyPressed(e: KeyEvent) {
-                if (e.keyCode == KeyEvent.VK_ENTER) tree.selectionPath?.let(::click)
+                val path = tree.selectionPath ?: return
+                val group = (path.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? ProjectGroup
+                when {
+                    e.keyCode == KeyEvent.VK_ENTER -> click(path)
+                    group != null && e.keyCode == KeyEvent.VK_LEFT -> fold(group, folded = true)
+                    group != null && e.keyCode == KeyEvent.VK_RIGHT -> fold(group, folded = false)
+                    else -> return
+                }
+                e.consume()
             }
         })
         PopupHandler.installPopupMenu(tree, DefaultActionGroup(CopySessionIdAction()), "AgentsSidebarPopup")
@@ -112,51 +122,57 @@ class AgentsPanel(
         model.follow(state.layout, parent, ::restore)
     }
 
-    /** EDT. Rows that only changed in place are updated where they are; a new shape is rebuilt. */
+    /** EDT. */
     internal fun render(groups: List<ProjectGroup>) {
-        if (shapeOf(groups) == shapeOf(shownGroups())) {
-            groupNodes().zip(groups).forEach { (node, group) ->
-                node.userObject = group
-                treeModel.nodeChanged(node)
-                (0 until node.childCount).map { node.getChildAt(it) as DefaultMutableTreeNode }.zip(group.sessions + group.history).forEach { (child, row) ->
-                    child.userObject = row
-                    treeModel.nodeChanged(child)
-                }
-            }
-            return
-        }
-        restoring(true) {
-            root.removeAllChildren()
-            for (group in groups) {
-                val node = DefaultMutableTreeNode(group)
-                (group.sessions + group.history).forEach { node.add(DefaultMutableTreeNode(it, false)) }
-                root.add(node)
-            }
-            treeModel.reload()
-        }
-        restore(state.layout.value)
+        this.groups = groups
+        show(state.layout.value)
     }
 
-    /** Makes this tree show [layout]'s selection, folds and scroll. EDT. */
-    internal fun restore(layout: AgentsSidebarState.Layout) = restoring(true) {
-        for (node in groupNodes()) {
-            val path = TreePath(node.path)
-            val group = node.userObject as ProjectGroup
-            if (group.basePath in layout.collapsed) tree.collapsePath(path) else tree.expandPath(path)
+    /** Makes this tree show [layout]'s folds, selection and scroll. EDT. */
+    internal fun restore(layout: AgentsSidebarState.Layout) = show(layout)
+
+    /** Rows that only changed in place are updated where they are; a new set of rows is rebuilt. */
+    private fun show(layout: AgentsSidebarState.Layout) = restoring(true) {
+        val items = groups.flatMap { group -> listOf<Any>(group) + if (group.basePath in layout.collapsed) emptyList() else group.sessions + group.history }
+        val nodes = rowNodes()
+        if (items.map(::keyOf) == nodes.map { keyOf(it.userObject) }) {
+            nodes.zip(items).forEach { (node, item) ->
+                if (node.userObject != item) {
+                    node.userObject = item
+                    treeModel.nodeChanged(node)
+                }
+            }
+        } else {
+            root.removeAllChildren()
+            items.forEach { root.add(DefaultMutableTreeNode(it, false)) }
+            treeModel.reload()
         }
-        val selected = rows().firstOrNull { idOf(it) == layout.selected }
+        val selected = rowNodes().firstOrNull { keyOf(it.userObject) == layout.selected }?.let { TreePath(it.path) }
         if (selected == null) tree.clearSelection() else if (tree.selectionPath != selected) tree.selectionPath = selected
         if (scrollPane.verticalScrollBar.value != layout.scroll) scrollPane.verticalScrollBar.value = layout.scroll
     }
 
+    /** Folds or unfolds [group] in every window: a click on a project is the user's, whichever window had the focus. */
+    internal fun fold(group: ProjectGroup, folded: Boolean) {
+        state.update { layout ->
+            layout.apply { if (folded) { if (group.basePath !in collapsed) collapsed.add(group.basePath) } else collapsed.remove(group.basePath) }
+        }
+        show(state.layout.value)
+    }
+
     /** The groups as shown, top to bottom. */
-    internal fun shownGroups(): List<ProjectGroup> = groupNodes().map { it.userObject as ProjectGroup }
+    internal fun shownGroups(): List<ProjectGroup> = rowNodes().mapNotNull { it.userObject as? ProjectGroup }
+
+    /** Every row as shown, top to bottom: projects, then each one's sessions unless it is folded. */
+    internal fun shownRows(): List<Any> = rowNodes().map { it.userObject }
 
     internal fun isOwn(group: ProjectGroup): Boolean = group.basePath == project.basePath
 
     internal fun click(path: TreePath) {
-        val group = (path.parentPath?.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? ProjectGroup ?: return
-        when (val item = (path.lastPathComponent as? DefaultMutableTreeNode)?.userObject) {
+        val node = path.lastPathComponent as? DefaultMutableTreeNode ?: return
+        val group = groupAbove(node) ?: return
+        when (val item = node.userObject) {
+            is ProjectGroup -> fold(item, folded = item.basePath !in state.layout.value.collapsed)
             is SessionRow -> onClick(ClickPlan.of(item, group.basePath), item.session.sessionId)
             is PastSession -> onClick(ClickPlan.of(item, group.basePath), item.sessionId)
         }
@@ -185,28 +201,32 @@ class AgentsPanel(
         }
     }
 
-    private fun groupNodes(): List<DefaultMutableTreeNode> = (0 until root.childCount).map { root.getChildAt(it) as DefaultMutableTreeNode }
+    private fun rowNodes(): List<DefaultMutableTreeNode> = (0 until root.childCount).map { root.getChildAt(it) as DefaultMutableTreeNode }
 
-    private fun rows(): List<TreePath> = TreeUtil.treePathTraverser(tree).preOrderDfsTraversal().filter { it.pathCount > 1 }.toList()
-
-    private fun groupOf(path: TreePath): ProjectGroup? = (path.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? ProjectGroup
+    /** The project a row belongs to: itself, or the nearest project row above it. */
+    private fun groupAbove(node: DefaultMutableTreeNode): ProjectGroup? {
+        val rows = rowNodes()
+        val index = rows.indexOf(node)
+        if (index < 0) return null
+        return (index downTo 0).firstNotNullOfOrNull { rows[it].userObject as? ProjectGroup }
+    }
 
     private inner class Renderer : ColoredTreeCellRenderer() {
         override fun customizeCellRenderer(tree: JTree, value: Any?, selected: Boolean, expanded: Boolean, leaf: Boolean, row: Int, hasFocus: Boolean) {
             when (val item = (value as? DefaultMutableTreeNode)?.userObject) {
                 is ProjectGroup -> {
-                    icon = AllIcons.Nodes.Folder
+                    icon = slots(if (item.basePath in state.layout.value.collapsed) AllIcons.General.ChevronRight else AllIcons.General.ChevronDown, AllIcons.Nodes.Folder)
                     append(item.name, if (isOwn(item)) SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES else SimpleTextAttributes.REGULAR_ATTRIBUTES)
                 }
                 is SessionRow -> {
-                    icon = iconOf(item)
+                    icon = slots(EmptyIcon.ICON_16, iconOf(item))
                     append(SessionRowText.title(item.session), if (item.place == SessionPlace.Elsewhere) SimpleTextAttributes.GRAYED_ATTRIBUTES else SimpleTextAttributes.REGULAR_ATTRIBUTES)
                     SessionRowText.ago(item.session.updatedAt, now())?.let { append("  $it", SimpleTextAttributes.GRAYED_SMALL_ATTRIBUTES) }
                     SessionRowText.hint(item)?.let { append("  $it", SimpleTextAttributes.GRAYED_ITALIC_ATTRIBUTES) }
                     toolTipText = SessionRowText.tooltip(item)
                 }
                 is PastSession -> {
-                    icon = AllIcons.Vcs.History
+                    icon = slots(EmptyIcon.ICON_16, AllIcons.Vcs.History)
                     append(item.title, SimpleTextAttributes.GRAYED_ATTRIBUTES)
                     SessionRowText.ago(item.lastActivity, now())?.let { append("  $it", SimpleTextAttributes.GRAYED_SMALL_ATTRIBUTES) }
                     toolTipText = AgenstormBundle.message("agents.click.past")
@@ -264,16 +284,17 @@ class AgentsPanel(
             else -> IDLE
         }
 
-        /** A row's id in [AgentsSidebarState.Layout.selected]: `group:<base path>` for a project, `session:<id>` for a session. */
-        fun idOf(path: TreePath): String? = when (val item = (path.lastPathComponent as? DefaultMutableTreeNode)?.userObject) {
+        /** Two icons side by side: a project's fold chevron and folder, or a blank and a session's mark under the folder. */
+        private fun slots(first: Icon, second: Icon): Icon = RowIcon(first, second)
+
+        /** A row's id in [AgentsSidebarState.Layout.selected]: `group:<base path>`, `session:<id>` or `past:<id>`. */
+        fun idOf(path: TreePath): String? = keyOf((path.lastPathComponent as? DefaultMutableTreeNode)?.userObject)
+
+        private fun keyOf(item: Any?): String? = when (item) {
             is ProjectGroup -> "group:${item.basePath}"
             is SessionRow -> "session:${item.session.sessionId}"
             is PastSession -> "past:${item.sessionId}"
             else -> null
         }
-
-        /** What decides whether rows can be updated in place: the projects and their sessions, in order. */
-        private fun shapeOf(groups: List<ProjectGroup>) =
-            groups.map { group -> Triple(group.basePath, group.sessions.map { it.session.sessionId }, group.history.map { it.sessionId }) }
     }
 }

@@ -22,8 +22,8 @@
         <!-- U3.3: "N background terminals" in every window's status bar while there are any. -->
         <statusBarWidgetFactory id="agenstorm.backgroundTerminals" implementation="com.pronskiy.agenstorm.terminal.tmux.BackgroundTerminalsWidgetFactory"/>
         <!-- X1.2 (Epic X): the Agents sidebar, one per frame over one app-level model (decision 102); available only while
-             the setting is on (decision 104). -->
-        <toolWindow id="Agenstorm.Agents" anchor="left" icon="AllIcons.Nodes.Console"
+             the setting is on (decision 104); in the lower part of the left side (X5.1). -->
+        <toolWindow id="Agenstorm.Agents" anchor="left" side="true" icon="AllIcons.Nodes.Console"
                     factoryClass="com.pronskiy.agenstorm.terminal.agents.AgentsToolWindowFactory"/>
         <postStartupActivity implementation="com.pronskiy.agenstorm.terminal.agents.AgentsStartupActivity"/>
     </extensions>
