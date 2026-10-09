@@ -69,6 +69,7 @@
 | 2026-10-09 | **Epic X code review**, fixed the same day: one failing read no longer stops the sessions poll for the rest of the run; the model is written in one atomic update against the projects open at that moment, so a project closed mid-read stays out, a dot cleared meanwhile stays cleared, and no row keeps a closed project's tab; past sessions re-listed every 15 s and on events instead of every 2 s; a transcript that failed to read is tried again rather than remembered as untitled; a project reached through a symlink owns the sessions in its real folder. 4 tests more, `check` green (1192), verifier unchanged | Claude (review, fixes, text) |
 | 2026-10-09 | **Epic X, Phase X5** after Roman's first look: the sidebar in the lower part of its side, kept there in every window, and session marks right under their project's folder icon | Roman (requests), Claude (build, text) |
 | 2026-10-09 | **Epic X merged into `main`** (fast-forward, not pushed); decisions 105 and 106 confirmed | Roman ("merge into main", "confirm 105 and 106"), Claude (merge, text) |
+| 2026-10-09 | **1.13.0 cut** with Epic X and the tmux terminal-size fix | Claude (cut), Roman ("push and cut the release") |
 
 ### Status legend
 
@@ -76,7 +77,9 @@
 
 ### Current focus
 
-**Now on:** **Epic X is built, closed and merged into `main`** (2026-10-09, fast-forward, not pushed; the `epic-x` branch deleted): X0–X5 ✅, decisions 100–106 confirmed, `check` green (1196 tests), verifier Compatible on all four IDEs with zero internal API. Next is Roman's call: a look in `runIde` at the sidebar staying put across a project switch (measured in the robot IDE, not seen), push, and a 1.13.0 cut.
+**Now on:** **1.13.0 is cut** (2026-10-09, on Roman's "push and cut the release"): `pluginVersion = 1.13.0`, the changelog section patched (`[1.13.0] - 2026-10-09`, compare links updated, *Added* before *Fixed*), `agenstorm-1.13.0.zip` built (2.1 MB; the plugin jar 1,114 entries, nothing but classes and resources; sha256 `707d86af…`), `./gradlew check` green (1196 tests, against the 2026.3 EAP) and the verifier **Compatible on PS-262.10968.76, PS-263.6259.29, IU-262.10968.63 and IU-263.6259.32 with zero internal usages** (deprecated 4 on 262, 14 on 263; experimental 243). It carries **Epic X** (the Agents sidebar, off by default) and the tmux terminal-size fix (`3cbc19f`).
+
+**Before that:** **Epic X is built, closed and merged into `main`** (2026-10-09, fast-forward, not pushed; the `epic-x` branch deleted): X0–X5 ✅, decisions 100–106 confirmed, `check` green (1196 tests), verifier Compatible on all four IDEs with zero internal API. Next is Roman's call: a look in `runIde` at the sidebar staying put across a project switch (measured in the robot IDE, not seen), push, and a 1.13.0 cut.
 
 **Before that:** **Epic X is built** (2026-10-09, branch `epic-x`, not merged): X0–X4 ✅ and every guardrail measured in the robot IDE while Roman was away ("close ide yourself when needed"). Phase X5 (lower part of the side, marks under the folder icon) added after Roman's first look and signed off ("looks good"). Decisions 105 and 106 confirmed by Roman ("confirm 105 and 106"). Waiting for Roman: the call on merging `epic-x` into `main` and on a release. `check` green (1192 tests), verifier Compatible on all four IDEs with zero internal API; a code review's five findings fixed.
 

@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-10-09
+
 ### Added
 
 - Agents sidebar: one list of the Claude Code sessions in every open project — the running ones with Claude's own status (working, waiting for you, idle, and a dot for one that finished while you were in another project) and each project's recent ones. It looks the same in every window: open, width, side, selection and scroll follow you across project switches and restarts. A click brings up the Terminal tab a session runs in, in its own project's window, brings a background terminal back as a tab, or resumes a past session in a new tab with `claude --resume`. Off by default under Settings | Tools | Agenstorm | Agents.
@@ -203,7 +205,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.12.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.13.0...HEAD
+[1.13.0]: https://github.com/pronskiy/agenstorm/compare/1.12.0...1.13.0
 [1.12.0]: https://github.com/pronskiy/agenstorm/compare/1.11.0...1.12.0
 [1.11.0]: https://github.com/pronskiy/agenstorm/compare/1.10.0...1.11.0
 [1.10.0]: https://github.com/pronskiy/agenstorm/compare/1.9.3...1.10.0
