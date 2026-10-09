@@ -70,6 +70,7 @@
 | 2026-10-09 | **Epic X, Phase X5** after Roman's first look: the sidebar in the lower part of its side, kept there in every window, and session marks right under their project's folder icon | Roman (requests), Claude (build, text) |
 | 2026-10-09 | **Epic X merged into `main`** (fast-forward, not pushed); decisions 105 and 106 confirmed | Roman ("merge into main", "confirm 105 and 106"), Claude (merge, text) |
 | 2026-10-09 | **1.13.0 cut** with Epic X and the tmux terminal-size fix | Claude (cut), Roman ("push and cut the release") |
+| 2026-10-09 | **1.13.0 pushed and uploaded**: `build.yml` green with the draft made, Marketplace upload green and the signed ZIP on the draft | Claude (push, runs), Roman (go-aheads) |
 
 ### Status legend
 
@@ -77,7 +78,7 @@
 
 ### Current focus
 
-**Now on:** **1.13.0 is cut** (2026-10-09, on Roman's "push and cut the release"): `pluginVersion = 1.13.0`, the changelog section patched (`[1.13.0] - 2026-10-09`, compare links updated, *Added* before *Fixed*), `agenstorm-1.13.0.zip` built (2.1 MB; the plugin jar 1,114 entries, nothing but classes and resources; sha256 `707d86af…`), `./gradlew check` green (1196 tests, against the 2026.3 EAP) and the verifier **Compatible on PS-262.10968.76, PS-263.6259.29, IU-262.10968.63 and IU-263.6259.32 with zero internal usages** (deprecated 4 on 262, 14 on 263; experimental 243). It carries **Epic X** (the Agents sidebar, off by default) and the tmux terminal-size fix (`3cbc19f`).
+**Now on:** **1.13.0 is cut** (2026-10-09, on Roman's "push and cut the release"): `pluginVersion = 1.13.0`, the changelog section patched (`[1.13.0] - 2026-10-09`, compare links updated, *Added* before *Fixed*), `agenstorm-1.13.0.zip` built (2.1 MB; the plugin jar 1,114 entries, nothing but classes and resources; sha256 `707d86af…`), `./gradlew check` green (1196 tests, against the 2026.3 EAP) and the verifier **Compatible on PS-262.10968.76, PS-263.6259.29, IU-262.10968.63 and IU-263.6259.32 with zero internal usages** (deprecated 4 on 262, 14 on 263; experimental 243). It carries **Epic X** (the Agents sidebar, off by default) and the tmux terminal-size fix (`3cbc19f`). **Pushed and uploaded 2026-10-09:** `build.yml` on `e8a9e13` (37911844220) green on all four jobs with the 1.13.0 draft made; on Roman's "dispatch the upload and publish once review passes" the **Marketplace upload** workflow (37913444149) green, `agenstorm-1.13.0-signed.zip` attached to the draft. Waiting for review; the draft is published as Latest once the update server lists 1.13.0.
 
 **Before that:** **Epic X is built, closed and merged into `main`** (2026-10-09, fast-forward, not pushed; the `epic-x` branch deleted): X0–X5 ✅, decisions 100–106 confirmed, `check` green (1196 tests), verifier Compatible on all four IDEs with zero internal API. Next is Roman's call: a look in `runIde` at the sidebar staying put across a project switch (measured in the robot IDE, not seen), push, and a 1.13.0 cut.
 
