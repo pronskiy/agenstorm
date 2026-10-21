@@ -85,6 +85,7 @@
 | 2026-10-19 | **1.15.0 cut** with Phase Y2 (the branch on top), the widescreen give-back and the bug fixes since 1.14.0 | Claude (cut), Roman ("update the docs and cut the release") |
 | 2026-10-19 | **1.15.0 pushed and uploaded**: `build.yml` green with the draft made (run 39282835963), Marketplace upload green and the signed ZIP on the draft (run 39287412264) | Claude (push, runs), Roman ("push it and run the upload") |
 | 2026-10-19 | **1.15.0 released**: review passed about 12 minutes after the upload, served at 16:53Z, the draft published as Latest, `release.yml` green with "1.15.0 is being served" (run 39289467986) | Claude (publish), Roman ("publish it once the review passes") |
+| 2026-10-21 | **Epic E gains name disambiguation** (from a fork): the tabs and the "+" popup show `SomeFolder/infrastructure` when two shown projects share a name (one parent folder is enough for uniqueness; the prefix grows deeper when parents collide too), popup rows tell the full path in their tooltip, and the speed search matches the shown name; setting `tabsDisambiguateNames`, on by default. `core/ProjectNameUniquifier` holds the pure rule, tested. Awaiting Roman's review and sign-off | Igor Voitovich (request), Claude (investigation, code, text) |
 
 ### Status legend
 
