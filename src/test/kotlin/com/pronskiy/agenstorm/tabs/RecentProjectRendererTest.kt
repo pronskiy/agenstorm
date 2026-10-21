@@ -29,6 +29,28 @@ class RecentProjectRendererTest : BasePlatformTestCase() {
         assertEquals(listOf("agenstorm"), labelsOf(RecentProjectRenderer.pane(action, null, isSelected = false)).map { it.text })
     }
 
+    fun testTheFullPathIsTheTooltip() {
+        val action = ReopenProjectAction("/fake/agenstorm", "agenstorm", "agenstorm")
+        assertEquals("/fake/agenstorm", labelsOf(RecentProjectRenderer.pane(action, null, isSelected = false)).first().toolTipText)
+    }
+
+    fun testTwoProjectsSharingANameShowTheirParentFolder() {
+        val first = ReopenProjectAction("/work/SomeFolder/infra", "infra", "infra")
+        val second = ReopenProjectAction("/home/AnotherFolder/infra", "infra", "infra")
+        val renderer = RecentProjectRenderer(listOf(first, second)) { null }
+        assertEquals("SomeFolder/infra", renderer.nameFor(first))
+        assertEquals("the other keeps its own parent", "AnotherFolder/infra", renderer.nameFor(second))
+        val labels = labelsOf(RecentProjectRenderer.pane(first, null, isSelected = false, renderer.nameFor(first)))
+        assertEquals("the row shows the prefixed name", listOf("SomeFolder/infra"), labels.map { it.text })
+    }
+
+    fun testANameNoOneSharesIsShownAlone() {
+        val only = ReopenProjectAction("/work/alpha", "alpha", "alpha")
+        val twin = ReopenProjectAction("/work/x/beta", "beta", "beta")
+        val renderer = RecentProjectRenderer(listOf(only, twin)) { null }
+        assertEquals(listOf("alpha", "beta"), listOf(renderer.nameFor(only), renderer.nameFor(twin)))
+    }
+
     fun testBranchesAreReadFromTheRecentProjectActions() {
         val actions = listOf(
             ReopenProjectAction("/fake/a", "a", "a", "main"),

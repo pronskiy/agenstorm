@@ -86,6 +86,8 @@ class AgenstormSettings : PersistentStateComponent<AgenstormSettings.State> {
         var tabsShowIcons: Boolean = true,
         /** Epic E: widest a tab may grow before the name is ellipsized, in pixels (72–600). */
         var tabsMaxWidth: Int = 220,
+        /** Epic E: a project whose name another shown project shares carries its parent folder in front, `SomeFolder/infrastructure` — on the tabs and in the "+" popup. */
+        var tabsDisambiguateNames: Boolean = true,
         /** Epic P: a project idle for [projectsOffloadAfterMinutes], or the least recently active beyond [projectsMaxLoaded], is closed with its tab kept. */
         var projectsOffloadEnabled: Boolean = true,
         /** Epic P: minutes without its window being active before a project is offloaded (5–1440). */

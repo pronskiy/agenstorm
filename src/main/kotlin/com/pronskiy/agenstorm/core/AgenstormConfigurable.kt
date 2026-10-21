@@ -127,6 +127,13 @@ class AgenstormConfigurable : BoundConfigurable(AgenstormBundle.message("setting
                     .onApply { ProjectTabsModel.getInstance().refresh() }
                     .applyToComponent { name = "tabs.showIcons" }
             }
+            row {
+                checkBox(AgenstormBundle.message("settings.tabs.disambiguateNames"))
+                    .bindSelected({ AgenstormSettings.getInstance().state.tabsDisambiguateNames }, { AgenstormSettings.getInstance().state.tabsDisambiguateNames = it })
+                    .onApply { ProjectTabsModel.getInstance().refresh() }
+                    .applyToComponent { name = "tabs.disambiguateNames" }
+                    .comment(AgenstormBundle.message("settings.tabs.disambiguateNames.comment"))
+            }
             row(AgenstormBundle.message("settings.tabs.maxWidth")) {
                 intTextField(72..600, 10)
                     .bindIntText(MutableProperty({ AgenstormSettings.getInstance().state.tabsMaxWidth }, { AgenstormSettings.getInstance().state.tabsMaxWidth = it }))

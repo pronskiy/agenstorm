@@ -37,7 +37,8 @@ import javax.swing.SwingConstants
 /**
  * The "+" popup: the recent projects in a list of their own, at most [MAX_VISIBLE_PROJECTS] rows tall and scrolling
  * past that, and under it the stock widget's actions (Open…, Get from Version Control…), always in view (Roman,
- * 2026-10-19 — in one long list they were below the fold).
+ * 2026-10-19 — in one long list they were below the fold). Projects sharing a name show their parent folder in
+ * front, `SomeFolder/infrastructure` ([RecentProjectRenderer]).
  *
  * The items, their presentation and what choosing one does all come from [step], the platform's own step for the
  * whole group, so a choice does what it did in the single list this replaces. Up and Down move through both lists
@@ -46,7 +47,10 @@ import javax.swing.SwingConstants
 class AddProjectPopup(private val step: ActionPopupStep, branchOf: (String) -> String?) {
 
     private val items = step.values
-    internal val projects = list(items.filter { it.action is ReopenProjectAction }, RecentProjectRenderer(branchOf))
+    private val projectsRenderer = RecentProjectRenderer(items.map { it.action }.filterIsInstance<ReopenProjectAction>(), branchOf)
+    internal val projects = list(items.filter { it.action is ReopenProjectAction }, projectsRenderer)
+    /** The name the row of [action] shows, parent folder included when the list shares the name. */
+    internal fun nameOf(action: ReopenProjectAction) = projectsRenderer.nameFor(action)
     internal val commands = list(items.filter { it.action !is ReopenProjectAction }, ListCellRenderer { _, item, _, selected, _ ->
         command(item.text, item.getIcon(selected), selected)
     })
@@ -69,7 +73,10 @@ class AddProjectPopup(private val step: ActionPopupStep, branchOf: (String) -> S
                 border = JBUI.Borders.empty()
                 viewportBorder = JBUI.Borders.empty()
             }
-            content.add(ListWithFilter.wrap(projects, scroll, { item: ActionItem -> item.text }), BorderLayout.CENTER)
+            // The speed search matches what the rows show, prefixed names for same-named projects included.
+            content.add(ListWithFilter.wrap(projects, scroll, { item: ActionItem ->
+                (item.action as? ReopenProjectAction)?.let(projectsRenderer::nameFor) ?: item.text
+            }), BorderLayout.CENTER)
         }
         if (commands.model.size > 0) {
             content.add(JPanel(BorderLayout()).apply {

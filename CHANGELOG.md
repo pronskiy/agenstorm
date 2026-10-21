@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Project tabs: projects that share a name show the parent folder in front of it — on the tabs and in the "+" popup: `SomeFolder/ProjectName` and `AnotherFolder/ProjectName`, not two plain `ProjectName`. Names used once stay as they are, and a popup row now tells the whole path in its tooltip. Settings → Tools → Agenstorm → Project tabs.
+
 ### Fixed
 
 - Agents: no "finished" notification or dot when a background subagent ends and Claude goes on with its answer. A session counts as finished once it has stayed stopped for three seconds.

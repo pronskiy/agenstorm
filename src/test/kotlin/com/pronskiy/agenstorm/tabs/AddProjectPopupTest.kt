@@ -28,6 +28,20 @@ class AddProjectPopupTest : BasePlatformTestCase() {
         assertEquals(3, popupOf(projects = 3).projects.visibleRowCount)
     }
 
+    fun testProjectsSharingANameShowTheirParentFolder() {
+        val group = DefaultActionGroup()
+        val first = ReopenProjectAction("/work/SomeFolder/infra", "infra", "infra")
+        val second = ReopenProjectAction("/home/AnotherFolder/infra", "infra", "infra")
+        val unique = ReopenProjectAction("/work/alpha", "alpha", "alpha")
+        group.add(first)
+        group.add(second)
+        group.add(unique)
+        val popup = popupOf(group)
+        assertEquals("SomeFolder/infra", popup.nameOf(first))
+        assertEquals("AnotherFolder/infra", popup.nameOf(second))
+        assertEquals("a name no one shares is shown alone", "alpha", popup.nameOf(unique))
+    }
+
     fun testTheArrowsRunThroughBothListsAndWrapAround() {
         val popup = popupOf(projects = 3)
         popup.move(-1)
@@ -49,6 +63,10 @@ class AddProjectPopupTest : BasePlatformTestCase() {
         group.addSeparator()
         group.add(plain("Open…"))
         group.add(plain("Get from Version Control…"))
+        return popupOf(group)
+    }
+
+    private fun popupOf(group: DefaultActionGroup): AddProjectPopup {
         val context = SimpleDataContext.getProjectContext(project)
         val step = JBPopupFactory.getInstance().createActionsStep(group, context, "test", false, true, null, JPanel(), false, 0, false)
         return AddProjectPopup(step as ActionPopupStep) { null }.also { Disposer.register(testRootDisposable, it.popup) }

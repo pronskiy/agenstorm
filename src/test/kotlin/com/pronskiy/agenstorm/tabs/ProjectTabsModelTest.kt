@@ -7,6 +7,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.xmlb.XmlSerializer
+import com.pronskiy.agenstorm.core.AgenstormSettings
 
 /** Steps E1.2 / P2.1: tab order by project key, persisted; offloaded tabs and activity alongside; listeners on the EDT. */
 class ProjectTabsModelTest : BasePlatformTestCase() {
@@ -100,6 +101,42 @@ class ProjectTabsModelTest : BasePlatformTestCase() {
         assertTrue(model.state.offloaded.isEmpty())
         assertEquals(2_000L, model.lastActive("/fake/beta"))
         assertEquals(listOf("/fake/beta", mine), model.state.order)
+    }
+
+    /** Igor Voitovich, 2026-10-21: tabs sharing a name show their parent folder; the stored names stay raw. */
+    fun testTabsSharingANameAreShownWithTheirParentFolder() {
+        model.loadState(ProjectTabsModel.State().apply {
+            offloaded = mutableListOf(
+                ProjectTabsModel.OffloadedEntry("/work/SomeFolder/infra", "infra", 1L),
+                ProjectTabsModel.OffloadedEntry("/home/AnotherFolder/infra", "infra", 2L),
+            )
+        })
+
+        val shown = model.tabs().filter { it.key.endsWith("/infra") }.associate { it.key to it.name }
+        assertEquals(
+            mapOf(
+                "/work/SomeFolder/infra" to "SomeFolder/infra",
+                "/home/AnotherFolder/infra" to "AnotherFolder/infra",
+            ),
+            shown,
+        )
+        assertEquals("the names stored are the raw ones", listOf("infra", "infra"), model.state.offloaded.map { it.name })
+    }
+
+    fun testDisambiguationOffLeavesTabNamesAlone() {
+        val settings = AgenstormSettings.getInstance()
+        try {
+            settings.loadState(AgenstormSettings.State(tabsDisambiguateNames = false))
+            model.loadState(ProjectTabsModel.State().apply {
+                offloaded = mutableListOf(
+                    ProjectTabsModel.OffloadedEntry("/work/SomeFolder/infra", "infra", 1L),
+                    ProjectTabsModel.OffloadedEntry("/home/AnotherFolder/infra", "infra", 2L),
+                )
+            })
+            assertEquals(listOf("infra", "infra"), model.tabs().filter { it.key.endsWith("/infra") }.map { it.name })
+        } finally {
+            settings.loadState(AgenstormSettings.State())
+        }
     }
 
     fun testUnmarkAndForgetRemoveTheEntryAndListenersSeeProjectTabs() {

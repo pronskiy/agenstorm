@@ -10,7 +10,9 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Disposer
+import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.ProjectNameProvider
+import com.pronskiy.agenstorm.core.ProjectNameUniquifier
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -51,12 +53,25 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
         this.state = state
     }
 
-    /** Every tab, loaded and offloaded, in stored order. An offloaded key that is open after all counts as loaded. */
+    /**
+     * Every tab, loaded and offloaded, in stored order. An offloaded key that is open after all counts as loaded.
+     * When [AgenstormSettings.State.tabsDisambiguateNames] is on, a name two tabs share is shown prefixed with its
+     * parent folder ([ProjectNameUniquifier]) — the raw name is what is stored, never a prefixed one.
+     */
     fun tabs(): List<ProjectTab> {
         val loaded = openProjects().associateBy(::keyOf)
         val offloaded = state.offloaded.filter { it.key !in loaded }.associateBy { it.key }
-        return sortKeys(loaded.keys + offloaded.keys).mapNotNull { key ->
+        val tabs = sortKeys(loaded.keys + offloaded.keys).mapNotNull { key ->
             loaded[key]?.let { ProjectTab.Loaded(it) } ?: offloaded[key]?.let { ProjectTab.Offloaded(it.key, it.name, it.since) }
+        }
+        if (!AgenstormSettings.getInstance().state.tabsDisambiguateNames) return tabs
+        val names = ProjectNameUniquifier.displayNames(tabs.map { ProjectNameUniquifier.Entry(it.key, it.name, it.key) })
+        return tabs.map { tab ->
+            val name = names[tab.key] ?: tab.name
+            when (tab) {
+                is ProjectTab.Loaded -> tab.copy(name = name)
+                is ProjectTab.Offloaded -> tab.copy(name = name)
+            }
         }
     }
 

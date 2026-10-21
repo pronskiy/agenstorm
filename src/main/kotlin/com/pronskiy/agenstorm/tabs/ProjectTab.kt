@@ -7,15 +7,15 @@ import com.pronskiy.agenstorm.core.ProjectNameProvider
  * Step P2.1. One tab of the strip: a project that is open, or one Agenstorm offloaded — closed with everything
  * saved, remembered by its base path so a click can load it again. [key] is [ProjectTabsModel.keyOf] for both,
  * which is what keeps an offloaded project in its place in the stored order. A tab's [name] is the project's display
- * name ([ProjectNameProvider]) — `app:fix-login` for a linked worktree.
+ * name ([ProjectNameProvider]) — `app:fix-login` for a linked worktree — as [ProjectTabsModel.tabs] renders it:
+ * prefixed with the parent folder when another tab of the same strip shares the name.
  */
 sealed class ProjectTab {
     abstract val key: String
     abstract val name: String
 
-    data class Loaded(val project: Project) : ProjectTab() {
+    data class Loaded(val project: Project, override val name: String = ProjectNameProvider.displayName(project)) : ProjectTab() {
         override val key: String get() = ProjectTabsModel.keyOf(project)
-        override val name: String get() = ProjectNameProvider.displayName(project)
     }
 
     /** [sinceMs] is when the project was offloaded (epoch millis), for the tooltip. */

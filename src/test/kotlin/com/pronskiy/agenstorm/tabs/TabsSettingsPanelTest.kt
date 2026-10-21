@@ -37,12 +37,14 @@ class TabsSettingsPanelTest : BasePlatformTestCase() {
         assertFalse(named<JBRadioButton>("tabs.branch.top").isSelected)
         assertTrue(named<JBCheckBox>("tabs.mirrorBounds").isSelected)
         assertTrue(named<JBCheckBox>("tabs.showIcons").isSelected)
+        assertTrue("shared names are disambiguated by default", named<JBCheckBox>("tabs.disambiguateNames").isSelected)
         assertEquals("220", named<JBTextField>("tabs.maxWidth").text)
         assertFalse(configurable.isModified)
 
         named<JBRadioButton>("tabs.branch.top").isSelected = true
         named<JBCheckBox>("tabs.mirrorBounds").isSelected = false
         named<JBCheckBox>("tabs.showIcons").isSelected = false
+        named<JBCheckBox>("tabs.disambiguateNames").isSelected = false
         named<JBTextField>("tabs.maxWidth").text = "160"
         assertTrue(configurable.isModified)
 
@@ -52,6 +54,7 @@ class TabsSettingsPanelTest : BasePlatformTestCase() {
         assertFalse(state.branchInStatusBar)
         assertFalse(state.tabsMirrorWindowBounds)
         assertFalse(state.tabsShowIcons)
+        assertFalse(state.tabsDisambiguateNames)
         assertEquals(160, state.tabsMaxWidth)
         assertFalse(configurable.isModified)
     }
