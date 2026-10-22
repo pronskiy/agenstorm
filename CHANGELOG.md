@@ -6,7 +6,7 @@
 
 ### Added
 
-- Project tabs: projects that share a name show the parent folder in front of it — on the tabs and in the "+" popup: `SomeFolder/ProjectName` and `AnotherFolder/ProjectName`, not two plain `ProjectName`. A worktree of such a project carries that project's folder, `SomeFolder/ProjectName:fix`, never its own `.worktrees/`. Names used once stay as they are, and a popup row now tells the whole path in its tooltip. Settings → Tools → Agenstorm → Project tabs.
+- Project tabs: projects that share a name show the parent folder in front of it — on the tabs and in the "+" popup: `SomeFolder/ProjectName` and `AnotherFolder/ProjectName`, not two plain `ProjectName`. A worktree of such a project carries that project's folder, `SomeFolder/ProjectName:fix`, never its own `.worktrees/`. A name too long for its tab is shortened in the middle, `SomeFolder…Name:fix`, so the folder and the worktree both stay in view. Names used once stay as they are, and a popup row now tells the whole path in its tooltip. Settings → Tools → Agenstorm → Project tabs.
 
 ### Fixed
 

@@ -429,8 +429,8 @@ sits, so the window has one header row instead of two.
 - Right-click for Close, Close Others, Copy Path.
 - Drag to reorder; order is remembered per project in `agenstorm-tabs.xml`.
 - The tabs take all the room the toolbar can spare. When it runs out, the widest tabs shrink first (names
-  shortened with an ellipsis, short names untouched), then every tab becomes an icon. Nothing hides behind a
-  "…" button.
+  shortened in the middle, so the folder in front and a worktree's `:fix` behind stay in view; short names
+  untouched), then every tab becomes an icon. Nothing hides behind a "…" button.
 - A project you have not used for a while is offloaded: closed with everything saved, its tab kept as a
   dotted bookmark. Click the bookmark to load it again. See below.
 

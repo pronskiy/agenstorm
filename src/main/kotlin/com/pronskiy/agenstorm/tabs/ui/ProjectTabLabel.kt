@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.text.HtmlBuilder
+import com.intellij.ui.ClientProperty
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.PopupHandler
@@ -15,6 +16,7 @@ import com.intellij.util.text.DateFormatUtil
 import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.NamedColorUtil
+import com.intellij.util.ui.SwingTextTrimmer
 import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
@@ -141,6 +143,9 @@ class ProjectTabLabel(
 
     /** The icon in front of the name: the project's, with the waiting badge when there is one. */
     internal val nameIcon: Icon? get() = nameLabel.icon
+
+    /** How the name is shortened when the tab is too narrow for it. */
+    internal val nameTrimmer: SwingTextTrimmer? get() = ClientProperty.get(nameLabel, SwingTextTrimmer.KEY)
     internal val closeLabel = JBLabel(HIDDEN_CLOSE).apply {
         addMouseListener(object : MouseAdapter() {
             override fun mouseEntered(e: MouseEvent) { if (isCloseShown) icon = AllIcons.Actions.CloseHovered }
@@ -159,6 +164,9 @@ class ProjectTabLabel(
         toolTipText = tooltip()
         nameLabel.foreground = textColor()
         nameLabel.iconTextGap = JBUI.scale(6)
+        // A name too long for the tab loses its middle, not its end: the folder in front and a worktree's `:fix` behind
+        // are what tell same-named tabs apart (Roman, 2026-10-22).
+        ClientProperty.put(nameLabel, SwingTextTrimmer.KEY, SwingTextTrimmer.ELLIPSIS_IN_CENTER)
         updateCloseIcon()
         add(nameLabel, BorderLayout.CENTER)
         add(closeLabel, BorderLayout.EAST)

@@ -1,6 +1,7 @@
 package com.pronskiy.agenstorm.tabs
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.util.ui.SwingTextTrimmer
 import com.intellij.ui.PopupHandler
 import com.pronskiy.agenstorm.tabs.ui.ProjectTabLabel
 import com.intellij.util.ui.NamedColorUtil
@@ -83,6 +84,17 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
         val label = ProjectTabLabel(tab, selected = false, onSelect = {}, onClose = {}, showIcon = true, iconOf = { _, name -> asked += name; null })
         assertEquals("SomeFolder/infra", label.title)
         assertEquals(listOf("infra"), asked)
+    }
+
+    /** Roman, 2026-10-22: `SomeFolder/infrastructure:fix` cut at its end read like the main checkout's tab. */
+    fun testALongNameIsShortenedInTheMiddle() {
+        val tab = ProjectTab.Offloaded("/w/SomeFolder/infrastructure/.worktrees/fix", "infrastructure:fix", 0L, label = "SomeFolder/infrastructure:fix")
+        val label = ProjectTabLabel(tab, selected = false, onSelect = {}, onClose = {}, showIcon = false)
+        assertSame(SwingTextTrimmer.ELLIPSIS_IN_CENTER, label.nameTrimmer)
+        val fm = label.getFontMetrics(label.font)
+        val shortened = label.nameTrimmer!!.trim(label.title, fm, fm.stringWidth(label.title) / 2)
+        assertTrue("the folder in front stays: $shortened", shortened.startsWith("Some"))
+        assertTrue("the worktree behind stays: $shortened", shortened.endsWith(":fix"))
     }
 
     /** Step P2.7: an offloaded tab is a dimmed, dotted bookmark; a click means load, the × means forget. */
