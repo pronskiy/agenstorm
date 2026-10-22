@@ -18,6 +18,7 @@ import com.intellij.util.ui.NamedColorUtil
 import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.ProjectNameProvider
 import com.pronskiy.agenstorm.tabs.ProjectTab
 import java.awt.BasicStroke
 import java.awt.BorderLayout
@@ -65,6 +66,7 @@ class ProjectTabLabel(
     private val onContextMenu: (Component, Point) -> Unit = { _, _ -> },
     showIcon: Boolean = AgenstormSettings.getInstance().state.tabsShowIcons,
     private val maxWidth: Int = AgenstormSettings.getInstance().state.tabsMaxWidth,
+    iconOf: (key: String, name: String) -> Icon? = { key, name -> projectIcon(key, name) },
 ) : JPanel(BorderLayout(JBUI.scale(4), 0)) {
 
     /** The open project behind a loaded tab; null for an offloaded one. */
@@ -86,7 +88,7 @@ class ProjectTabLabel(
         set(value) {
             if (field == value) return
             field = value
-            nameLabel.text = if (value) "" else tab.name
+            nameLabel.text = if (value) "" else tab.label
             closeLabel.isVisible = !value
             toolTipText = tooltip()
             revalidate()
@@ -122,9 +124,9 @@ class ProjectTabLabel(
     private var hovered = false
     private val showIcon = showIcon
 
-    /** The recent-projects icon, looked up once. */
-    private val plainIcon: Icon? = if (showIcon) projectIcon(tab.key, tab.name) else null
-    private val nameLabel = JBLabel(tab.name, icon(), JBLabel.LEFT)
+    /** The recent-projects icon, looked up once — by the raw name, whose initials a generated icon shows, not the label. */
+    private val plainIcon: Icon? = if (showIcon) iconOf(tab.key, tab.name) else null
+    private val nameLabel = JBLabel(tab.label, icon(), JBLabel.LEFT)
 
     /** Owns [hovered]; `internal` so tests can drive it — the hover service needs showing windows. */
     internal val hoverListener = object : HoverListener() {
@@ -133,7 +135,7 @@ class ProjectTabLabel(
         override fun mouseExited(component: Component) = setHovered(false)
     }
 
-    /** The text shown on the tab (the project name). */
+    /** The text shown on the tab ([ProjectTab.label]). */
     val title: String get() = nameLabel.text
 
     /** The icon in front of the name: the project's, with the waiting badge when there is one. */
@@ -263,7 +265,7 @@ class ProjectTabLabel(
             offloaded != null -> AgenstormBundle.message("tabs.offloaded.tooltip", path, DateFormatUtil.formatBetweenDates(offloaded.sinceMs, System.currentTimeMillis()))
             else -> path
         }
-        val text = if (isCompact) "${tab.name} — $detail" else detail
+        val text = if (isCompact) "${tab.label} — $detail" else detail
         if (waiting.isEmpty()) return text
         return HtmlBuilder().append(text).br().append(AgenstormBundle.message("tabs.waiting.tooltip", waiting.joinToString(", "))).wrapWithHtmlBody().toString()
     }
@@ -272,7 +274,7 @@ class ProjectTabLabel(
     fun preferredWidth(compact: Boolean): Int {
         if (compact) return JBUI.scale(COMPACT_WIDTH)
         val icon = nameLabel.icon
-        val textWidth = getFontMetrics(nameLabel.font).stringWidth(tab.name)
+        val textWidth = getFontMetrics(nameLabel.font).stringWidth(tab.label)
         val iconWidth = if (icon != null) icon.iconWidth + nameLabel.iconTextGap else 0
         val content = insets.left + iconWidth + textWidth + JBUI.scale(4) + AllIcons.Actions.Close.iconWidth + insets.right
         return content.coerceIn(JBUI.scale(MIN_WIDTH), JBUI.scale(maxWidth.coerceIn(MIN_WIDTH, MAX_WIDTH_LIMIT)))
@@ -346,9 +348,14 @@ class ProjectTabLabel(
             override fun getIconHeight() = JBUI.scale(BADGE_DOT + 2)
         }
 
-        /** The recent-projects icon for the project at [key] (generated initials when it has none); null if that fails. */
+        /**
+         * The recent-projects icon for the project at [key] (generated initials when it has none); null if that fails.
+         * A linked worktree shows its main checkout's icon, under the name the platform knows that one by
+         * ([ProjectNameProvider.iconPathOf]).
+         */
         fun projectIcon(key: String, name: String): Icon? = try {
-            RecentProjectsManagerBase.getInstanceEx().getProjectIcon(Path.of(key), true, 16, name)
+            val owner = ProjectNameProvider.iconPathOf(key)
+            RecentProjectsManagerBase.getInstanceEx().getProjectIcon(Path.of(owner ?: key), true, 16, if (owner == null) name else null)
         } catch (e: Exception) {
             LOG.warn("No project icon for $name", e)
             null

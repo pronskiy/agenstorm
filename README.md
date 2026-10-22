@@ -528,7 +528,8 @@ repository, the main checkout first and named after its branch, the rest oldest 
     until nothing runs there.
 - When the tabs do not fit, the rest go under a chevron; the current one always stays.
 - A worktree's window is named after the repository and the worktree, `app:fix-login`, in the project
-  tabs and the window title; the main checkout keeps its own name.
+  tabs, the "+" popup and the window title, and shows the repository's icon; the main checkout keeps its
+  own name.
 - `.worktrees/` and Claude Code's `.claude/worktrees/` are excluded from the project that holds them, so
   they are neither indexed twice nor picked up as extra Git roots, and `open .worktrees/x` in the
   terminal opens that worktree. Like `.idea`, they are left out of the Project view; Project Files

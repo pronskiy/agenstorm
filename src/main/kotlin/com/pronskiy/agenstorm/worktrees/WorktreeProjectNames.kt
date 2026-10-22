@@ -1,6 +1,5 @@
 package com.pronskiy.agenstorm.worktrees
 
-import com.intellij.openapi.project.Project
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.GitCommonDir
 import com.pronskiy.agenstorm.core.ProjectNameProvider
@@ -11,10 +10,11 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Names a linked worktree's project `<main checkout>:<worktree>` — `app:fix-login` rather than the bare folder name —
- * in the project tabs and the window title, while the worktree feature is on; the main checkout keeps its own name.
- * Roman, 2026-09-30: the project tab "is currently changed to worktree name … it should either stay the same, or
- * change to 'project:worktree'" — the latter, since a busy worktree left behind by the switch would otherwise show a
- * second tab of the same name. Read from the disk once per path ([LinkedWorktree]), since it is asked while painting.
+ * in the project tabs, the "+" popup and the window title, while the worktree feature is on; the main checkout keeps
+ * its own name. Roman, 2026-09-30: the project tab "is currently changed to worktree name … it should either stay the
+ * same, or change to 'project:worktree'" — the latter, since a busy worktree left behind by the switch would otherwise
+ * show a second tab of the same name. The icon is the main checkout's too (Roman, 2026-10-22: the letter on it "should
+ * be the project's"). Read from the disk once per path ([LinkedWorktree]), since it is asked while painting.
  */
 class WorktreeProjectNames : ProjectNameProvider {
 
@@ -22,11 +22,14 @@ class WorktreeProjectNames : ProjectNameProvider {
 
     private data class Result(val main: Path?)
 
-    override fun displayName(project: Project): String? {
+    override fun displayName(basePath: String): String? =
+        mainOf(basePath)?.let { label(LinkedWorktree.projectName(it), Path.of(basePath).fileName.toString()) }
+
+    override fun iconPath(basePath: String): String? = mainOf(basePath)?.toString()
+
+    private fun mainOf(basePath: String): Path? {
         if (!AgenstormSettings.getInstance().state.worktreesEnabled) return null
-        val base = project.basePath ?: return null
-        val main = mains.computeIfAbsent(base) { Result(LinkedWorktree.mainCheckout(Path.of(it))) }.main ?: return null
-        return label(LinkedWorktree.projectName(main), Path.of(base).fileName.toString())
+        return mains.computeIfAbsent(basePath) { Result(LinkedWorktree.mainCheckout(Path.of(it))) }.main
     }
 
     companion object {

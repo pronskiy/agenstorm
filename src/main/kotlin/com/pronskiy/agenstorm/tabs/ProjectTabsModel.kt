@@ -12,7 +12,6 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Disposer
 import com.pronskiy.agenstorm.core.AgenstormSettings
 import com.pronskiy.agenstorm.core.ProjectNameProvider
-import com.pronskiy.agenstorm.core.ProjectNameUniquifier
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -55,8 +54,8 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
 
     /**
      * Every tab, loaded and offloaded, in stored order. An offloaded key that is open after all counts as loaded.
-     * When [AgenstormSettings.State.tabsDisambiguateNames] is on, a name two tabs share is shown prefixed with its
-     * parent folder ([ProjectNameUniquifier]) — the raw name is what is stored, never a prefixed one.
+     * When [AgenstormSettings.State.tabsDisambiguateNames] is on, a name two tabs share gets a [ProjectTab.label]
+     * prefixed with its parent folder ([ProjectNameUniquifier]); [ProjectTab.name] and what is stored stay raw.
      */
     fun tabs(): List<ProjectTab> {
         val loaded = openProjects().associateBy(::keyOf)
@@ -65,12 +64,12 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
             loaded[key]?.let { ProjectTab.Loaded(it) } ?: offloaded[key]?.let { ProjectTab.Offloaded(it.key, it.name, it.since) }
         }
         if (!AgenstormSettings.getInstance().state.tabsDisambiguateNames) return tabs
-        val names = ProjectNameUniquifier.displayNames(tabs.map { ProjectNameUniquifier.Entry(it.key, it.name, it.key) })
+        val labels = ProjectNameUniquifier.displayNames(tabs.map { ProjectNameUniquifier.Entry(it.key, it.name, it.key) })
         return tabs.map { tab ->
-            val name = names[tab.key] ?: tab.name
+            val label = labels[tab.key] ?: tab.label
             when (tab) {
-                is ProjectTab.Loaded -> tab.copy(name = name)
-                is ProjectTab.Offloaded -> tab.copy(name = name)
+                is ProjectTab.Loaded -> tab.copy(label = label)
+                is ProjectTab.Offloaded -> tab.copy(label = label)
             }
         }
     }

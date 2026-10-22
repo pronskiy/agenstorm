@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- Project tabs: the "+" popup names a worktree `app:fix-login`, as its tab does, rather than by its folder alone, and a worktree shows its repository's icon there and on its tab.
 - Agents: no "finished" notification or dot when a background subagent ends and Claude goes on with its answer. A session counts as finished once it has stayed stopped for three seconds.
 
 ## [1.15.0] - 2026-10-19

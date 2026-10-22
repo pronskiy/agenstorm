@@ -76,6 +76,15 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
         assertTrue(noIcon.preferredSize.width <= withIcon.preferredSize.width)
     }
 
+    /** A shared name's folder prefix is for reading only: a generated project icon takes its initials from the raw name. */
+    fun testAPrefixedTabShowsItsLabelButLooksTheIconUpByItsName() {
+        val asked = mutableListOf<String>()
+        val tab = ProjectTab.Offloaded("/work/SomeFolder/infra", "infra", 0L, label = "SomeFolder/infra")
+        val label = ProjectTabLabel(tab, selected = false, onSelect = {}, onClose = {}, showIcon = true, iconOf = { _, name -> asked += name; null })
+        assertEquals("SomeFolder/infra", label.title)
+        assertEquals(listOf("infra"), asked)
+    }
+
     /** Step P2.7: an offloaded tab is a dimmed, dotted bookmark; a click means load, the × means forget. */
     fun testAnOffloadedTabIsMarkedAndItsClicksMeanLoadAndForget() {
         var selected = 0

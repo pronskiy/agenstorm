@@ -1,9 +1,11 @@
 package com.pronskiy.agenstorm.tabs
 
 import com.intellij.ide.ReopenProjectAction
+import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
+import com.pronskiy.agenstorm.core.ProjectNameProvider
 import com.pronskiy.agenstorm.tabs.ui.RecentProjectRenderer
 import java.awt.Component
 import java.awt.Container
@@ -51,6 +53,22 @@ class RecentProjectRendererTest : BasePlatformTestCase() {
         assertEquals(listOf("alpha", "beta"), listOf(renderer.nameFor(only), renderer.nameFor(twin)))
     }
 
+    /** Roman, 2026-10-22: a worktree read `happy/.worktrees/test` under a "T"; it reads as on its tab, with its project's icon. */
+    fun testALinkedWorktreeIsNamedAndIconedAfterItsProject() {
+        ExtensionTestUtil.maskExtensions(ProjectNameProvider.EP_NAME, listOf(worktrees), testRootDisposable)
+        val happy = ReopenProjectAction("/w/happy/.worktrees/test", "test", "test")
+        val app = ReopenProjectAction("/w/app/.worktrees/test", "test", "test")
+        val main = ReopenProjectAction("/w/happy", "happy", "happy")
+        val renderer = RecentProjectRenderer(listOf(happy, app, main)) { null }
+        assertEquals(
+            "two worktrees of one folder name are told apart by their projects, so no folder goes in front",
+            listOf("happy:test", "app:test", "happy"),
+            listOf(happy, app, main).map(renderer::nameFor),
+        )
+        assertEquals("the worktree shows its main checkout's icon", "/w/happy", renderer.iconPathFor(happy))
+        assertEquals("a main checkout shows its own", "/w/happy", renderer.iconPathFor(main))
+    }
+
     fun testBranchesAreReadFromTheRecentProjectActions() {
         val actions = listOf(
             ReopenProjectAction("/fake/a", "a", "a", "main"),
@@ -61,4 +79,14 @@ class RecentProjectRendererTest : BasePlatformTestCase() {
 
     private fun labelsOf(component: Component): List<JBLabel> =
         UIUtil.uiTraverser(component).filter(JBLabel::class.java).toList()
+
+    /** What the worktree feature answers for `<main>/.worktrees/<name>`: `<main's folder>:<name>` and the main's icon. */
+    private val worktrees = object : ProjectNameProvider {
+        override fun displayName(basePath: String): String? =
+            mainOf(basePath)?.let { "${it.substringAfterLast('/')}:${basePath.substringAfterLast('/')}" }
+
+        override fun iconPath(basePath: String): String? = mainOf(basePath)
+
+        private fun mainOf(basePath: String) = basePath.substringBefore("/.worktrees/", "").ifEmpty { null }
+    }
 }

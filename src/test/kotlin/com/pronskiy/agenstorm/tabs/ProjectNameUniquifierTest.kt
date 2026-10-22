@@ -1,6 +1,6 @@
-package com.pronskiy.agenstorm.core
+package com.pronskiy.agenstorm.tabs
 
-import com.pronskiy.agenstorm.core.ProjectNameUniquifier.Entry
+import com.pronskiy.agenstorm.tabs.ProjectNameUniquifier.Entry
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -62,6 +62,60 @@ class ProjectNameUniquifierTest {
             listOf(Entry("/x/dev/app", "app", "/x/dev/app"), Entry("/y/dev/app", "app", "/y/dev/app")),
         )
         assertEquals(mapOf("/x/dev/app" to "x/dev/app", "/y/dev/app" to "y/dev/app"), names)
+    }
+
+    @Test
+    fun testOnlyTheEntriesStillSharingAFolderGoDeeper() {
+        val names = ProjectNameUniquifier.displayNames(
+            listOf(Entry("/x/dev/app", "app", "/x/dev/app"), Entry("/y/dev/app", "app", "/y/dev/app"), Entry("/z/other/app", "app", "/z/other/app")),
+        )
+        assertEquals(
+            "other/app is told apart by its parent alone, the two dev/app need one folder more",
+            mapOf("/x/dev/app" to "x/dev/app", "/y/dev/app" to "y/dev/app", "/z/other/app" to "other/app"),
+            names,
+        )
+    }
+
+    @Test
+    fun testTwoOrMoreSkippedFoldersCollapseIntoAnEllipsis() {
+        val names = ProjectNameUniquifier.displayNames(
+            listOf(
+                Entry("/w/A/app/.worktrees/fix-login", "app:fix-login", "/w/A/app/.worktrees/fix-login"),
+                Entry("/w/B/app/.worktrees/fix-login", "app:fix-login", "/w/B/app/.worktrees/fix-login"),
+            ),
+        )
+        assertEquals(
+            mapOf("/w/A/app/.worktrees/fix-login" to "A/…/app:fix-login", "/w/B/app/.worktrees/fix-login" to "B/…/app:fix-login"),
+            names,
+        )
+    }
+
+    @Test
+    fun testCollapsedNamesThatStillCollideShowEveryFolder() {
+        val names = ProjectNameUniquifier.displayNames(
+            listOf(Entry("/S/b/a/n", "n", "/S/b/a/n"), Entry("/S/T/b/a/n", "n", "/S/T/b/a/n"), Entry("/U/T/b/a/n", "n", "/U/T/b/a/n")),
+        )
+        assertEquals(
+            "both of the first two collapse to S/…/n, so they spell the folders out; the third stays collapsed",
+            mapOf("/S/b/a/n" to "S/b/a/n", "/S/T/b/a/n" to "S/T/b/a/n", "/U/T/b/a/n" to "U/…/n"),
+            names,
+        )
+    }
+
+    @Test
+    fun testANestedProjectOfTheSameNameIsToldApartByItsParent() {
+        val names = ProjectNameUniquifier.displayNames(
+            listOf(Entry("/w/app", "app", "/w/app"), Entry("/w/app/x/app", "app", "/w/app/x/app")),
+        )
+        assertEquals(mapOf("/w/app" to "w/app", "/w/app/x/app" to "x/app"), names)
+    }
+
+    @Test
+    fun testATrailingSlashDoesNotCountAsAFolder() {
+        val names = ProjectNameUniquifier.displayNames(
+            listOf(Entry("/w/A/app/", "app", "/w/A/app/"), Entry("/w/B/app", "app", "/w/B/app")),
+        )
+        assertEquals(mapOf("/w/A/app/" to "A/app", "/w/B/app" to "B/app"), names)
     }
 
     @Test

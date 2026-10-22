@@ -112,7 +112,8 @@ class ProjectTabsModelTest : BasePlatformTestCase() {
             )
         })
 
-        val shown = model.tabs().filter { it.key.endsWith("/infra") }.associate { it.key to it.name }
+        val tabs = model.tabs().filter { it.key.endsWith("/infra") }
+        val shown = tabs.associate { it.key to it.label }
         assertEquals(
             mapOf(
                 "/work/SomeFolder/infra" to "SomeFolder/infra",
@@ -120,6 +121,7 @@ class ProjectTabsModelTest : BasePlatformTestCase() {
             ),
             shown,
         )
+        assertEquals("the tabs' names stay raw; only the labels carry the folder", listOf("infra", "infra"), tabs.map { it.name })
         assertEquals("the names stored are the raw ones", listOf("infra", "infra"), model.state.offloaded.map { it.name })
     }
 
@@ -133,7 +135,7 @@ class ProjectTabsModelTest : BasePlatformTestCase() {
                     ProjectTabsModel.OffloadedEntry("/home/AnotherFolder/infra", "infra", 2L),
                 )
             })
-            assertEquals(listOf("infra", "infra"), model.tabs().filter { it.key.endsWith("/infra") }.map { it.name })
+            assertEquals(listOf("infra", "infra"), model.tabs().filter { it.key.endsWith("/infra") }.map { it.label })
         } finally {
             settings.loadState(AgenstormSettings.State())
         }
