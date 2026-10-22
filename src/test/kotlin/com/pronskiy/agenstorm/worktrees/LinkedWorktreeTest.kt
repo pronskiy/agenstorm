@@ -41,7 +41,6 @@ class LinkedWorktreeTest {
         assertEquals(main, LinkedWorktree.mainCheckout(main.resolve(".worktrees/fix-login")))
         assertEquals(main, LinkedWorktree.mainCheckout(root.resolve("app-hotfix")))
         assertEquals("app", LinkedWorktree.projectName(main))
-        assertEquals("app:fix-login", WorktreeProjectNames.label(LinkedWorktree.projectName(main), "fix-login"))
     }
 
     @Test

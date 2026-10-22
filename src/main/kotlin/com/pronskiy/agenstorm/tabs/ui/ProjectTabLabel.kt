@@ -18,6 +18,7 @@ import com.intellij.util.ui.NamedColorUtil
 import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormBundle
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.ProjectName
 import com.pronskiy.agenstorm.core.ProjectNameProvider
 import com.pronskiy.agenstorm.tabs.ProjectTab
 import java.awt.BasicStroke
@@ -351,10 +352,10 @@ class ProjectTabLabel(
         /**
          * The recent-projects icon for the project at [key] (generated initials when it has none); null if that fails.
          * A linked worktree shows its main checkout's icon, under the name the platform knows that one by
-         * ([ProjectNameProvider.iconPathOf]).
+         * ([ProjectName.projectPath]).
          */
         fun projectIcon(key: String, name: String): Icon? = try {
-            val owner = ProjectNameProvider.iconPathOf(key)
+            val owner = ProjectNameProvider.nameAt(key)?.projectPath?.takeIf { it != key }
             RecentProjectsManagerBase.getInstanceEx().getProjectIcon(Path.of(owner ?: key), true, 16, if (owner == null) name else null)
         } catch (e: Exception) {
             LOG.warn("No project icon for $name", e)

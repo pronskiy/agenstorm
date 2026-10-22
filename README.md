@@ -424,8 +424,8 @@ sits, so the window has one header row instead of two.
 - Click a tab to switch, middle-click or × to close.
 - "+" opens the recent projects — one line each, with its icon and branch, at most twelve in view and the
   rest a scroll away (type to filter) — and under them Open and Get from Version Control, always in view.
-  Two projects sharing a name show their parent folder in front of it, `SomeFolder/ProjectName`; a row's
-  tooltip is the full path.
+  Two projects sharing a name show their parent folder in front of it, `SomeFolder/ProjectName`, and a
+  worktree of one shows its project's, `SomeFolder/ProjectName:fix`; a row's tooltip is the full path.
 - Right-click for Close, Close Others, Copy Path.
 - Drag to reorder; order is remembered per project in `agenstorm-tabs.xml`.
 - The tabs take all the room the toolbar can spare. When it runs out, the widest tabs shrink first (names

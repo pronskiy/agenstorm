@@ -4,10 +4,13 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.xmlb.XmlSerializer
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.ProjectName
+import com.pronskiy.agenstorm.core.ProjectNameProvider
 
 /** Steps E1.2 / P2.1: tab order by project key, persisted; offloaded tabs and activity alongside; listeners on the EDT. */
 class ProjectTabsModelTest : BasePlatformTestCase() {
@@ -123,6 +126,30 @@ class ProjectTabsModelTest : BasePlatformTestCase() {
         )
         assertEquals("the tabs' names stay raw; only the labels carry the folder", listOf("infra", "infra"), tabs.map { it.name })
         assertEquals("the names stored are the raw ones", listOf("infra", "infra"), model.state.offloaded.map { it.name })
+    }
+
+    /** Roman, 2026-10-22: a worktree's tab carries its main checkout's folder when that project's name is shared. */
+    fun testAWorktreeTabCarriesItsProjectsFolder() {
+        val worktrees = object : ProjectNameProvider {
+            override fun name(basePath: String): ProjectName? =
+                basePath.substringBefore("/.worktrees/", "").ifEmpty { null }?.let { ProjectName("infra", it, basePath.substringAfterLast('/')) }
+        }
+        ExtensionTestUtil.maskExtensions(ProjectNameProvider.EP_NAME, listOf(worktrees), testRootDisposable)
+        model.loadState(ProjectTabsModel.State().apply {
+            offloaded = mutableListOf(
+                ProjectTabsModel.OffloadedEntry("/work/SomeFolder/infra/.worktrees/fix", "infra:fix", 1L),
+                ProjectTabsModel.OffloadedEntry("/home/AnotherFolder/infra", "infra", 2L),
+            )
+        })
+
+        val shown = model.tabs().filter { it.key.contains("/infra") }.associate { it.key to it.label }
+        assertEquals(
+            mapOf(
+                "/work/SomeFolder/infra/.worktrees/fix" to "SomeFolder/infra:fix",
+                "/home/AnotherFolder/infra" to "AnotherFolder/infra",
+            ),
+            shown,
+        )
     }
 
     fun testDisambiguationOffLeavesTabNamesAlone() {

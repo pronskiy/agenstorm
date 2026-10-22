@@ -3,10 +3,11 @@ package com.pronskiy.agenstorm.worktrees
 import com.intellij.openapi.util.io.NioFiles
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.ProjectName
 import java.nio.file.Files
 import java.nio.file.Path
 
-/** A linked worktree is named `<main checkout>:<worktree>` and shows its main checkout's icon, asked by folder alone. */
+/** A linked worktree is named `<main checkout>:<worktree>` and placed in its main checkout's folder, asked by folder alone. */
 class WorktreeProjectNamesTest : BasePlatformTestCase() {
 
     private lateinit var root: Path
@@ -32,23 +33,21 @@ class WorktreeProjectNamesTest : BasePlatformTestCase() {
         }
     }
 
-    fun testALinkedWorktreeIsNamedAndIconedAfterItsMainCheckout() {
+    fun testALinkedWorktreeIsNamedAfterAndPlacedInItsMainCheckout() {
         val names = WorktreeProjectNames()
-        assertEquals("happy:test", names.displayName(worktree.toString()))
-        assertEquals(main.toString(), names.iconPath(worktree.toString()))
+        assertEquals(ProjectName("happy", main.toString(), "test"), names.name(worktree.toString()))
+        assertEquals("happy:test", names.name(worktree.toString())?.text)
     }
 
     fun testTheMainCheckoutKeepsItsOwnNameAndIcon() {
         val names = WorktreeProjectNames()
-        assertNull(names.displayName(main.toString()))
-        assertNull(names.iconPath(main.toString()))
+        assertNull(names.name(main.toString()))
     }
 
     fun testWithWorktreesOffNothingIsRenamed() {
         AgenstormSettings.getInstance().loadState(AgenstormSettings.State(worktreesEnabled = false))
         val names = WorktreeProjectNames()
-        assertNull(names.displayName(worktree.toString()))
-        assertNull(names.iconPath(worktree.toString()))
+        assertNull(names.name(worktree.toString()))
     }
 
     private fun git(dir: Path, vararg args: String) {

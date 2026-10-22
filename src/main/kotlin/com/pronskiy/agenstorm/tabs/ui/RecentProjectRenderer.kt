@@ -12,6 +12,7 @@ import com.intellij.util.IconUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.ProjectName
 import com.pronskiy.agenstorm.core.ProjectNameProvider
 import com.pronskiy.agenstorm.tabs.ProjectNameUniquifier
 import java.awt.Component
@@ -26,8 +27,9 @@ import javax.swing.SwingConstants
  * The recent projects of the "+" popup ([AddProjectPopup]), one line each: the project's icon, its name and the branch
  * it is on. The name and the icon are the ones the tabs show ([ProjectNameProvider]): a linked worktree reads
  * `app:fix-login` under its main checkout's icon, not its bare folder name under its own initials (Roman, 2026-10-22).
- * Two projects still sharing a name carry their parent folder in front ([ProjectNameUniquifier]) — the whole list is
- * given to tell one from the other — and the full path shows as the name's tooltip.
+ * Two projects sharing a name carry their parent folder in front, a worktree its main checkout's
+ * ([ProjectNameUniquifier]) — the whole list is given to tell one from the other — and the full path shows as the
+ * name's tooltip.
  *
  * The branch is asked of [branchOf] on every paint rather than taken from the action. `ReopenProjectAction` keeps the
  * branch it was made with, and Git looks a project's branch up in the background the first time anyone asks, so the
@@ -37,16 +39,16 @@ class RecentProjectRenderer(private val actions: List<ReopenProjectAction>, priv
 
     /** Shown names, keyed by project path: a provider's name or the platform's, disambiguated across the whole list. */
     private val names: Map<String, String> = run {
-        val entries = actions.map { ProjectNameUniquifier.Entry(it.projectPath, rawName(it), it.projectPath) }
+        val entries = actions.map { ProjectNameUniquifier.Entry(it.projectPath, nameOf(it)) }
         if (AgenstormSettings.getInstance().state.tabsDisambiguateNames) ProjectNameUniquifier.displayNames(entries)
-        else entries.associate { it.key to it.name }
+        else entries.associate { it.key to it.name.text }
     }
 
     /** The name to show for [action]: the disambiguated one, or the provider's or platform's for one not in the list. */
-    fun nameFor(action: ReopenProjectAction): String = names[action.projectPath] ?: rawName(action)
+    fun nameFor(action: ReopenProjectAction): String = names[action.projectPath] ?: nameOf(action).text
 
     /** The folder whose project icon [action]'s row shows: its own, or its main checkout's for a linked worktree. */
-    internal fun iconPathFor(action: ReopenProjectAction): String = ProjectNameProvider.iconPathOf(action.projectPath) ?: action.projectPath
+    internal fun iconPathFor(action: ReopenProjectAction): String = nameOf(action).projectPath ?: action.projectPath
 
     override fun getListCellRendererComponent(list: JList<out ActionItem>?, value: ActionItem, index: Int, isSelected: Boolean, cellHasFocus: Boolean): Component {
         val action = value.action as ReopenProjectAction
@@ -59,7 +61,8 @@ class RecentProjectRenderer(private val actions: List<ReopenProjectAction>, priv
         return if (path == action.projectPath) action.projectIcon else RecentProjectsManagerBase.getInstanceEx().getProjectIcon(path, true, 20, null)
     }
 
-    private fun rawName(action: ReopenProjectAction): String = ProjectNameProvider.nameOf(action.projectPath) ?: action.projectNameToDisplay
+    private fun nameOf(action: ReopenProjectAction): ProjectName =
+        ProjectNameProvider.nameAt(action.projectPath) ?: ProjectName(action.projectNameToDisplay, action.projectPath)
 
     companion object {
         /** One project on one line: icon and name, then the branch when it is known. */

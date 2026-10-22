@@ -11,6 +11,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Disposer
 import com.pronskiy.agenstorm.core.AgenstormSettings
+import com.pronskiy.agenstorm.core.ProjectName
 import com.pronskiy.agenstorm.core.ProjectNameProvider
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -54,8 +55,9 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
 
     /**
      * Every tab, loaded and offloaded, in stored order. An offloaded key that is open after all counts as loaded.
-     * When [AgenstormSettings.State.tabsDisambiguateNames] is on, a name two tabs share gets a [ProjectTab.label]
-     * prefixed with its parent folder ([ProjectNameUniquifier]); [ProjectTab.name] and what is stored stay raw.
+     * When [AgenstormSettings.State.tabsDisambiguateNames] is on, a project name two tabs' projects share gets a
+     * [ProjectTab.label] prefixed with its parent folder ([ProjectNameUniquifier]) — a worktree's, its main
+     * checkout's; [ProjectTab.name] and what is stored stay raw.
      */
     fun tabs(): List<ProjectTab> {
         val loaded = openProjects().associateBy(::keyOf)
@@ -64,7 +66,14 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
             loaded[key]?.let { ProjectTab.Loaded(it) } ?: offloaded[key]?.let { ProjectTab.Offloaded(it.key, it.name, it.since) }
         }
         if (!AgenstormSettings.getInstance().state.tabsDisambiguateNames) return tabs
-        val labels = ProjectNameUniquifier.displayNames(tabs.map { ProjectNameUniquifier.Entry(it.key, it.name, it.key) })
+        val labels = ProjectNameUniquifier.displayNames(tabs.map { tab ->
+            // An offloaded worktree is asked by its folder; the name it was stored with is what is left when no one answers.
+            val name = when (tab) {
+                is ProjectTab.Loaded -> ProjectNameProvider.nameOf(tab.project)
+                is ProjectTab.Offloaded -> ProjectNameProvider.nameAt(tab.key) ?: ProjectName(tab.name, tab.key)
+            }
+            ProjectNameUniquifier.Entry(tab.key, name)
+        })
         return tabs.map { tab ->
             val label = labels[tab.key] ?: tab.label
             when (tab) {

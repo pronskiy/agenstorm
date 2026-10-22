@@ -5,6 +5,7 @@ import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
+import com.pronskiy.agenstorm.core.ProjectName
 import com.pronskiy.agenstorm.core.ProjectNameProvider
 import com.pronskiy.agenstorm.tabs.ui.RecentProjectRenderer
 import java.awt.Component
@@ -69,6 +70,19 @@ class RecentProjectRendererTest : BasePlatformTestCase() {
         assertEquals("a main checkout shows its own", "/w/happy", renderer.iconPathFor(main))
     }
 
+    /** Roman, 2026-10-22: beside another `infrastructure`, a worktree carries its own project's folder, not `.worktrees/`. */
+    fun testAWorktreeOfASharedNameCarriesItsProjectsFolder() {
+        ExtensionTestUtil.maskExtensions(ProjectNameProvider.EP_NAME, listOf(worktrees), testRootDisposable)
+        val some = ReopenProjectAction("/w/SomeFolder/infrastructure", "infrastructure", "infrastructure")
+        val another = ReopenProjectAction("/w/AnotherFolder/infrastructure", "infrastructure", "infrastructure")
+        val fix = ReopenProjectAction("/w/SomeFolder/infrastructure/.worktrees/fix", "fix", "fix")
+        val renderer = RecentProjectRenderer(listOf(some, another, fix)) { null }
+        assertEquals(
+            listOf("SomeFolder/infrastructure", "AnotherFolder/infrastructure", "SomeFolder/infrastructure:fix"),
+            listOf(some, another, fix).map(renderer::nameFor),
+        )
+    }
+
     fun testBranchesAreReadFromTheRecentProjectActions() {
         val actions = listOf(
             ReopenProjectAction("/fake/a", "a", "a", "main"),
@@ -80,13 +94,11 @@ class RecentProjectRendererTest : BasePlatformTestCase() {
     private fun labelsOf(component: Component): List<JBLabel> =
         UIUtil.uiTraverser(component).filter(JBLabel::class.java).toList()
 
-    /** What the worktree feature answers for `<main>/.worktrees/<name>`: `<main's folder>:<name>` and the main's icon. */
+    /** What the worktree feature answers for `<main>/.worktrees/<name>`: `<main's folder>:<name>`, in the main's folder. */
     private val worktrees = object : ProjectNameProvider {
-        override fun displayName(basePath: String): String? =
-            mainOf(basePath)?.let { "${it.substringAfterLast('/')}:${basePath.substringAfterLast('/')}" }
-
-        override fun iconPath(basePath: String): String? = mainOf(basePath)
-
-        private fun mainOf(basePath: String) = basePath.substringBefore("/.worktrees/", "").ifEmpty { null }
+        override fun name(basePath: String): ProjectName? =
+            basePath.substringBefore("/.worktrees/", "").ifEmpty { null }?.let {
+                ProjectName(it.substringAfterLast('/'), it, basePath.substringAfterLast('/'))
+            }
     }
 }
