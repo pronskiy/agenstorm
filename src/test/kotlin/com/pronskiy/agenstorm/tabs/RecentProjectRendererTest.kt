@@ -83,6 +83,13 @@ class RecentProjectRendererTest : BasePlatformTestCase() {
         )
     }
 
+    fun testAWorktreesPartIsDrawnDimmedAfterTheName() {
+        val action = ReopenProjectAction("/w/SomeFolder/infrastructure/.worktrees/fix", "fix", "fix")
+        val labels = labelsOf(RecentProjectRenderer.pane(action, "fix", isSelected = false, "SomeFolder/infrastructure:fix", part = "fix"))
+        assertEquals(listOf("SomeFolder/infrastructure", ":fix", "fix"), labels.map { it.text })
+        assertEquals("the part is in the branch's grey", UIUtil.getLabelInfoForeground(), labels[1].foreground)
+    }
+
     fun testBranchesAreReadFromTheRecentProjectActions() {
         val actions = listOf(
             ReopenProjectAction("/fake/a", "a", "a", "main"),

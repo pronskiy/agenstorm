@@ -150,6 +150,11 @@ class ProjectTabsModelTest : BasePlatformTestCase() {
             ),
             shown,
         )
+        assertEquals(
+            "the worktree's tab knows its part, to draw it dimmed",
+            mapOf("/work/SomeFolder/infra/.worktrees/fix" to "fix", "/home/AnotherFolder/infra" to null),
+            model.tabs().filter { it.key.contains("/infra") }.associate { it.key to it.part },
+        )
     }
 
     fun testDisambiguationOffLeavesTabNamesAlone() {

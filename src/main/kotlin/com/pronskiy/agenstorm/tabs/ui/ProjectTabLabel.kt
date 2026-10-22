@@ -6,7 +6,6 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.text.HtmlBuilder
-import com.intellij.ui.ClientProperty
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.PopupHandler
@@ -82,6 +81,7 @@ class ProjectTabLabel(
             if (field == value) return
             field = value
             nameLabel.foreground = textColor()
+            partLabel.foreground = partColor()
             updateCloseIcon()
             repaint()
         }
@@ -91,7 +91,8 @@ class ProjectTabLabel(
         set(value) {
             if (field == value) return
             field = value
-            nameLabel.text = if (value) "" else tab.label
+            nameLabel.text = if (value) "" else head
+            partLabel.isVisible = !value && part != null
             closeLabel.isVisible = !value
             toolTipText = tooltip()
             revalidate()
@@ -129,7 +130,39 @@ class ProjectTabLabel(
 
     /** The recent-projects icon, looked up once — by the raw name, whose initials a generated icon shows, not the label. */
     private val plainIcon: Icon? = if (showIcon) iconOf(tab.key, tab.name) else null
-    private val nameLabel = JBLabel(tab.label, icon(), JBLabel.LEFT)
+
+    /** A worktree's part, drawn dimmed after the rest of the label; null when the label does not end in it. */
+    private val part: String? = tab.part?.takeIf { tab.label.endsWith(":$it") }
+    private val head: String = part?.let { tab.label.removeSuffix(":$it") } ?: tab.label
+    private val nameLabel = JBLabel(head, icon(), JBLabel.LEFT)
+    private val partLabel = JBLabel(part?.let { ":$it" }.orEmpty()).apply { isVisible = part != null }
+
+    /**
+     * The name and, right after it, the worktree's `:part` (Roman, 2026-10-22: the worktree "blends with the project").
+     * The part keeps its width; the name is shortened here, to the room left, so the part follows it with no gap.
+     */
+    private val nameRow = object : JPanel(null) {
+        override fun doLayout() {
+            val partWidth = if (partLabel.isVisible) partLabel.preferredSize.width else 0
+            val icon = nameLabel.icon?.let { it.iconWidth + nameLabel.iconTextGap } ?: 0
+            val room = width - partWidth
+            val text = if (isCompact) "" else fitted(head, room - icon)
+            if (nameLabel.text != text) nameLabel.text = text
+            // The label measures its text a pixel wider than the font metrics now and then, and would cut it again at
+            // its end.
+            val over = nameLabel.preferredSize.width - room
+            if (over > 0 && !isCompact) nameLabel.text = fitted(head, room - icon - over)
+            val nameWidth = nameLabel.preferredSize.width.coerceAtMost(room).coerceAtLeast(0)
+            nameLabel.setBounds(0, 0, nameWidth, height)
+            partLabel.setBounds(nameWidth, 0, partWidth, height)
+        }
+
+        override fun getPreferredSize(): Dimension {
+            val name = nameLabel.preferredSize
+            val partWidth = if (partLabel.isVisible) partLabel.preferredSize.width else 0
+            return Dimension(name.width + partWidth, maxOf(name.height, partLabel.preferredSize.height))
+        }
+    }
 
     /** Owns [hovered]; `internal` so tests can drive it — the hover service needs showing windows. */
     internal val hoverListener = object : HoverListener() {
@@ -138,14 +171,29 @@ class ProjectTabLabel(
         override fun mouseExited(component: Component) = setHovered(false)
     }
 
-    /** The text shown on the tab ([ProjectTab.label]). */
-    val title: String get() = nameLabel.text
+    /** The text shown on the tab ([ProjectTab.label]), a worktree's part included. */
+    val title: String get() = if (isCompact) "" else tab.label
+
+    /** The name as drawn in full colour, and the dimmed part after it, when the tab shows one. */
+    internal val shownName: String get() = nameLabel.text
+    internal val shownPart: String? get() = partLabel.text.takeIf { partLabel.isVisible }
+    internal val nameForeground: Color get() = nameLabel.foreground
+    internal val partForeground: Color get() = partLabel.foreground
 
     /** The icon in front of the name: the project's, with the waiting badge when there is one. */
     internal val nameIcon: Icon? get() = nameLabel.icon
 
-    /** How the name is shortened when the tab is too narrow for it. */
-    internal val nameTrimmer: SwingTextTrimmer? get() = ClientProperty.get(nameLabel, SwingTextTrimmer.KEY)
+    /**
+     * [text] as it fits in [room] pixels. A name too long for the tab loses its middle, not its end: the folder in front
+     * is what tells same-named tabs apart (Roman, 2026-10-22). A name with nothing left but the ellipsis gives way to
+     * the worktree's part, which the icon in front already says the project of.
+     */
+    private fun fitted(text: String, room: Int): String {
+        val metrics = nameLabel.getFontMetrics(nameLabel.font)
+        if (metrics.stringWidth(text) <= room) return text
+        val trimmed = SwingTextTrimmer.ELLIPSIS_IN_CENTER.trim(text, metrics, room.coerceAtLeast(0))
+        return if (part != null && trimmed.trim('…').isEmpty()) "" else trimmed
+    }
     internal val closeLabel = JBLabel(HIDDEN_CLOSE).apply {
         addMouseListener(object : MouseAdapter() {
             override fun mouseEntered(e: MouseEvent) { if (isCloseShown) icon = AllIcons.Actions.CloseHovered }
@@ -163,12 +211,13 @@ class ProjectTabLabel(
         border = JBUI.Borders.empty(0, 8, 0, 6)
         toolTipText = tooltip()
         nameLabel.foreground = textColor()
+        partLabel.foreground = partColor()
         nameLabel.iconTextGap = JBUI.scale(6)
-        // A name too long for the tab loses its middle, not its end: the folder in front and a worktree's `:fix` behind
-        // are what tell same-named tabs apart (Roman, 2026-10-22).
-        ClientProperty.put(nameLabel, SwingTextTrimmer.KEY, SwingTextTrimmer.ELLIPSIS_IN_CENTER)
         updateCloseIcon()
-        add(nameLabel, BorderLayout.CENTER)
+        nameRow.isOpaque = false
+        nameRow.add(nameLabel)
+        nameRow.add(partLabel)
+        add(nameRow, BorderLayout.CENTER)
         add(closeLabel, BorderLayout.EAST)
         alignmentY = CENTER_ALIGNMENT
         hoverListener.addTo(this)
@@ -182,20 +231,25 @@ class ProjectTabLabel(
             }
         }
         addMouseListener(mouse)
-        nameLabel.addMouseListener(mouse)
+        for (surface in nameSurfaces()) surface.addMouseListener(mouse)
         val popup = object : PopupHandler() {
             override fun invokePopup(comp: Component, x: Int, y: Int) = onContextMenu(comp, Point(x, y))
         }
-        for (component in listOf(this, nameLabel, closeLabel)) component.addMouseListener(popup)
+        for (component in listOf(this, closeLabel) + nameSurfaces()) component.addMouseListener(popup)
     }
 
     /** Lets the strip watch presses and drags on the tab surface (not on the ×) for reordering. */
     fun addDragListener(listener: MouseAdapter) {
         addMouseListener(listener)
         addMouseMotionListener(listener)
-        nameLabel.addMouseListener(listener)
-        nameLabel.addMouseMotionListener(listener)
+        for (surface in nameSurfaces()) {
+            surface.addMouseListener(listener)
+            surface.addMouseMotionListener(listener)
+        }
     }
+
+    /** What the name is drawn on: a press there is a press on the tab. */
+    private fun nameSurfaces(): List<Component> = listOf(nameRow, nameLabel, partLabel)
 
     private fun setHovered(value: Boolean) {
         if (hovered == value) return
@@ -217,6 +271,9 @@ class ProjectTabLabel(
         isSelected -> JBColor.namedColor("MainToolbar.Dropdown.foreground", UIUtil.getLabelForeground())
         else -> NamedColorUtil.getInactiveTextColor()
     }
+
+    /** A worktree's part: the name's colour, dimmed, so it reads as a part of the name and not as the name. */
+    internal fun partColor(): Color = ColorUtil.withAlpha(textColor(), PART_ALPHA)
 
     /** The bookmark's dotted border: the inactive text colour, faded so the mark reads without shouting (Roman, 2026-09-19). */
     internal fun borderColor(): Color = ColorUtil.withAlpha(NamedColorUtil.getInactiveTextColor(), BORDER_ALPHA)
@@ -328,6 +385,8 @@ class ProjectTabLabel(
         const val HEIGHT = 30
         /** Opacity of the bookmark border (0–1). */
         const val BORDER_ALPHA = 0.4
+        /** Opacity of a worktree's part against the name's colour (0–1). */
+        const val PART_ALPHA = 0.55
         private val LOG = logger<ProjectTabLabel>()
         /** Same size as the close icon, paints nothing: keeps the ×'s room when it is not shown. */
         private val HIDDEN_CLOSE: Icon = EmptyIcon.create(AllIcons.Actions.Close)

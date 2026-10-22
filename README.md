@@ -429,8 +429,8 @@ sits, so the window has one header row instead of two.
 - Right-click for Close, Close Others, Copy Path.
 - Drag to reorder; order is remembered per project in `agenstorm-tabs.xml`.
 - The tabs take all the room the toolbar can spare. When it runs out, the widest tabs shrink first (names
-  shortened in the middle, so the folder in front and a worktree's `:fix` behind stay in view; short names
-  untouched), then every tab becomes an icon. Nothing hides behind a "…" button.
+  shortened in the middle, so the folder in front stays in view and a worktree's `:fix` stays whole; short
+  names untouched), then every tab becomes an icon. Nothing hides behind a "…" button.
 - A project you have not used for a while is offloaded: closed with everything saved, its tab kept as a
   dotted bookmark. Click the bookmark to load it again. See below.
 
@@ -528,8 +528,8 @@ repository, the main checkout first and named after its branch, the rest oldest 
     until nothing runs there.
 - When the tabs do not fit, the rest go under a chevron; the current one always stays.
 - A worktree's window is named after the repository and the worktree, `app:fix-login`, in the project
-  tabs, the "+" popup and the window title, and shows the repository's icon; the main checkout keeps its
-  own name.
+  tabs, the "+" popup and the window title, and shows the repository's icon; on the tabs and in the popup the
+  worktree is dimmed and never shortened. The main checkout keeps its own name.
 - `.worktrees/` and Claude Code's `.claude/worktrees/` are excluded from the project that holds them, so
   they are neither indexed twice nor picked up as extra Git roots, and `open .worktrees/x` in the
   terminal opens that worktree. Like `.idea`, they are left out of the Project view; Project Files

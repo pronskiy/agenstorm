@@ -52,7 +52,7 @@ class RecentProjectRenderer(private val actions: List<ReopenProjectAction>, priv
 
     override fun getListCellRendererComponent(list: JList<out ActionItem>?, value: ActionItem, index: Int, isSelected: Boolean, cellHasFocus: Boolean): Component {
         val action = value.action as ReopenProjectAction
-        return pane(action, branchOf(action.projectPath) ?: action.branchName, isSelected, nameFor(action), iconFor(action))
+        return pane(action, branchOf(action.projectPath) ?: action.branchName, isSelected, nameFor(action), iconFor(action), nameOf(action).part)
     }
 
     /** The lookup [ReopenProjectAction.getProjectIcon] makes for its own folder, made for [iconPathFor]'s. */
@@ -65,23 +65,40 @@ class RecentProjectRenderer(private val actions: List<ReopenProjectAction>, priv
         ProjectNameProvider.nameAt(action.projectPath) ?: ProjectName(action.projectNameToDisplay, action.projectPath)
 
     companion object {
-        /** One project on one line: icon and name, then the branch when it is known. */
+        /**
+         * One project on one line: icon and name, a worktree's `:part` dimmed right after it, then the branch when it is
+         * known.
+         */
         fun pane(
             action: ReopenProjectAction,
             branch: String?,
             isSelected: Boolean,
             name: String = action.projectNameToDisplay,
             projectIcon: Icon = action.projectIcon,
+            part: String? = null,
         ): JComponent {
             val row = JPanel(HorizontalLayout(JBUI.scale(GAP))).apply { isOpaque = false }
             // The platform's own icon for a recent project: deferred, so the list is repainted once it is made. A first
             // lookup through the tab's way returns one that stays blank in a popup row.
             val small = IconUtil.downscaleIconToSize(projectIcon, JBUI.scale(ICON_SIZE), JBUI.scale(ICON_SIZE))
-            row.add(JBLabel(name, small, SwingConstants.LEFT).apply {
+            val shownPart = part?.takeIf { name.endsWith(":$it") }
+            val head = JBLabel(shownPart?.let { name.removeSuffix(":$it") } ?: name, small, SwingConstants.LEFT).apply {
                 iconTextGap = JBUI.scale(6)
                 toolTipText = action.projectPath
                 foreground = if (isSelected) UIUtil.getListSelectionForeground(true) else UIUtil.getListForeground()
-            })
+            }
+            if (shownPart == null) {
+                row.add(head)
+            } else {
+                row.add(JPanel(HorizontalLayout(0)).apply {
+                    isOpaque = false
+                    add(head)
+                    add(JBLabel(":$shownPart").apply {
+                        toolTipText = action.projectPath
+                        foreground = UIUtil.getLabelInfoForeground()
+                    })
+                })
+            }
             branch?.let { row.add(detail(it).apply { icon = IconUtil.colorize(AllIcons.Vcs.Branch, UIUtil.getLabelInfoForeground()) }) }
             return SelectablePanel.wrap(row, JBUI.CurrentTheme.Popup.BACKGROUND).apply {
                 PopupUtil.configListRendererFixedHeight(this)

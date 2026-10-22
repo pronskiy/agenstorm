@@ -1,11 +1,15 @@
 package com.pronskiy.agenstorm.tabs
 
+import com.intellij.icons.AllIcons
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.util.ui.SwingTextTrimmer
 import com.intellij.ui.PopupHandler
 import com.pronskiy.agenstorm.tabs.ui.ProjectTabLabel
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.NamedColorUtil
+import com.intellij.util.ui.UIUtil
 import java.awt.Component
+import java.awt.Container
+import java.awt.Dimension
 import java.awt.event.MouseEvent
 
 /** Phase E1 guardrail feedback and P2.7: the × must not change the tab width; active tab shows it always, others on hover; offloaded tabs are bookmarks. */
@@ -87,14 +91,44 @@ class ProjectTabLabelTest : BasePlatformTestCase() {
     }
 
     /** Roman, 2026-10-22: `SomeFolder/infrastructure:fix` cut at its end read like the main checkout's tab. */
-    fun testALongNameIsShortenedInTheMiddle() {
-        val tab = ProjectTab.Offloaded("/w/SomeFolder/infrastructure/.worktrees/fix", "infrastructure:fix", 0L, label = "SomeFolder/infrastructure:fix")
+    fun testALongNameIsShortenedInTheMiddleAndThePartStaysWhole() {
+        val tab = ProjectTab.Offloaded("/w/SomeFolder/infrastructure/.worktrees/fix", "infrastructure:fix", 0L, label = "SomeFolder/infrastructure:fix", part = "fix")
         val label = ProjectTabLabel(tab, selected = false, onSelect = {}, onClose = {}, showIcon = false)
-        assertSame(SwingTextTrimmer.ELLIPSIS_IN_CENTER, label.nameTrimmer)
         val fm = label.getFontMetrics(label.font)
-        val shortened = label.nameTrimmer!!.trim(label.title, fm, fm.stringWidth(label.title) / 2)
-        assertTrue("the folder in front stays: $shortened", shortened.startsWith("Some"))
-        assertTrue("the worktree behind stays: $shortened", shortened.endsWith(":fix"))
+        label.size = Dimension(label.insets.left + fm.stringWidth("SomeFolder/infra:fix") + JBUI.scale(4) + AllIcons.Actions.Close.iconWidth + label.insets.right, JBUI.scale(30))
+        UIUtil.uiTraverser(label).filter(Container::class.java).forEach(Container::doLayout)
+        assertTrue("shortened in the middle: ${label.shownName}", label.shownName.startsWith("Some") && label.shownName.endsWith("ture") && "…" in label.shownName)
+        assertEquals(":fix", label.shownPart)
+    }
+
+    fun testANameWithNothingLeftButTheEllipsisGivesWayToThePart() {
+        val tab = ProjectTab.Offloaded("/w/SomeFolder/infrastructure/.worktrees/fix", "infrastructure:fix", 0L, label = "SomeFolder/infrastructure:fix", part = "fix")
+        val label = ProjectTabLabel(tab, selected = false, onSelect = {}, onClose = {}, showIcon = false)
+        val fm = label.getFontMetrics(label.font)
+        label.size = Dimension(label.insets.left + fm.stringWidth(":fix") + JBUI.scale(4) + AllIcons.Actions.Close.iconWidth + label.insets.right, JBUI.scale(30))
+        UIUtil.uiTraverser(label).filter(Container::class.java).forEach(Container::doLayout)
+        assertEquals("", label.shownName)
+        assertEquals(":fix", label.shownPart)
+    }
+
+    /** Roman, 2026-10-22: the worktree "blends with the project" — it is drawn dimmed after the name, and never cut. */
+    fun testAWorktreesPartIsDrawnDimmedAfterTheName() {
+        val tab = ProjectTab.Offloaded("/w/SomeFolder/infrastructure/.worktrees/fix", "infrastructure:fix", 0L, label = "SomeFolder/infrastructure:fix", part = "fix")
+        val label = ProjectTabLabel(tab, selected = true, onSelect = {}, onClose = {}, showIcon = false)
+        assertEquals("SomeFolder/infrastructure:fix", label.title)
+        assertEquals("SomeFolder/infrastructure", label.shownName)
+        assertEquals(":fix", label.shownPart)
+        assertTrue("the part is fainter than the name", label.partForeground.alpha < label.nameForeground.alpha)
+
+        label.isCompact = true
+        assertNull("an icon-only tab shows no part", label.shownPart)
+    }
+
+    fun testATabWithoutAPartShowsItsWholeLabelAsTheName() {
+        val tab = ProjectTab.Offloaded("/w/a:b", "a:b", 0L)
+        val label = ProjectTabLabel(tab, selected = false, onSelect = {}, onClose = {}, showIcon = false)
+        assertEquals("a colon in a plain name is not a worktree", "a:b", label.shownName)
+        assertNull(label.shownPart)
     }
 
     /** Step P2.7: an offloaded tab is a dimmed, dotted bookmark; a click means load, the × means forget. */

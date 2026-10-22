@@ -57,7 +57,7 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
      * Every tab, loaded and offloaded, in stored order. An offloaded key that is open after all counts as loaded.
      * When [AgenstormSettings.State.tabsDisambiguateNames] is on, a project name two tabs' projects share gets a
      * [ProjectTab.label] prefixed with its parent folder ([ProjectNameUniquifier]) — a worktree's, its main
-     * checkout's; [ProjectTab.name] and what is stored stay raw.
+     * checkout's; [ProjectTab.name] and what is stored stay raw. A worktree's tab knows its [ProjectTab.part].
      */
     fun tabs(): List<ProjectTab> {
         val loaded = openProjects().associateBy(::keyOf)
@@ -65,20 +65,24 @@ class ProjectTabsModel : PersistentStateComponent<ProjectTabsModel.State> {
         val tabs = sortKeys(loaded.keys + offloaded.keys).mapNotNull { key ->
             loaded[key]?.let { ProjectTab.Loaded(it) } ?: offloaded[key]?.let { ProjectTab.Offloaded(it.key, it.name, it.since) }
         }
-        if (!AgenstormSettings.getInstance().state.tabsDisambiguateNames) return tabs
-        val labels = ProjectNameUniquifier.displayNames(tabs.map { tab ->
-            // An offloaded worktree is asked by its folder; the name it was stored with is what is left when no one answers.
-            val name = when (tab) {
+        // An offloaded worktree is asked by its folder; the name it was stored with is what is left when no one answers.
+        val names = tabs.associate { tab ->
+            tab.key to when (tab) {
                 is ProjectTab.Loaded -> ProjectNameProvider.nameOf(tab.project)
                 is ProjectTab.Offloaded -> ProjectNameProvider.nameAt(tab.key) ?: ProjectName(tab.name, tab.key)
             }
-            ProjectNameUniquifier.Entry(tab.key, name)
-        })
+        }
+        val labels = if (AgenstormSettings.getInstance().state.tabsDisambiguateNames) {
+            ProjectNameUniquifier.displayNames(tabs.map { ProjectNameUniquifier.Entry(it.key, names.getValue(it.key)) })
+        } else {
+            names.mapValues { it.value.text }
+        }
         return tabs.map { tab ->
-            val label = labels[tab.key] ?: tab.label
+            val name = names.getValue(tab.key)
+            val label = labels[tab.key] ?: name.text
             when (tab) {
-                is ProjectTab.Loaded -> tab.copy(label = label)
-                is ProjectTab.Offloaded -> tab.copy(label = label)
+                is ProjectTab.Loaded -> tab.copy(label = label, part = name.part)
+                is ProjectTab.Offloaded -> tab.copy(label = label, part = name.part)
             }
         }
     }
