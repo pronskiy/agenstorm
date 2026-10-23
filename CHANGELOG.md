@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-10-23
+
 ### Added
 
 - Project tabs: projects that share a name show the parent folder in front of it — on the tabs and in the "+" popup: `SomeFolder/ProjectName` and `AnotherFolder/ProjectName`, not two plain `ProjectName`. A worktree of such a project carries that project's folder, `SomeFolder/ProjectName:fix`, never its own `.worktrees/`. The worktree is drawn dimmed after the name, on the tabs and in the popup, and a name too long for its tab loses its middle while the worktree stays whole: `SomeFolder…Name:fix`. Names used once stay as they are, and a popup row now tells the whole path in its tooltip. Settings → Tools → Agenstorm → Project tabs.
@@ -250,7 +252,8 @@
 - Markdown live markup: Obsidian-style hiding of `**`, `*`, `~~`, backticks, `#` and link syntax until the caret reaches the line, ☐ / ☑ task checkboxes that toggle on click, • bullets, Ctrl/Cmd+click on link text following the destination (files, `path:line:col`, headings, URLs), a per-editor Live Markup toggle in the Markdown toolbar and context menu, settings for checkboxes and bullets, and hidden syntax revealed for the element at the caret (or, by setting, the whole caret line)
 - Fenced code blocks in Markdown live markup render as a full-width card: the ``` lines lose their markers and stay as the card's empty header and footer rows, the syntax highlighting inside the fence is untouched, and the caret on either fence line brings both markers back
 
-[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.15.0...HEAD
+[Unreleased]: https://github.com/pronskiy/agenstorm/compare/1.16.0...HEAD
+[1.16.0]: https://github.com/pronskiy/agenstorm/compare/1.15.0...1.16.0
 [1.15.0]: https://github.com/pronskiy/agenstorm/compare/1.14.0...1.15.0
 [1.14.0]: https://github.com/pronskiy/agenstorm/compare/1.13.0...1.14.0
 [1.13.0]: https://github.com/pronskiy/agenstorm/compare/1.12.0...1.13.0
